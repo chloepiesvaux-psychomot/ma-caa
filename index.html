@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta</title>
+<title>Ma CAA v2.0 bêta 2</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 2</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -498,11 +498,35 @@ let cloudClient=null;
 function initCloud(){try{if(window.supabase)cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){const p=readProfiles().find(x=>x.id===id);if(!p)return null;const storage={},suffix="::"+id;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.endsWith(suffix))storage[k.slice(0,-suffix.length)]=localStorage.getItem(k)}return {name:p.name,storage}}
+
+async function syncPushOne(id){
+  const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");
+  const p=readProfiles().find(x=>x.id===id);if(!p)return;
+  const payload={user_id:u.id,name:p.name,data:profileBundle(id),updated_at:new Date().toISOString()};
+  const q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);
+  const r=q.data?.[0]
+    ? await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id)
+    : await cloudClient.from("profiles").insert(payload);
+  if(r.error)alert("Erreur : "+r.error.message);else showFeedback("Profil synchronisé : "+p.name);
+}
+async function syncPullOneByName(name){
+  const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");
+  const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id).eq("name",name).order("updated_at",{ascending:false}).limit(1);
+  if(r.error||!r.data?.[0])return alert(r.error?.message||"Profil introuvable dans le cloud.");
+  const row=r.data[0],ps=readProfiles();let p=ps.find(x=>x.name===row.name);
+  if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
+  for(const [base,raw] of Object.entries(row.data?.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);
+  writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profil récupéré : "+row.name);
+}
+
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
 async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}for(const [base,raw] of Object.entries(row.data?.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw)}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profils récupérés")}
 async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else openProfiles()}
 async function cloudLogout(){await cloudClient?.auth.signOut();openProfiles()}
-function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;for(const [t,f] of [["☁️ Envoyer les profils",syncPushAll],["⬇️ Récupérer les profils",syncPullAll],["Se déconnecter",cloudLogout]]){const b=document.createElement("button");b.textContent=t;b.onclick=f;box.appendChild(b)}}else{s.textContent="Non connecté";const e=document.createElement("input");e.type="email";e.placeholder="E-mail";const p=document.createElement("input");p.type="password";p.placeholder="Mot de passe";const b=document.createElement("button");b.textContent="🔐 Se connecter";b.onclick=()=>cloudLogin(e.value.trim(),p.value);box.append(e,p,b)}})}
+function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;const pullName=document.createElement("input");pullName.placeholder="Nom exact du profil à récupérer";
+      const pullOne=document.createElement("button");pullOne.textContent="⬇️ Récupérer ce profil";pullOne.onclick=()=>syncPullOneByName(pullName.value.trim());
+      const out=document.createElement("button");out.textContent="Se déconnecter";out.onclick=cloudLogout;
+      box.append(pullName,pullOne,out);}else{s.textContent="Non connecté";const e=document.createElement("input");e.type="email";e.placeholder="E-mail";const p=document.createElement("input");p.type="password";p.placeholder="Mot de passe";const b=document.createElement("button");b.textContent="🔐 Se connecter";b.onclick=()=>cloudLogin(e.value.trim(),p.value);box.append(e,p,b)}})}
 
 function openProfiles(){
   if(!adultUnlocked){openAdultGate();return}
@@ -516,7 +540,8 @@ function openProfiles(){
     const use=document.createElement("button");use.textContent="Utiliser";use.onclick=()=>{overlay.remove();protectedSwitchProfile(p.id)};
     const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{overlay.remove();requireAdultPin(()=>deleteProfile(p.id))};
     const exp=document.createElement("button");exp.textContent="⬆️ Exporter";exp.onclick=()=>exportProfile(p.id);
-    row.append(n,use,exp,del);list.appendChild(row);
+    const one=document.createElement("button");one.textContent="☁️ Synchroniser";one.onclick=()=>syncPushOne(p.id);
+    row.append(n,use,one,exp,del);list.appendChild(row);
   });
   const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un utilisateur";add.onclick=()=>{overlay.remove();requireAdultPin(addProfile)};
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>overlay.remove();

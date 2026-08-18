@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.3</title>
+<title>Ma CAA v1.4</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -27,7 +27,9 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .editor h2{margin:0 0 16px}.editor label{display:block;font-weight:800;margin:14px 0 6px}.editor input[type=text]{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:17px}
 .editor-preview{width:150px;height:150px;object-fit:contain;border:2px solid #e3e6ec;border-radius:18px;background:#fff;display:block;margin:10px auto}
 .editor-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.editor-row button,.photo-label{border:0;border-radius:12px;padding:12px 14px;font-weight:900;font-size:15px;background:#edf0f5}.photo-label{background:#eaf2ff;color:#1455a3;display:inline-block}.saveedit{background:#2eaf58!important;color:white}.canceledit{background:#f2f4f7!important}.resetedit{background:#fff0f0!important;color:#b42318}
-.adult-overlay{position:fixed;inset:0;background:#0008;z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}.adult-box{background:white;width:min(430px,100%);border-radius:22px;padding:24px;text-align:center}.holdbar{height:12px;background:#e7eaf0;border-radius:999px;overflow:hidden;margin:16px 0}.holdfill{height:100%;width:0;background:#2eaf58}.holdbtn{width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:900;background:#17345f;color:white;touch-action:none}.closeadult{margin-top:10px;border:0;background:#eef1f5;border-radius:12px;padding:11px 14px;font-weight:800}.adult-badge{position:fixed;right:12px;bottom:12px;z-index:90;border:0;border-radius:999px;background:#17345f;color:white;padding:9px 12px;font-weight:900}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
+.adult-overlay{position:fixed;inset:0;background:#0008;z-index:120;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}.adult-box{background:white;width:min(430px,100%);border-radius:22px;padding:24px;text-align:center}.holdbar{height:12px;background:#e7eaf0;border-radius:999px;overflow:hidden;margin:16px 0}.holdfill{height:100%;width:0;background:#2eaf58}.holdbtn{width:100%;border:0;border-radius:14px;padding:15px;font-size:17px;font-weight:900;background:#17345f;color:white;touch-action:none}.closeadult{margin-top:10px;border:0;background:#eef1f5;border-radius:12px;padding:11px 14px;font-weight:800}.adult-badge{position:fixed;right:12px;bottom:12px;z-index:90;border:0;border-radius:999px;background:#17345f;color:white;padding:9px 12px;font-weight:900}.addpicto{grid-column:1/-1;border:2px dashed #2eaf58;background:#effaf2;color:#176b34;border-radius:16px;padding:15px;font-size:16px;font-weight:900}
+.add-select{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:17px;background:white}
+.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -40,7 +42,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.3</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.4</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -151,6 +153,7 @@ const FAV_KEY="ma-caa-favorites-v1";
 const HIDDEN_KEY="ma-caa-hidden-v1";
 const ORDER_KEY="ma-caa-order-v1";
 const CUSTOM_KEY="ma-caa-custom-v1";
+const ADDED_KEY="ma-caa-added-v1";
 
 function itemId(x){return x[1]+"|"+x[2]}
 function readList(key){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch(e){return []}}
@@ -159,18 +162,18 @@ function readOrder(){try{return JSON.parse(localStorage.getItem(ORDER_KEY)||"{}"
 function writeOrder(val){localStorage.setItem(ORDER_KEY,JSON.stringify(val))}
 
 function getFavIds(){return readList(FAV_KEY)}
-function isFav(x){return getFavIds().includes(itemId(x))}
+function isFav(x){return getFavIds().includes(itemId2(x))}
 function toggleFav(x){
-  let ids=getFavIds(), id=itemId(x);
+  let ids=getFavIds(), id=itemId2(x);
   ids=ids.includes(id)?ids.filter(v=>v!==id):[...ids,id];
   writeList(FAV_KEY,ids);
   renderGrid();
 }
 
 function hiddenIds(){return readList(HIDDEN_KEY)}
-function isHidden(x){return hiddenIds().includes(itemId(x))}
+function isHidden(x){return hiddenIds().includes(itemId2(x))}
 function setHidden(x,hidden){
-  let ids=hiddenIds(), id=itemId(x);
+  let ids=hiddenIds(), id=itemId2(x);
   if(hidden && !ids.includes(id)) ids.push(id);
   if(!hidden) ids=ids.filter(v=>v!==id);
   writeList(HIDDEN_KEY,ids);
@@ -180,10 +183,10 @@ function setHidden(x,hidden){
 
 function readCustom(){try{return JSON.parse(localStorage.getItem(CUSTOM_KEY)||"{}")}catch(e){return {}}}
 function writeCustom(v){localStorage.setItem(CUSTOM_KEY,JSON.stringify(v))}
-function customFor(x){return readCustom()[itemId(x)]||{}}
+function customFor(x){return readCustom()[itemId2(x)]||{}}
 function displayLabel(x){return customFor(x).label||x[1]}
 function spokenText(x){return customFor(x).speech||x[2]}
-function displayImage(x){return customFor(x).image||localPictos[x[1]]||""}
+function displayImage(x){if(isAdded(x)){const a=readAdded().find(v=>v.id===x[3]);return (a&&a.image)||""}return customFor(x).image||localPictos[x[1]]||""}
 function displayItem(x){return [x[0],displayLabel(x),spokenText(x)]}
 function openEditor(x){
   const old=customFor(x), overlay=document.createElement("div");overlay.className="editor-overlay";
@@ -214,7 +217,7 @@ function openEditor(x){
   const row=document.createElement("div");row.className="editor-row";
   const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Enregistrer";
   save.onclick=()=>{
-    const all=readCustom(), id=itemId(x);
+    const all=readCustom(), id=itemId2(x);
     const next={label:label.value.trim()||x[1],speech:speech.value.trim()||x[2]};
     if(photo.dataset.value)next.image=photo.dataset.value;else if(old.image)next.image=old.image;
     all[id]=next;
@@ -222,9 +225,50 @@ function openEditor(x){
     overlay.remove();renderGrid();
   };
   const reset=document.createElement("button");reset.className="resetedit";reset.textContent="↺ Réinitialiser";
-  reset.onclick=()=>{const all=readCustom();delete all[itemId(x)];writeCustom(all);overlay.remove();renderGrid()};
+  reset.onclick=()=>{const all=readCustom();delete all[itemId2(x)];writeCustom(all);overlay.remove();renderGrid()};
   const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>overlay.remove();
   row.append(save,reset,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
+}
+
+
+function readAdded(){try{return JSON.parse(localStorage.getItem(ADDED_KEY)||"[]")}catch(e){return []}}
+function writeAdded(v){localStorage.setItem(ADDED_KEY,JSON.stringify(v))}
+function addedForCategory(name){return readAdded().filter(a=>a.category===name).map(a=>[a.emoji||"🖼️",a.label,a.speech,a.id])}
+function isAdded(x){return !!x[3]}
+function itemId2(x){return isAdded(x)?"added|"+x[3]:x[1]+"|"+x[2]}
+function deleteAdded(x){
+  if(!isAdded(x))return;
+  if(!confirm("Supprimer ce pictogramme personnalisé ?"))return;
+  writeAdded(readAdded().filter(a=>a.id!==x[3]));renderGrid();
+}
+function openAddPicto(){
+  const overlay=document.createElement("div");overlay.className="editor-overlay";
+  const panel=document.createElement("div");panel.className="editor";
+  panel.innerHTML="<h2>➕ Ajouter un pictogramme</h2>";
+  const img=document.createElement("img");img.className="editor-preview";img.style.display="none";panel.appendChild(img);
+  const mkLabel=t=>{const l=document.createElement("label");l.textContent=t;panel.appendChild(l)};
+  mkLabel("Catégorie");
+  const sel=document.createElement("select");sel.className="add-select";
+  normalCategories().forEach(c=>{const o=document.createElement("option");o.value=c.name;o.textContent=c.icon+" "+c.name;sel.appendChild(o)});panel.appendChild(sel);
+  mkLabel("Texte affiché");
+  const label=document.createElement("input");label.type="text";label.placeholder="Ex. Doudou";panel.appendChild(label);
+  mkLabel("Ce que la voix prononce");
+  const speech=document.createElement("input");speech.type="text";speech.placeholder="Ex. je veux mon doudou";panel.appendChild(speech);
+  mkLabel("Photo");
+  const pl=document.createElement("label");pl.className="photo-label";pl.textContent="📷 Choisir une photo";
+  const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.style.display="none";pl.appendChild(photo);panel.appendChild(pl);
+  photo.onchange=()=>{const f=photo.files&&photo.files[0];if(!f)return;if(f.size>4*1024*1024){alert("Choisis une image de moins de 4 Mo.");return}const r=new FileReader();r.onload=()=>{photo.dataset.value=r.result;img.src=r.result;img.style.display="block"};r.readAsDataURL(f)};
+  const row=document.createElement("div");row.className="editor-row";
+  const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Ajouter";
+  save.onclick=()=>{
+    const lab=label.value.trim(),sp=speech.value.trim();
+    if(!lab){alert("Indique le texte du pictogramme.");return}
+    const all=readAdded();all.push({id:"p"+Date.now()+Math.random().toString(36).slice(2,7),category:sel.value,label:lab,speech:sp||lab.toLowerCase(),image:photo.dataset.value||"",emoji:"🖼️"});
+    try{writeAdded(all)}catch(e){alert("La photo est trop volumineuse. Essaie une photo plus légère.");return}
+    overlay.remove();renderGrid();showFeedback("Pictogramme ajouté");
+  };
+  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>overlay.remove();
+  row.append(save,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 
 function normalCategories(){
@@ -232,10 +276,10 @@ function normalCategories(){
 }
 function baseItems(cat){return cat.items.slice()}
 function orderedItems(cat){
-  const items=baseItems(cat);
+  const items=baseItems(cat).concat(addedForCategory(cat.name));
   const map=readOrder(), ids=map[cat.name]||[];
   if(!ids.length) return items;
-  const byId=new Map(items.map(x=>[itemId(x),x]));
+  const byId=new Map(items.map(x=>[itemId2(x),x]));
   const out=[];
   ids.forEach(id=>{if(byId.has(id)){out.push(byId.get(id));byId.delete(id)}});
   byId.forEach(x=>out.push(x));
@@ -245,10 +289,10 @@ function visibleItems(cat){return orderedItems(cat).filter(x=>!isHidden(x))}
 function allItems(){return normalCategories().flatMap(c=>orderedItems(c))}
 function favoriteItems(){
   const favs=getFavIds();
-  return allItems().filter(x=>favs.includes(itemId(x)) && !isHidden(x));
+  return allItems().filter(x=>favs.includes(itemId2(x)) && !isHidden(x));
 }
 function moveItem(cat,x,dir){
-  let items=orderedItems(cat), idx=items.findIndex(y=>itemId(y)===itemId(x));
+  let items=orderedItems(cat), idx=items.findIndex(y=>itemId(y)===itemId2(x));
   let next=idx+dir;
   if(idx<0 || next<0 || next>=items.length) return;
   [items[idx],items[next]]=[items[next],items[idx]];
@@ -268,6 +312,8 @@ function createNormalCard(x,box){
   b.appendChild(star);b.onclick=()=>add(displayItem(x));box.appendChild(b);
 }
 function renderPersonalize(box){
+  const addBtn=document.createElement("button");addBtn.className="addpicto";addBtn.textContent="➕ Ajouter un pictogramme personnalisé";addBtn.onclick=openAddPicto;box.appendChild(addBtn);
+
   const note=document.createElement("div");note.className="personal-note";
   note.textContent="Réglages adulte : masque, réaffiche ou change l’ordre des pictogrammes. Les choix restent enregistrés sur cet appareil.";
   box.appendChild(note);
@@ -288,7 +334,8 @@ function renderPersonalize(box){
       const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
       const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
       const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
-      actions.append(vis,up,down,edit);info.appendChild(actions);
+      actions.append(vis,up,down,edit);
+      if(isAdded(x)){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️ Supprimer";del.onclick=()=>deleteAdded(x);actions.appendChild(del);}info.appendChild(actions);
       card.append(visual,info);box.appendChild(card);
     });
   });

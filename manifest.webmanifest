@@ -4,7 +4,7 @@
   "lang": "fr",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f5f7fb",
-  "theme_color": "#0b2a4a",
-  "description": "Prototype d'application de Communication Alternative et Améliorée en français."
+  "background_color": "#f6f7fb",
+  "theme_color": "#17345f",
+  "description": "Application française de communication alternative et améliorée."
 }

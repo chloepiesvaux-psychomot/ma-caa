@@ -1,66 +1,31 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0b2a4a" />
-  <title>Ma CAA</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17345f">
+<title>Ma CAA v0.2</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="Catégories">
-      <div class="brand">🗣️ <span>Ma CAA</span></div>
-      <nav id="categoryNav"></nav>
-      <button class="settings-btn" type="button">⚙️ <span>Paramètres</span></button>
-    </aside>
-
-    <main class="main">
-      <section class="sentence-area" aria-label="Phrase">
-        <div class="sentence-strip" id="sentenceStrip">
-          <div class="empty-message">Touchez un pictogramme pour construire une phrase</div>
-        </div>
-        <div class="sentence-actions">
-          <button id="speakBtn" class="action speak" type="button">🔊 PARLER</button>
-          <button id="clearBtn" class="action clear" type="button">🗑️ EFFACER</button>
-        </div>
-      </section>
-
-      <section class="content">
-        <div class="content-header">
-          <div>
-            <div class="eyebrow">Catégorie</div>
-            <h1 id="categoryTitle">Besoins du quotidien</h1>
-          </div>
-          <label class="search">
-            🔎
-            <input id="searchInput" type="search" placeholder="Rechercher…" autocomplete="off" />
-          </label>
-        </div>
-
-        <div class="quick-phrases" id="quickPhrases"></div>
-        <div class="pictogram-grid" id="pictogramGrid"></div>
-      </section>
-
-      <footer class="mobile-footer">
-        <button id="mobileCategoriesBtn" type="button">☰ Catégories</button>
-        <button id="mobileSpeakBtn" type="button">🔊 Parler</button>
-        <button id="mobileClearBtn" type="button">🗑 Effacer</button>
-      </footer>
-    </main>
-  </div>
-
-  <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
-    <div class="drawer-card">
-      <div class="drawer-header">
-        <strong>Catégories</strong>
-        <button id="closeDrawerBtn" type="button" aria-label="Fermer">✕</button>
-      </div>
-      <nav id="mobileCategoryNav"></nav>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
-</body>
-</html>
+<div class="app">
+  <aside>
+    <div class="brand">💬 <b>Ma CAA</b></div>
+    <nav id="nav"></nav>
+  </aside>
+  <main>
+    <header>
+      <div id="sentence" class="sentence"><span class="hint">Choisis des pictogrammes pour construire ta phrase</span></div>
+      <div class="actions"><button id="speak">🔊 PARLER</button><button id="undo">↩ RETIRER</button><button id="clear">🗑 EFFACER</button></div>
+    </header>
+    <section>
+      <div class="top"><div><small>CATÉGORIE</small><h1 id="title"></h1></div><input id="search" placeholder="🔎 Rechercher…"></div>
+      <div class="starter"><b>Débuts de phrase</b><div id="starters"></div></div>
+      <div id="grid" class="grid"></div>
+    </section>
+  </main>
+</div>
+<div class="bottom"><button id="cats">☰ Catégories</button><button id="speak2">🔊 Parler</button><button id="clear2">🗑 Effacer</button></div>
+<div id="drawer" class="drawer"><div class="sheet"><button id="close">✕</button><h2>Catégories</h2><nav id="nav2"></nav></div></div>
+<script src="app.js"></script>
+</body></html>

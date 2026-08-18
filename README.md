@@ -1,33 +1,9 @@
-# Ma CAA — prototype v0.1
+# Ma CAA v0.2
+Version de test :
+- construction de phrase par pictogrammes ;
+- débuts de phrase : Je / Je veux / Je ne veux pas / J'ai besoin de ;
+- lecture vocale française ;
+- retrait du dernier élément et suppression individuelle ;
+- catégories, recherche et interface téléphone/tablette.
 
-Prototype local d'une application de Communication Alternative et Améliorée (CAA) en français.
-
-## Tester sur ordinateur
-Ouvrez `index.html` dans un navigateur récent.
-
-## Pour tester comme une vraie PWA
-Lancez un petit serveur local dans ce dossier, par exemple :
-`python3 -m http.server 8000`
-puis ouvrez `http://localhost:8000`.
-
-Sur iPhone/iPad, une fois le projet hébergé sur un site HTTPS, ouvrez-le dans Safari puis utilisez **Partager > Sur l'écran d'accueil**.
-
-## Fonctions incluses
-- Catégories
-- Pictogrammes
-- Construction d'une phrase
-- Suppression d'un mot en touchant le mot dans la bande de phrase
-- Lecture vocale en français
-- Effacement complet
-- Recherche
-- Phrases rapides
-- Mise en page responsive téléphone/tablette
-- Base PWA avec service worker
-
-## Prochaine version
-- Favoris
-- Pictogrammes personnalisés
-- Photos personnelles
-- Paramètres de voix
-- Verrouillage adulte
-- Sauvegarde locale
+Les pictogrammes graphiques sous licence libre seront intégrés dans une étape ultérieure après validation du vocabulaire et de l'attribution requise.

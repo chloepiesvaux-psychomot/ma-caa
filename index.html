@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.9.2</title>
+<title>Ma CAA v1.9.3</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -32,7 +32,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .catmanage{grid-column:1/-1;border:2px dashed #5576b9;background:#f2f6ff;color:#234b91;border-radius:16px;padding:15px;font-size:16px;font-weight:900}
 .customcat-row{grid-column:1/-1;background:#f8f9fc;border:1px solid #e2e6ef;border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .customcat-row button{border:0;border-radius:10px;padding:8px 10px;font-weight:800;background:#fff0f0;color:#b42318}
-.profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.pin-input{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900}.pin-note{font-size:13px;color:#667085;margin-top:10px}.voice-select,.voice-range{width:100%;box-sizing:border-box}.voice-select{border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:16px;background:white}.voice-value{font-weight:900;color:#234b91}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
+.profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.pin-input{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900}.pin-note{font-size:13px;color:#667085;margin-top:10px}.voice-select,.voice-range{width:100%;box-sizing:border-box}.voice-select{border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:16px;background:white}.voice-value{font-weight:900;color:#234b91}.favmanage{background:#fff8dc!important;color:#8a6500!important}.favmanage.active{background:#fff0a8!important;color:#6f5100!important}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
 
@@ -79,7 +79,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.2</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.3</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -582,7 +582,22 @@ function renderPersonalize(box){
       vis.onclick=()=>setHidden(x,!isHidden(x));
       const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
       const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
-      const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
+const favBtn=document.createElement("button");
+      const favsNow=readList(FAV_KEY);
+      const favId=idOf(item);
+      const isFav=favsNow.includes(favId);
+      favBtn.className="favmanage"+(isFav?" active":"");
+      favBtn.textContent=isFav?"⭐ Retirer favori":"☆ Ajouter favori";
+      favBtn.onclick=(e)=>{
+        e.stopPropagation();
+        const f=readList(FAV_KEY),ix=f.indexOf(favId);
+        if(ix>=0)f.splice(ix,1);else f.push(favId);
+        writeList(FAV_KEY,f);
+        renderGrid();
+        showFeedback(ix>=0?"Retiré des favoris":"Ajouté aux favoris");
+      };
+      card.appendChild(favBtn);
+            const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
       actions.append(vis,up,down,edit);
       if(isAdded(x)){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️ Supprimer";del.onclick=()=>deleteAdded(x);actions.appendChild(del);}info.appendChild(actions);
       card.append(visual,info);box.appendChild(card);

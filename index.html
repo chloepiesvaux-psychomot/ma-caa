@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.1.1</title>
+<title>Ma CAA v1.2</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -21,6 +21,12 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .personal-group{grid-column:1/-1;margin-top:10px;font-weight:900;color:#23344f;font-size:18px}
 .manage-card{min-height:150px;border:2px solid #e3e6ec;background:white;border-radius:18px;padding:12px;display:grid;grid-template-columns:82px 1fr;align-items:center;gap:10px;position:relative}
 .manage-card img{width:76px;height:76px;object-fit:contain}.manage-card .emo{font-size:55px;text-align:center}.manage-card b{font-size:14px}.manage-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.manage-actions button{border:0;border-radius:10px;padding:8px 9px;font-weight:800;background:#edf0f5}.manage-actions .hidebtn{background:#fff0f0}.manage-actions .showbtn{background:#eaf8ed}
+.editbtn{background:#eee8ff!important;color:#4b2b96!important}
+.editor-overlay{position:fixed;inset:0;background:#0008;z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.editor{background:white;width:min(680px,100%);max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:22px;box-sizing:border-box}
+.editor h2{margin:0 0 16px}.editor label{display:block;font-weight:800;margin:14px 0 6px}.editor input[type=text]{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:17px}
+.editor-preview{width:150px;height:150px;object-fit:contain;border:2px solid #e3e6ec;border-radius:18px;background:#fff;display:block;margin:10px auto}
+.editor-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.editor-row button,.photo-label{border:0;border-radius:12px;padding:12px 14px;font-weight:900;font-size:15px;background:#edf0f5}.photo-label{background:#eaf2ff;color:#1455a3;display:inline-block}.saveedit{background:#2eaf58!important;color:white}.canceledit{background:#f2f4f7!important}.resetedit{background:#fff0f0!important;color:#b42318}
 .feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -34,7 +40,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.1.1</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.2</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -144,6 +150,7 @@ function renderPhrase(){const box=el("phrase");box.innerHTML="";if(!phrase.lengt
 const FAV_KEY="ma-caa-favorites-v1";
 const HIDDEN_KEY="ma-caa-hidden-v1";
 const ORDER_KEY="ma-caa-order-v1";
+const CUSTOM_KEY="ma-caa-custom-v1";
 
 function itemId(x){return x[1]+"|"+x[2]}
 function readList(key){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch(e){return []}}
@@ -168,6 +175,56 @@ function setHidden(x,hidden){
   if(!hidden) ids=ids.filter(v=>v!==id);
   writeList(HIDDEN_KEY,ids);
   renderGrid();
+}
+
+
+function readCustom(){try{return JSON.parse(localStorage.getItem(CUSTOM_KEY)||"{}")}catch(e){return {}}}
+function writeCustom(v){localStorage.setItem(CUSTOM_KEY,JSON.stringify(v))}
+function customFor(x){return readCustom()[itemId(x)]||{}}
+function displayLabel(x){return customFor(x).label||x[1]}
+function spokenText(x){return customFor(x).speech||x[2]}
+function displayImage(x){return customFor(x).image||localPictos[x[1]]||""}
+function displayItem(x){return [x[0],displayLabel(x),spokenText(x)]}
+function openEditor(x){
+  const old=customFor(x), overlay=document.createElement("div");overlay.className="editor-overlay";
+  const panel=document.createElement("div");panel.className="editor";
+  panel.innerHTML="<h2>✏️ Modifier le pictogramme</h2>";
+  const img=document.createElement("img");img.className="editor-preview";img.alt="";
+  const fallback=x[0];
+  function refreshPreview(){
+    const data=photo.dataset.value||old.image||localPictos[x[1]]||"";
+    if(data){img.src=data;img.style.display="block"}else{img.removeAttribute("src");img.style.display="none"}
+  }
+  panel.appendChild(img);
+  const l1=document.createElement("label");l1.textContent="Texte affiché";panel.appendChild(l1);
+  const label=document.createElement("input");label.type="text";label.value=old.label||x[1];panel.appendChild(label);
+  const l2=document.createElement("label");l2.textContent="Ce que la voix prononce";panel.appendChild(l2);
+  const speech=document.createElement("input");speech.type="text";speech.value=old.speech||x[2];panel.appendChild(speech);
+  const l3=document.createElement("label");l3.textContent="Image personnelle";panel.appendChild(l3);
+  const photoLabel=document.createElement("label");photoLabel.className="photo-label";photoLabel.textContent="📷 Choisir une photo";
+  const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.style.display="none";photoLabel.appendChild(photo);panel.appendChild(photoLabel);
+  photo.onchange=()=>{
+    const f=photo.files&&photo.files[0];if(!f)return;
+    if(f.size>4*1024*1024){alert("Choisis une image de moins de 4 Mo.");photo.value="";return}
+    const reader=new FileReader();
+    reader.onload=()=>{photo.dataset.value=reader.result;img.src=reader.result;img.style.display="block"};
+    reader.readAsDataURL(f);
+  };
+  refreshPreview();
+  const row=document.createElement("div");row.className="editor-row";
+  const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Enregistrer";
+  save.onclick=()=>{
+    const all=readCustom(), id=itemId(x);
+    const next={label:label.value.trim()||x[1],speech:speech.value.trim()||x[2]};
+    if(photo.dataset.value)next.image=photo.dataset.value;else if(old.image)next.image=old.image;
+    all[id]=next;
+    try{writeCustom(all)}catch(e){alert("La photo est trop volumineuse pour être enregistrée. Essaie une photo plus légère.");return}
+    overlay.remove();renderGrid();
+  };
+  const reset=document.createElement("button");reset.className="resetedit";reset.textContent="↺ Réinitialiser";
+  reset.onclick=()=>{const all=readCustom();delete all[itemId(x)];writeCustom(all);overlay.remove();renderGrid()};
+  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>overlay.remove();
+  row.append(save,reset,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 
 function normalCategories(){
@@ -199,8 +256,8 @@ function moveItem(cat,x,dir){
   renderGrid();
 }
 function picHtml(x){
-  const p=localPictos[x[1]];
-  return (p?'<img src="'+p+'" alt="">':'<span class="emo">'+x[0]+'</span>')+'<b>'+x[1]+'</b>';
+  const p=displayImage(x), label=displayLabel(x);
+  return (p?'<img src="'+p+'" alt="">':'<span class="emo">'+x[0]+'</span>')+'<b>'+label+'</b>';
 }
 function createNormalCard(x,box){
   const b=document.createElement("button");b.className="pic";b.innerHTML=picHtml(x);
@@ -208,7 +265,7 @@ function createNormalCard(x,box){
   star.className="favstar "+(isFav(x)?"on":"off");star.textContent="⭐";
   star.setAttribute("aria-label",isFav(x)?"Retirer des favoris":"Ajouter aux favoris");
   star.onclick=(e)=>{e.stopPropagation();toggleFav(x)};
-  b.appendChild(star);b.onclick=()=>add(x);box.appendChild(b);
+  b.appendChild(star);b.onclick=()=>add(displayItem(x));box.appendChild(b);
 }
 function renderPersonalize(box){
   const note=document.createElement("div");note.className="personal-note";
@@ -218,11 +275,11 @@ function renderPersonalize(box){
     const h=document.createElement("div");h.className="personal-group";h.textContent=cat.icon+" "+cat.name;box.appendChild(h);
     orderedItems(cat).forEach(x=>{
       const card=document.createElement("div");card.className="manage-card";
-      const p=localPictos[x[1]];
+      const p=displayImage(x);
       const visual=document.createElement("div");
       visual.innerHTML=p?'<img src="'+p+'" alt="">':'<div class="emo">'+x[0]+'</div>';
       const info=document.createElement("div");
-      const title=document.createElement("b");title.textContent=x[1];info.appendChild(title);
+      const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
       const actions=document.createElement("div");actions.className="manage-actions";
       const vis=document.createElement("button");
       vis.className=isHidden(x)?"showbtn":"hidebtn";
@@ -230,7 +287,8 @@ function renderPersonalize(box){
       vis.onclick=()=>setHidden(x,!isHidden(x));
       const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
       const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
-      actions.append(vis,up,down);info.appendChild(actions);
+      const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
+      actions.append(vis,up,down,edit);info.appendChild(actions);
       card.append(visual,info);box.appendChild(card);
     });
   });
@@ -240,7 +298,7 @@ function renderGrid(){
   const c=categories[current];
   if(c.name==="Personnaliser"){renderPersonalize(box);return}
   let items=c.name==="Favoris"?favoriteItems():visibleItems(c);
-  items=items.filter(x=>x[1].toLowerCase().includes(q));
+  items=items.filter(x=>displayLabel(x).toLowerCase().includes(q));
   if(c.name==="Favoris" && items.length===0){
     const msg=document.createElement("div");
     msg.style.cssText="grid-column:1/-1;text-align:center;padding:30px 12px;color:#667085;font-weight:700";

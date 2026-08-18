@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.9.5</title>
+<title>Ma CAA v1.9.6</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -79,7 +79,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.5</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.6</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -433,6 +433,49 @@ function deleteProfile(id){
   if(activeProfile()===id)localStorage.setItem(ACTIVE_PROFILE_KEY,next[0].id);
   syncCustomCategories();render();renderProfileBar();renderGrid();
 }
+
+function exportProfile(id){
+  const p=readProfiles().find(x=>x.id===id);if(!p)return;
+  const data={format:"ma-caa-profile",version:1,profile:{name:p.name},settings:{}};
+  PROFILE_DATA_KEYS.forEach(k=>{
+    const raw=localStorage.getItem(k+"::"+id);
+    if(raw!==null){try{data.settings[k]=JSON.parse(raw)}catch(e){data.settings[k]=raw}}
+  });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  const safe=(p.name||"profil").replace(/[^a-z0-9_-]+/gi,"_");
+  a.href=URL.createObjectURL(blob);a.download="ma-caa-"+safe+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  showFeedback("Profil exporté");
+}
+function importProfileFile(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result);
+      if(!data||data.format!=="ma-caa-profile"||!data.profile){alert("Ce fichier n'est pas un profil Ma CAA valide.");return}
+      const name=(data.profile.name||"Profil importé").trim();
+      const profiles=readProfiles();
+      const id="u"+Date.now()+Math.random().toString(36).slice(2,6);
+      profiles.push({id,name});writeProfiles(profiles);
+      const settings=data.settings||{};
+      PROFILE_DATA_KEYS.forEach(k=>{
+        if(Object.prototype.hasOwnProperty.call(settings,k)){
+          localStorage.setItem(k+"::"+id,JSON.stringify(settings[k]));
+        }
+      });
+      localStorage.setItem(ACTIVE_PROFILE_KEY,id);
+      syncCustomCategories();render();renderProfileBar();showFeedback("Profil importé : "+name);
+    }catch(e){alert("Impossible d'importer ce fichier de profil.");}
+  };
+  r.readAsText(file);
+}
+function chooseProfileImport(){
+  const input=document.createElement("input");input.type="file";input.accept=".json,application/json";
+  input.onchange=()=>{const f=input.files&&input.files[0];if(f)importProfileFile(f)};
+  input.click();
+}
+
 function openProfiles(){
   if(!adultUnlocked){openAdultGate();return}
   const overlay=document.createElement("div");overlay.className="editor-overlay";
@@ -443,11 +486,13 @@ function openProfiles(){
     const n=document.createElement("b");n.textContent=(p.id===activeProfile()?"✓ ":"")+p.name;
     const use=document.createElement("button");use.textContent="Utiliser";use.onclick=()=>{overlay.remove();protectedSwitchProfile(p.id)};
     const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{overlay.remove();requireAdultPin(()=>deleteProfile(p.id))};
-    row.append(n,use,del);list.appendChild(row);
+    const exp=document.createElement("button");exp.textContent="⬆️ Exporter";exp.onclick=()=>exportProfile(p.id);
+    row.append(n,use,exp,del);list.appendChild(row);
   });
   const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un utilisateur";add.onclick=()=>{overlay.remove();requireAdultPin(addProfile)};
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>overlay.remove();
-  const row=document.createElement("div");row.className="editor-row";row.append(add,close);
+  const row=document.createElement("div");row.className="editor-row";const imp=document.createElement("button");imp.className="saveedit";imp.textContent="⬇️ Importer un profil";imp.onclick=()=>{overlay.remove();chooseProfileImport()};
+  row.append(add,imp,close);
   panel.append(list,row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 function renderProfileBar(){

@@ -1,9 +1,6 @@
-# Ma CAA v0.3
-Version pilote avec intégration ARASAAC pour un premier ensemble de pictogrammes.
-- Architecture stable en un seul fichier principal
-- Construction de phrase et synthèse vocale conservées
-- Pictogrammes ARASAAC chargés via l'API officielle avec repli sur emoji
-- Attribution affichée dans l'application
-- Défilement horizontal des débuts de phrase amélioré sur iPhone
+# Ma CAA v0.3.1
+Version pilote avec pictogrammes réellement intégrés au dossier de l'application.
+Premier lot : Toilettes, Manger, Boire, Eau, Dormir, Aide.
+Les autres pictogrammes restent temporairement en emoji jusqu'à validation visuelle.
 
-Pictogrammes : Sergio Palao / ARASAAC / Gouvernement d'Aragon — CC BY-NC-SA 4.0.
+Pictogrammes ARASAAC : Sergio Palao, Gouvernement d'Aragon — CC BY-NC-SA 4.0.

@@ -1,0 +1,10 @@
+{
+  "name": "Ma CAA",
+  "short_name": "Ma CAA",
+  "lang": "fr",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fb",
+  "theme_color": "#0b2a4a",
+  "description": "Prototype d'application de Communication Alternative et Améliorée en français."
+}

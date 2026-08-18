@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b2a4a" />
+  <title>Ma CAA</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Catégories">
+      <div class="brand">🗣️ <span>Ma CAA</span></div>
+      <nav id="categoryNav"></nav>
+      <button class="settings-btn" type="button">⚙️ <span>Paramètres</span></button>
+    </aside>
+
+    <main class="main">
+      <section class="sentence-area" aria-label="Phrase">
+        <div class="sentence-strip" id="sentenceStrip">
+          <div class="empty-message">Touchez un pictogramme pour construire une phrase</div>
+        </div>
+        <div class="sentence-actions">
+          <button id="speakBtn" class="action speak" type="button">🔊 PARLER</button>
+          <button id="clearBtn" class="action clear" type="button">🗑️ EFFACER</button>
+        </div>
+      </section>
+
+      <section class="content">
+        <div class="content-header">
+          <div>
+            <div class="eyebrow">Catégorie</div>
+            <h1 id="categoryTitle">Besoins du quotidien</h1>
+          </div>
+          <label class="search">
+            🔎
+            <input id="searchInput" type="search" placeholder="Rechercher…" autocomplete="off" />
+          </label>
+        </div>
+
+        <div class="quick-phrases" id="quickPhrases"></div>
+        <div class="pictogram-grid" id="pictogramGrid"></div>
+      </section>
+
+      <footer class="mobile-footer">
+        <button id="mobileCategoriesBtn" type="button">☰ Catégories</button>
+        <button id="mobileSpeakBtn" type="button">🔊 Parler</button>
+        <button id="mobileClearBtn" type="button">🗑 Effacer</button>
+      </footer>
+    </main>
+  </div>
+
+  <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
+    <div class="drawer-card">
+      <div class="drawer-header">
+        <strong>Catégories</strong>
+        <button id="closeDrawerBtn" type="button" aria-label="Fermer">✕</button>
+      </div>
+      <nav id="mobileCategoryNav"></nav>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

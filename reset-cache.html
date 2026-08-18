@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nettoyage Ma CAA</title></head>
+<body style="font-family:system-ui;padding:30px;text-align:center">
+<h2>Ma CAA — nettoyage du cache</h2><p id="s">Nettoyage en cours…</p>
+<button id="b" hidden style="font-size:18px;padding:12px">Ouvrir Ma CAA</button>
+<script>
+(async()=>{
+ const s=document.getElementById("s"),b=document.getElementById("b");
+ try{
+  if("serviceWorker" in navigator){
+   const r=await navigator.serviceWorker.getRegistrations();
+   await Promise.all(r.map(x=>x.unregister()));
+  }
+  if("caches" in window){
+   const n=await caches.keys(); await Promise.all(n.map(x=>caches.delete(x)));
+  }
+  s.textContent="✅ Nettoyage terminé";
+ }catch(e){s.textContent="Nettoyage terminé."}
+ b.hidden=false;b.onclick=()=>location.replace("./?fresh="+Date.now());
+})();
+</script></body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.0</title>
+<title>Ma CAA v1.1</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -17,6 +17,10 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .content{padding:22px}.head{display:flex;justify-content:space-between;align-items:end;gap:14px}.head small{font-weight:900;color:var(--purple);letter-spacing:.06em}.head h1{margin:4px 0 12px;font-size:30px}.search{border:1px solid var(--line);border-radius:14px;background:white;padding:12px 14px;width:min(330px,42vw)}
 .starters{background:#f2ecff;border:1px solid #e1d5f8;border-radius:16px;padding:12px;margin:5px 0 18px}.starters strong{color:#4f2f91}.starterrow{display:flex;gap:8px;overflow-x:auto;margin-top:9px}.starter{white-space:nowrap;border:1px solid #d8caf3;background:white;color:#4f2f91;border-radius:12px;padding:10px 12px;font-weight:900}
 .grid{display:grid;grid-template-columns:repeat(5,minmax(125px,1fr));gap:14px}.pic{min-height:165px;border:2px solid #e3e6ec;background:white;border-radius:19px;padding:12px;display:grid;place-items:center;align-content:center;gap:10px}.pic .emo{font-size:66px}.pic b{text-align:center;font-size:12px;color:#6b7280}.pic img,.token img{width:112px;height:112px;object-fit:contain}.pic{position:relative}.favstar{position:absolute;right:5px;top:4px;border:0;background:transparent;font-size:23px;padding:2px;z-index:2}.favstar.on{filter:none}.favstar.off{opacity:.35}.token img{width:54px;height:54px}.credit{font-size:11px;color:#6b7280;text-align:center;margin:18px 0 2px}
+.personal-note{grid-column:1/-1;background:#fff7db;border:1px solid #f2d56b;border-radius:16px;padding:14px;font-weight:700;color:#4b3b00}
+.personal-group{grid-column:1/-1;margin-top:10px;font-weight:900;color:#23344f;font-size:18px}
+.manage-card{min-height:150px;border:2px solid #e3e6ec;background:white;border-radius:18px;padding:12px;display:grid;grid-template-columns:82px 1fr;align-items:center;gap:10px;position:relative}
+.manage-card img{width:76px;height:76px;object-fit:contain}.manage-card .emo{font-size:55px;text-align:center}.manage-card b{font-size:14px}.manage-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.manage-actions button{border:0;border-radius:10px;padding:8px 9px;font-weight:800;background:#edf0f5}.manage-actions .hidebtn{background:#fff0f0}.manage-actions .showbtn{background:#eaf8ed}
 .feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -30,7 +34,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.0</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.1</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -100,7 +104,8 @@ const categories=[{icon:"⭐",name:"Favoris",items:[]},
 ["🍰","Goûter","le goûter"]
 ]},
 {icon:"💬",name:"Mots essentiels",items:[["👍","Oui","oui"],["👎","Non","non"],["🛑","Stop","stop"],["➕","Encore","encore"],["🏁","Fini","c'est fini"],["🤝","Aide","j'ai besoin d'aide"],["🤷","Je ne sais pas","je ne sais pas"],["😕","Je ne comprends pas","je ne comprends pas"]]},
-{icon:"❓",name:"Questions",items:[["❓","Quoi ?","quoi"],["📍","Où ?","où"],["👤","Qui ?","qui"],["⏰","Quand ?","quand"],["💭","Pourquoi ?","pourquoi"]]}
+{icon:"❓",name:"Questions",items:[["❓","Quoi ?","quoi"],["📍","Où ?","où"],["👤","Qui ?","qui"],["⏰","Quand ?","quand"],["💭","Pourquoi ?","pourquoi"]]},
+{icon:"⚙️",name:"Personnaliser",items:[]}
 ];
 const localPictos={"Toilettes":"images/toilettes.png","Manger":"images/manger.png","Boire":"images/boire.png","Eau":"images/eau.png","Dormir":"images/dormir.png","Aide":"images/aide.png","Se laver":"images/se_laver.svg","Brosser les dents":"images/brosser_dents.svg","S’habiller":"images/shabiller.svg","Laver les mains":"images/laver_mains.svg","Calme":"images/calme.svg","J’ai mal":"images/jai_mal.svg","J’ai froid":"images/jai_froid.svg","J’ai chaud":"images/jai_chaud.svg"};
 const starters=[["👤","Je","je"],["👉","Je veux","je veux"],["🙅","Je ne veux pas","je ne veux pas"],["🙏","J’ai besoin de","j'ai besoin de"],["➕","Encore","encore"],["🛑","C’est fini","c'est fini"]];
@@ -137,26 +142,113 @@ function add(x){
 function renderPhrase(){const box=el("phrase");box.innerHTML="";if(!phrase.length){box.innerHTML='<span class="hint">Touchez un pictogramme pour construire une phrase</span>';return}phrase.forEach((x,i)=>{const b=document.createElement("button");b.className="token";b.innerHTML=(x.picto?'<img src="'+x.picto+'" alt="">':'<span class="emo">'+x.icon+'</span>')+'<b>'+x.label+'</b>';b.onclick=()=>{phrase.splice(i,1);renderPhrase()};box.appendChild(b)});box.scrollLeft=box.scrollWidth}
 
 const FAV_KEY="ma-caa-favorites-v1";
-function favId(x){return x[1]+"|"+x[2]}
-function getFavIds(){try{return JSON.parse(localStorage.getItem(FAV_KEY)||"[]")}catch(e){return []}}
-function isFav(x){return getFavIds().includes(favId(x))}
+const HIDDEN_KEY="ma-caa-hidden-v1";
+const ORDER_KEY="ma-caa-order-v1";
+
+function itemId(x){return x[1]+"|"+x[2]}
+function readList(key){try{return JSON.parse(localStorage.getItem(key)||"[]")}catch(e){return []}}
+function writeList(key,val){localStorage.setItem(key,JSON.stringify(val))}
+function readOrder(){try{return JSON.parse(localStorage.getItem(ORDER_KEY)||"{}")}catch(e){return {}}}
+function writeOrder(val){localStorage.setItem(ORDER_KEY,JSON.stringify(val))}
+
+function getFavIds(){return readList(FAV_KEY)}
+function isFav(x){return getFavIds().includes(itemId(x))}
 function toggleFav(x){
-  let ids=getFavIds(), id=favId(x);
+  let ids=getFavIds(), id=itemId(x);
   ids=ids.includes(id)?ids.filter(v=>v!==id):[...ids,id];
-  localStorage.setItem(FAV_KEY,JSON.stringify(ids));
-  renderCats();renderGrid();
-}
-function allItems(){
-  return categories.filter(c=>c.name!=="Favoris").flatMap(c=>c.items);
-}
-function favoriteItems(){
-  const ids=getFavIds();
-  return allItems().filter(x=>ids.includes(favId(x)));
+  writeList(FAV_KEY,ids);
+  renderGrid();
 }
 
-function renderGrid(){const q=el("search").value.trim().toLowerCase(),box=el("grid");box.innerHTML="";categories[current].items.filter(x=>x[1].toLowerCase().includes(q)).forEach(x=>{const b=document.createElement("button");b.className="pic";const p=localPictos[x[1]];b.innerHTML=(p?'<img src="'+p+'" alt="">':'<span class="emo">'+x[0]+'</span>')+'<b>'+x[1]+'</b>';
-const star=document.createElement("button");star.className="favstar "+(isFav(x)?"on":"off");star.textContent="⭐";star.setAttribute("aria-label","Ajouter ou retirer des favoris");star.onclick=(e)=>{e.stopPropagation();toggleFav(x)};b.appendChild(star);
-b.onclick=()=>add(x);box.appendChild(b)})}
+function hiddenIds(){return readList(HIDDEN_KEY)}
+function isHidden(x){return hiddenIds().includes(itemId(x))}
+function setHidden(x,hidden){
+  let ids=hiddenIds(), id=itemId(x);
+  if(hidden && !ids.includes(id)) ids.push(id);
+  if(!hidden) ids=ids.filter(v=>v!==id);
+  writeList(HIDDEN_KEY,ids);
+  renderGrid();
+}
+
+function normalCategories(){
+  return categories.filter(c=>c.name!=="Favoris" && c.name!=="Personnaliser");
+}
+function baseItems(cat){return cat.items.slice()}
+function orderedItems(cat){
+  const items=baseItems(cat);
+  const map=readOrder(), ids=map[cat.name]||[];
+  if(!ids.length) return items;
+  const byId=new Map(items.map(x=>[itemId(x),x]));
+  const out=[];
+  ids.forEach(id=>{if(byId.has(id)){out.push(byId.get(id));byId.delete(id)}});
+  byId.forEach(x=>out.push(x));
+  return out;
+}
+function visibleItems(cat){return orderedItems(cat).filter(x=>!isHidden(x))}
+function allItems(){return normalCategories().flatMap(c=>orderedItems(c))}
+function favoriteItems(){
+  const favs=getFavIds();
+  return allItems().filter(x=>favs.includes(itemId(x)) && !isHidden(x));
+}
+function moveItem(cat,x,dir){
+  let items=orderedItems(cat), idx=items.findIndex(y=>itemId(y)===itemId(x));
+  let next=idx+dir;
+  if(idx<0 || next<0 || next>=items.length) return;
+  [items[idx],items[next]]=[items[next],items[idx]];
+  const map=readOrder();map[cat.name]=items.map(itemId);writeOrder(map);
+  renderGrid();
+}
+function picHtml(x){
+  const p=localPictos[x[1]];
+  return (p?'<img src="'+p+'" alt="">':'<span class="emo">'+x[0]+'</span>')+'<b>'+x[1]+'</b>';
+}
+function createNormalCard(x,box){
+  const b=document.createElement("button");b.className="pic";b.innerHTML=picHtml(x);
+  const star=document.createElement("button");
+  star.className="favstar "+(isFav(x)?"on":"off");star.textContent="⭐";
+  star.setAttribute("aria-label",isFav(x)?"Retirer des favoris":"Ajouter aux favoris");
+  star.onclick=(e)=>{e.stopPropagation();toggleFav(x)};
+  b.appendChild(star);b.onclick=()=>add(x);box.appendChild(b);
+}
+function renderPersonalize(box){
+  const note=document.createElement("div");note.className="personal-note";
+  note.textContent="Réglages adulte : masque, réaffiche ou change l’ordre des pictogrammes. Les choix restent enregistrés sur cet appareil.";
+  box.appendChild(note);
+  normalCategories().forEach(cat=>{
+    const h=document.createElement("div");h.className="personal-group";h.textContent=cat.icon+" "+cat.name;box.appendChild(h);
+    orderedItems(cat).forEach(x=>{
+      const card=document.createElement("div");card.className="manage-card";
+      const p=localPictos[x[1]];
+      const visual=document.createElement("div");
+      visual.innerHTML=p?'<img src="'+p+'" alt="">':'<div class="emo">'+x[0]+'</div>';
+      const info=document.createElement("div");
+      const title=document.createElement("b");title.textContent=x[1];info.appendChild(title);
+      const actions=document.createElement("div");actions.className="manage-actions";
+      const vis=document.createElement("button");
+      vis.className=isHidden(x)?"showbtn":"hidebtn";
+      vis.textContent=isHidden(x)?"👁️ Réafficher":"🙈 Masquer";
+      vis.onclick=()=>setHidden(x,!isHidden(x));
+      const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
+      const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
+      actions.append(vis,up,down);info.appendChild(actions);
+      card.append(visual,info);box.appendChild(card);
+    });
+  });
+}
+function renderGrid(){
+  const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
+  const c=categories[current];
+  if(c.name==="Personnaliser"){renderPersonalize(box);return}
+  let items=c.name==="Favoris"?favoriteItems():visibleItems(c);
+  items=items.filter(x=>x[1].toLowerCase().includes(q));
+  if(c.name==="Favoris" && items.length===0){
+    const msg=document.createElement("div");
+    msg.style.cssText="grid-column:1/-1;text-align:center;padding:30px 12px;color:#667085;font-weight:700";
+    msg.innerHTML="⭐ Aucun favori pour l’instant.<br><span style='font-weight:500'>Appuie sur l’étoile d’un pictogramme pour l’ajouter ici.</span>";
+    box.appendChild(msg);return;
+  }
+  items.forEach(x=>createNormalCard(x,box));
+}
 function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
 function render(){el("title").textContent=categories[current].name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase()}
 starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});

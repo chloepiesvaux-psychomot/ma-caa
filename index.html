@@ -1,31 +1,60 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#17345f">
-<title>Ma CAA v0.2</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="stylesheet" href="style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b2a4a">
+<title>Ma CAA v0.2.1</title>
+<style>
+:root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
+.app{min-height:100vh;display:grid;grid-template-columns:230px 1fr}.side{background:linear-gradient(#09243f,#0d3155);padding:18px 14px;color:white}.brand{font-size:22px;font-weight:900;padding:10px 8px 18px}.nav{display:grid;gap:8px}
+.cat{border:0;border-radius:14px;color:white;background:#ffffff12;padding:14px 12px;text-align:left;font-weight:800}.cat.active{background:var(--yellow);color:#172033}
+main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;background:white;border-bottom:1px solid var(--line);padding:16px 20px;display:grid;grid-template-columns:1fr 190px;gap:14px}
+.phrase{min-height:110px;border:2px solid #d7dce5;border-radius:18px;padding:10px;display:flex;gap:8px;overflow-x:auto}.hint{margin:auto;color:#6b7280;text-align:center;font-weight:700}
+.token{min-width:88px;background:white;border:1px solid var(--line);border-radius:13px;padding:7px;display:grid;place-items:center}.token .emo{font-size:34px}.token b{font-size:13px;text-align:center}
+.actions{display:grid;gap:8px}.actions button{border:0;border-radius:13px;color:white;font-weight:900}.speak{background:var(--green)}.undo{background:var(--purple)}.clear{background:var(--red)}
+.content{padding:22px}.head{display:flex;justify-content:space-between;align-items:end;gap:14px}.head small{font-weight:900;color:var(--purple);letter-spacing:.06em}.head h1{margin:4px 0 12px;font-size:30px}.search{border:1px solid var(--line);border-radius:14px;background:white;padding:12px 14px;width:min(330px,42vw)}
+.starters{background:#f2ecff;border:1px solid #e1d5f8;border-radius:16px;padding:12px;margin:5px 0 18px}.starters strong{color:#4f2f91}.starterrow{display:flex;gap:8px;overflow-x:auto;margin-top:9px}.starter{white-space:nowrap;border:1px solid #d8caf3;background:white;color:#4f2f91;border-radius:12px;padding:10px 12px;font-weight:900}
+.grid{display:grid;grid-template-columns:repeat(5,minmax(125px,1fr));gap:14px}.pic{min-height:165px;border:2px solid #e3e6ec;background:white;border-radius:19px;padding:12px;display:grid;place-items:center;align-content:center;gap:10px}.pic .emo{font-size:58px}.pic b{text-align:center;font-size:18px}
+.bottom,.drawer{display:none}
+@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
+@media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
 <body>
 <div class="app">
-  <aside>
-    <div class="brand">💬 <b>Ma CAA</b></div>
-    <nav id="nav"></nav>
-  </aside>
-  <main>
-    <header>
-      <div id="sentence" class="sentence"><span class="hint">Choisis des pictogrammes pour construire ta phrase</span></div>
-      <div class="actions"><button id="speak">🔊 PARLER</button><button id="undo">↩ RETIRER</button><button id="clear">🗑 EFFACER</button></div>
-    </header>
-    <section>
-      <div class="top"><div><small>CATÉGORIE</small><h1 id="title"></h1></div><input id="search" placeholder="🔎 Rechercher…"></div>
-      <div class="starter"><b>Débuts de phrase</b><div id="starters"></div></div>
-      <div id="grid" class="grid"></div>
-    </section>
-  </main>
-</div>
-<div class="bottom"><button id="cats">☰ Catégories</button><button id="speak2">🔊 Parler</button><button id="clear2">🗑 Effacer</button></div>
-<div id="drawer" class="drawer"><div class="sheet"><button id="close">✕</button><h2>Catégories</h2><nav id="nav2"></nav></div></div>
-<script src="app.js"></script>
+<aside class="side"><div class="brand">💬 Ma CAA</div><nav id="nav" class="nav"></nav></aside>
+<main>
+<header class="phrasebar"><div id="phrase" class="phrase"><span class="hint">Touchez un pictogramme pour construire une phrase</span></div><div class="actions"><button class="speak" id="speak">🔊 PARLER</button><button class="undo" id="undo">↩ RETIRER</button><button class="clear" id="clear">🗑 EFFACER</button></div></header>
+<section class="content">
+<div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
+<div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
+<div id="grid" class="grid"></div>
+</section></main></div>
+<div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
+<div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
+<script>
+const categories=[
+{icon:"❤️",name:"Besoins du quotidien",items:[["🚽","Toilettes","aller aux toilettes"],["🍽️","Manger","manger"],["🥤","Boire","boire"],["🛏️","Dormir","dormir"],["🚿","Se laver","me laver"],["🪥","Brosser les dents","me brosser les dents"],["👕","S’habiller","m'habiller"],["🧼","Laver les mains","me laver les mains"],["🤝","Aide","de l'aide"],["🎧","Calme","du calme"],["🤕","J’ai mal","j'ai mal"],["🥶","J’ai froid","j'ai froid"],["🥵","J’ai chaud","j'ai chaud"]]},
+{icon:"🙂",name:"Émotions",items:[["😊","Content","je suis content"],["😢","Triste","je suis triste"],["😡","En colère","je suis en colère"],["😨","Peur","j'ai peur"],["😴","Fatigué","je suis fatigué"],["😌","Calme","je suis calme"]]},
+{icon:"👨‍👩‍👧",name:"Personnes",items:[["👩","Maman","maman"],["👨","Papa","papa"],["👧","Sœur","ma sœur"],["👦","Frère","mon frère"],["🧑‍🏫","Enseignant","mon enseignant"],["🧑‍⚕️","Soignant","le soignant"]]},
+{icon:"🧩",name:"Activités",items:[["🧩","Jouer","jouer"],["🎨","Dessiner","dessiner"],["📚","Lire","lire"],["🎵","Musique","écouter de la musique"],["🚲","Vélo","faire du vélo"],["📺","Télé","regarder la télé"]]},
+{icon:"🏠",name:"Lieux",items:[["🏠","Maison","à la maison"],["🏫","École","à l'école"],["🛝","Parc","au parc"],["🏥","Médecin","chez le médecin"],["🛒","Magasin","au magasin"]]},
+{icon:"🍎",name:"Nourriture / boissons",items:[["💧","Eau","de l'eau"],["🥛","Lait","du lait"],["🍎","Pomme","une pomme"],["🍌","Banane","une banane"],["🍞","Pain","du pain"],["🍝","Pâtes","des pâtes"],["🍪","Biscuit","un biscuit"]]},
+{icon:"❓",name:"Questions",items:[["❓","Quoi ?","quoi"],["📍","Où ?","où"],["👤","Qui ?","qui"],["⏰","Quand ?","quand"],["💭","Pourquoi ?","pourquoi"]]}
+];
+const starters=[["👤","Je","je"],["👉","Je veux","je veux"],["🙅","Je ne veux pas","je ne veux pas"],["🙏","J’ai besoin de","j'ai besoin de"],["➕","Encore","encore"],["🛑","C’est fini","c'est fini"]];
+let current=0,phrase=[];
+const el=id=>document.getElementById(id);
+function renderNav(target){target.innerHTML="";categories.forEach((c,i)=>{const b=document.createElement("button");b.className="cat"+(i===current?" active":"");b.textContent=c.icon+" "+c.name;b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};target.appendChild(b)})}
+function add(x){phrase.push({icon:x[0],label:x[1],speech:x[2]});renderPhrase()}
+function renderPhrase(){const box=el("phrase");box.innerHTML="";if(!phrase.length){box.innerHTML='<span class="hint">Touchez un pictogramme pour construire une phrase</span>';return}phrase.forEach((x,i)=>{const b=document.createElement("button");b.className="token";b.innerHTML='<span class="emo">'+x.icon+'</span><b>'+x.label+'</b>';b.onclick=()=>{phrase.splice(i,1);renderPhrase()};box.appendChild(b)});box.scrollLeft=box.scrollWidth}
+function renderGrid(){const q=el("search").value.trim().toLowerCase(),box=el("grid");box.innerHTML="";categories[current].items.filter(x=>x[1].toLowerCase().includes(q)).forEach(x=>{const b=document.createElement("button");b.className="pic";b.innerHTML='<span class="emo">'+x[0]+'</span><b>'+x[1]+'</b>';b.onclick=()=>add(x);box.appendChild(b)})}
+function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;if(!("speechSynthesis" in window)){alert("Synthèse vocale indisponible.");return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="fr-FR";u.rate=.88;const v=speechSynthesis.getVoices().find(v=>v.lang&&v.lang.toLowerCase().startsWith("fr"));if(v)u.voice=v;speechSynthesis.speak(u)}
+function render(){el("title").textContent=categories[current].name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase()}
+starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});
+el("search").oninput=renderGrid;el("speak").onclick=el("speak2").onclick=speak;el("clear").onclick=el("clear2").onclick=()=>{phrase=[];renderPhrase()};el("undo").onclick=()=>{phrase.pop();renderPhrase()};el("cats").onclick=()=>el("drawer").classList.add("open");el("close").onclick=()=>el("drawer").classList.remove("open");
+render();
+</script>
 </body></html>

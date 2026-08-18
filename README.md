@@ -1,4 +1,9 @@
-# Ma CAA v0.2.1
-Version de test stabilisée.
-Le CSS et le JavaScript sont intégrés dans index.html afin d'éviter les problèmes de cache entre fichiers pendant les tests.
-Aucun service worker n'est utilisé dans cette version.
+# Ma CAA v0.3
+Version pilote avec intégration ARASAAC pour un premier ensemble de pictogrammes.
+- Architecture stable en un seul fichier principal
+- Construction de phrase et synthèse vocale conservées
+- Pictogrammes ARASAAC chargés via l'API officielle avec repli sur emoji
+- Attribution affichée dans l'application
+- Défilement horizontal des débuts de phrase amélioré sur iPhone
+
+Pictogrammes : Sergio Palao / ARASAAC / Gouvernement d'Aragon — CC BY-NC-SA 4.0.

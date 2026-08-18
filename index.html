@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 4</title>
+<title>Ma CAA v2.0 bêta 5</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 4</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 5</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -497,15 +497,26 @@ const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHAB
 let cloudClient=null;
 function initCloud(){try{if(window.supabase)cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
-function profileBundle(id){const p=readProfiles().find(x=>x.id===id);if(!p)return null;const storage={},suffix="::"+id;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.endsWith(suffix))storage[k.slice(0,-suffix.length)]=localStorage.getItem(k)}return {name:p.name,storage}}
-
-
-function dataUrlToBlob(dataUrl){
-  const [meta,b64]=dataUrl.split(",");
-  const mime=(meta.match(/data:(.*?);base64/)||[])[1]||"image/jpeg";
-  const bin=atob(b64),arr=new Uint8Array(bin.length);
-  for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
-  return new Blob([arr],{type:mime});
+function profileBundle(id){
+  const p=readProfiles().find(x=>x.id===id);if(!p)return null;
+  const storage={},suffix="::"+id;
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.endsWith(suffix))storage[k.slice(0,-suffix.length)]=localStorage.getItem(k);
+  }
+  // Snapshot explicite des données effectivement utilisées par ce profil.
+  // Cela évite de perdre un pictogramme personnalisé si sa clé n'est pas strictement suffixée.
+  const effective={};
+  const candidateBases=["ma-caa-added-v1","ma-caa-custom-categories-v1","ma-caa-hidden-v1","ma-caa-order-v1"];
+  for(const base of candidateBases){
+    const scoped=localStorage.getItem(base+"::"+id);
+    if(scoped!==null)effective[base]=scoped;
+    else{
+      const legacy=localStorage.getItem(base);
+      if(legacy!==null)effective[base]=legacy;
+    }
+  }
+  return {name:p.name,storage:{...effective,...storage}};
 }
 async function uploadProfilePhotos(userId,profileId,bundle){
   const storage=bundle?.storage||{},uploaded={};
@@ -576,10 +587,12 @@ async function syncPullOneByName(name){
   const row=r.data[0],ps=readProfiles();let p=ps.find(x=>x.name===row.name);
   if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
   const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;
-  for(const [base,raw] of Object.entries(bundle.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);
+  for(const [base,raw] of Object.entries(bundle.storage||{})){
+    if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);
+  }
   writeProfiles(ps);syncCustomCategories();render();renderProfileBar();
   if(mat.failures)alert("Profil récupéré, mais "+mat.failures+" photo(s) n'ont pas pu être téléchargées.");
-  else showFeedback("Profil et photos récupérés : "+row.name);
+  else showFeedback("Profil, pictogrammes et photos récupérés : "+row.name);
 }
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.7</title>
+<title>Ma CAA v1.7.1</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -76,7 +76,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.7</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.7.1</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -197,7 +197,7 @@ function itemId(x){return x[1]+"|"+x[2]}
 function activeProfile(){return localStorage.getItem(ACTIVE_PROFILE_KEY)||"default"}
 function profiledKey(key){return key+"::"+activeProfile()}
 function readList(key){try{return JSON.parse(localStorage.getItem(profiledKey(key))||"[]")}catch(e){return []}}
-function writeList(key,val){localStorage.setItem(profiledKey(key),JSON.stringify(val))}
+function writeList(key,val){localStorage.setItem(profiledKey(key),JSON.stringify(val));localStorage.setItem("ma-caa-last-save",String(Date.now()))}
 function readOrder(){try{return JSON.parse(localStorage.getItem(profiledKey(ORDER_KEY))||"{}")}catch(e){return {}}}
 function writeOrder(val){localStorage.setItem(profiledKey(ORDER_KEY),JSON.stringify(val))}
 
@@ -222,7 +222,7 @@ function setHidden(x,hidden){
 
 
 function readCustom(){try{return JSON.parse(localStorage.getItem(profiledKey(CUSTOM_KEY))||"{}")}catch(e){return {}}}
-function writeCustom(v){localStorage.setItem(profiledKey(CUSTOM_KEY),JSON.stringify(v))}
+function writeCustom(v){localStorage.setItem(profiledKey(CUSTOM_KEY),JSON.stringify(v));localStorage.setItem("ma-caa-last-save",String(Date.now()))}
 function customFor(x){return readCustom()[itemId2(x)]||{}}
 function displayLabel(x){return customFor(x).label||x[1]}
 function spokenText(x){return customFor(x).speech||x[2]}
@@ -279,9 +279,32 @@ function readProfiles(){
     return p.length?p:[{id:"default",name:"Utilisateur"}];
   }catch(e){return [{id:"default",name:"Utilisateur"}]}
 }
-function writeProfiles(p){localStorage.setItem(PROFILES_KEY,JSON.stringify(p))}
+function writeProfiles(p){localStorage.setItem(PROFILES_KEY,JSON.stringify(p));localStorage.setItem("ma-caa-last-save",String(Date.now()))}
 function profileName(){const p=readProfiles().find(x=>x.id===activeProfile());return p?p.name:"Utilisateur"}
-function ensureProfiles(){if(!localStorage.getItem(PROFILES_KEY))writeProfiles([{id:"default",name:"Utilisateur"}])}
+function ensureProfiles(){
+  let profiles=readProfiles();
+  if(!localStorage.getItem(PROFILES_KEY))writeProfiles(profiles);
+
+  // Validate the remembered active profile.
+  let active=localStorage.getItem(ACTIVE_PROFILE_KEY);
+  if(!active || !profiles.some(p=>p.id===active)){
+    active=profiles[0].id;
+    localStorage.setItem(ACTIVE_PROFILE_KEY,active);
+  }
+
+  // One-time migration of data created before profiles existed.
+  const migrationKey="ma-caa-profile-migration-v171";
+  if(!localStorage.getItem(migrationKey)){
+    PROFILE_DATA_KEYS.forEach(k=>{
+      const old=localStorage.getItem(k);
+      const dest=k+"::"+active;
+      if(old!==null && localStorage.getItem(dest)===null){
+        localStorage.setItem(dest,old);
+      }
+    });
+    localStorage.setItem(migrationKey,"done");
+  }
+}
 function switchProfile(id){
   localStorage.setItem(ACTIVE_PROFILE_KEY,id);current=0;syncCustomCategories();render();renderProfileBar();showFeedback("Profil : "+profileName());
 }
@@ -323,7 +346,7 @@ function renderProfileBar(){
 }
 
 function readCustomCats(){try{return JSON.parse(localStorage.getItem(profiledKey(CUSTOM_CATS_KEY))||"[]")}catch(e){return []}}
-function writeCustomCats(v){localStorage.setItem(profiledKey(CUSTOM_CATS_KEY),JSON.stringify(v))}
+function writeCustomCats(v){localStorage.setItem(profiledKey(CUSTOM_CATS_KEY),JSON.stringify(v));localStorage.setItem("ma-caa-last-save",String(Date.now()))}
 function customCategoryObjects(){return readCustomCats().map(c=>({icon:c.icon||"📁",name:c.name,items:[],customId:c.id}))}
 function syncCustomCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].customId)categories.splice(i,1)}
@@ -359,7 +382,7 @@ function deleteCustomCategory(cat){
 }
 
 function readAdded(){try{return JSON.parse(localStorage.getItem(profiledKey(ADDED_KEY))||"[]")}catch(e){return []}}
-function writeAdded(v){localStorage.setItem(profiledKey(ADDED_KEY),JSON.stringify(v))}
+function writeAdded(v){localStorage.setItem(profiledKey(ADDED_KEY),JSON.stringify(v));localStorage.setItem("ma-caa-last-save",String(Date.now()))}
 function addedForCategory(name){return readAdded().filter(a=>a.category===name).map(a=>[a.emoji||"🖼️",a.label,a.speech,a.id])}
 function isAdded(x){return !!x[3]}
 function itemId2(x){return isAdded(x)?"added|"+x[3]:x[1]+"|"+x[2]}
@@ -550,4 +573,14 @@ render();
 document.addEventListener("DOMContentLoaded",()=>{try{ensureProfiles();syncCustomCategories();render();renderProfileBar();}catch(e){}});
 </script>
 
+<script>
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden"){
+    try{localStorage.setItem(ACTIVE_PROFILE_KEY,activeProfile());localStorage.setItem("ma-caa-last-save",String(Date.now()))}catch(e){}
+  }
+});
+window.addEventListener("pagehide",()=>{
+  try{localStorage.setItem(ACTIVE_PROFILE_KEY,activeProfile());localStorage.setItem("ma-caa-last-save",String(Date.now()))}catch(e){}
+});
+</script>
 </body></html>

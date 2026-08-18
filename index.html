@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.9.1</title>
+<title>Ma CAA v1.9.2</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -79,7 +79,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.1</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.2</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -172,6 +172,17 @@ function bestFrenchVoice(){
   if(s.voice){const chosen=vs.find(v=>v.name===s.voice);if(chosen)return chosen}
   return vs.find(v=>/premium|enhanced|audrey|thomas|amelie|amélie|marie/i.test(v.name))||vs[0]||null;
 }
+
+function applySavedVoice(u){
+  try{
+    const s=readVoiceSettings(),v=bestFrenchVoice();
+    u.lang="fr-FR";
+    u.rate=Number(s.rate||0.9);
+    if(v)u.voice=v;
+  }catch(e){}
+  return u;
+}
+
 function openVoiceSettings(){
   const overlay=document.createElement("div");overlay.className="editor-overlay";
   const panel=document.createElement("div");panel.className="editor";
@@ -201,7 +212,7 @@ function makeUtterance(text){
   const voices=speechSynthesis.getVoices();
   const v=voices.find(v=>v.lang&&v.lang.toLowerCase().startsWith("fr"));
   if(v)u.voice=v;
-  return u;
+  applySavedVoice(u);return u;
 
   try{const s=readVoiceSettings(),chosen=bestFrenchVoice();u.lang="fr-FR";u.rate=s.rate||0.9;if(chosen)u.voice=chosen}catch(e){}
 }

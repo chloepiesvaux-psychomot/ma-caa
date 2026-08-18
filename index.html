@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v0.3.1</title>
+<title>Ma CAA v0.3.2</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -49,10 +49,24 @@ const starters=[["👤","Je","je"],["👉","Je veux","je veux"],["🙅","Je ne v
 let current=0,phrase=[];
 const el=id=>document.getElementById(id);
 function renderNav(target){target.innerHTML="";categories.forEach((c,i)=>{const b=document.createElement("button");b.className="cat"+(i===current?" active":"");b.textContent=c.icon+" "+c.name;b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};target.appendChild(b)})}
-function add(x){phrase.push({icon:x[0],label:x[1],speech:x[2],picto:localPictos[x[1]]||null});renderPhrase()}
+function speakText(text){
+  if(!text || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="fr-FR";
+  u.rate=.88;
+  const v=speechSynthesis.getVoices().find(v=>v.lang&&v.lang.toLowerCase().startsWith("fr"));
+  if(v)u.voice=v;
+  speechSynthesis.speak(u);
+}
+function add(x){
+  phrase.push({icon:x[0],label:x[1],speech:x[2],picto:localPictos[x[1]]||null});
+  renderPhrase();
+  speakText(x[2]);
+}
 function renderPhrase(){const box=el("phrase");box.innerHTML="";if(!phrase.length){box.innerHTML='<span class="hint">Touchez un pictogramme pour construire une phrase</span>';return}phrase.forEach((x,i)=>{const b=document.createElement("button");b.className="token";b.innerHTML=(x.picto?'<img src="'+x.picto+'" alt="">':'<span class="emo">'+x.icon+'</span>')+'<b>'+x.label+'</b>';b.onclick=()=>{phrase.splice(i,1);renderPhrase()};box.appendChild(b)});box.scrollLeft=box.scrollWidth}
 function renderGrid(){const q=el("search").value.trim().toLowerCase(),box=el("grid");box.innerHTML="";categories[current].items.filter(x=>x[1].toLowerCase().includes(q)).forEach(x=>{const b=document.createElement("button");b.className="pic";const p=localPictos[x[1]];b.innerHTML=(p?'<img src="'+p+'" alt="">':'<span class="emo">'+x[0]+'</span>')+'<b>'+x[1]+'</b>';b.onclick=()=>add(x);box.appendChild(b)})}
-function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;if(!("speechSynthesis" in window)){alert("Synthèse vocale indisponible.");return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="fr-FR";u.rate=.88;const v=speechSynthesis.getVoices().find(v=>v.lang&&v.lang.toLowerCase().startsWith("fr"));if(v)u.voice=v;speechSynthesis.speak(u)}
+function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
 function render(){el("title").textContent=categories[current].name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase()}
 starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});
 el("search").oninput=renderGrid;el("speak").onclick=el("speak2").onclick=speak;el("clear").onclick=el("clear2").onclick=()=>{phrase=[];renderPhrase()};el("undo").onclick=()=>{phrase.pop();renderPhrase()};el("cats").onclick=()=>el("drawer").classList.add("open");el("close").onclick=()=>el("drawer").classList.remove("open");

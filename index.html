@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.9.6</title>
+<title>Ma CAA v2.0 bêta</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -32,7 +32,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .catmanage{grid-column:1/-1;border:2px dashed #5576b9;background:#f2f6ff;color:#234b91;border-radius:16px;padding:15px;font-size:16px;font-weight:900}
 .customcat-row{grid-column:1/-1;background:#f8f9fc;border:1px solid #e2e6ef;border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .customcat-row button{border:0;border-radius:10px;padding:8px 10px;font-weight:800;background:#fff0f0;color:#b42318}
-.profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.pin-input{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900}.pin-note{font-size:13px;color:#667085;margin-top:10px}.voice-select,.voice-range{width:100%;box-sizing:border-box}.voice-select{border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:16px;background:white}.voice-value{font-weight:900;color:#234b91}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
+.profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.pin-input{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900}.pin-note{font-size:13px;color:#667085;margin-top:10px}.voice-select,.voice-range{width:100%;box-sizing:border-box}.voice-select{border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:16px;background:white}.voice-value{font-weight:900;color:#234b91}.syncbox{border:2px solid #dbe7ff;border-radius:16px;padding:14px;margin:12px 0;background:#f7faff}.syncbox input{width:100%;box-sizing:border-box;padding:11px;margin:5px 0;border:2px solid #d9dee8;border-radius:10px;font-size:15px}.syncstatus{font-size:13px;font-weight:800;margin:8px 0}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
 
@@ -70,6 +70,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -79,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.9.6</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -434,19 +435,25 @@ function deleteProfile(id){
   syncCustomCategories();render();renderProfileBar();renderGrid();
 }
 
+
 function exportProfile(id){
   const p=readProfiles().find(x=>x.id===id);if(!p)return;
-  const data={format:"ma-caa-profile",version:1,profile:{name:p.name},settings:{}};
-  PROFILE_DATA_KEYS.forEach(k=>{
-    const raw=localStorage.getItem(k+"::"+id);
-    if(raw!==null){try{data.settings[k]=JSON.parse(raw)}catch(e){data.settings[k]=raw}}
-  });
+  const data={format:"ma-caa-profile",version:2,exportedAt:new Date().toISOString(),profile:{name:p.name},storage:{}};
+  const suffix="::"+id;
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(key && key.endsWith(suffix)){
+      const base=key.slice(0,-suffix.length);
+      data.storage[base]=localStorage.getItem(key);
+    }
+  }
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const a=document.createElement("a");
   const safe=(p.name||"profil").replace(/[^a-z0-9_-]+/gi,"_");
-  a.href=URL.createObjectURL(blob);a.download="ma-caa-"+safe+".json";
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  showFeedback("Profil exporté");
+  const url=URL.createObjectURL(blob);
+  a.href=url;a.download="ma-caa-"+safe+"-complet.json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  showFeedback("Profil complet exporté");
 }
 function importProfileFile(file){
   const r=new FileReader();
@@ -456,17 +463,25 @@ function importProfileFile(file){
       if(!data||data.format!=="ma-caa-profile"||!data.profile){alert("Ce fichier n'est pas un profil Ma CAA valide.");return}
       const name=(data.profile.name||"Profil importé").trim();
       const profiles=readProfiles();
-      const id="u"+Date.now()+Math.random().toString(36).slice(2,6);
+      const id="u"+Date.now()+Math.random().toString(36).slice(2,7);
       profiles.push({id,name});writeProfiles(profiles);
-      const settings=data.settings||{};
-      PROFILE_DATA_KEYS.forEach(k=>{
-        if(Object.prototype.hasOwnProperty.call(settings,k)){
-          localStorage.setItem(k+"::"+id,JSON.stringify(settings[k]));
-        }
-      });
+
+      if(data.version>=2 && data.storage){
+        Object.entries(data.storage).forEach(([base,raw])=>{
+          if(typeof raw==="string")localStorage.setItem(base+"::"+id,raw);
+        });
+      }else{
+        const settings=data.settings||{};
+        Object.entries(settings).forEach(([base,value])=>{
+          localStorage.setItem(base+"::"+id,JSON.stringify(value));
+        });
+      }
+
       localStorage.setItem(ACTIVE_PROFILE_KEY,id);
-      syncCustomCategories();render();renderProfileBar();showFeedback("Profil importé : "+name);
-    }catch(e){alert("Impossible d'importer ce fichier de profil.");}
+      repairDoubleProfileKeys();
+      syncCustomCategories();render();renderProfileBar();
+      showFeedback("Profil complet importé : "+name);
+    }catch(e){console.error(e);alert("Impossible d'importer ce fichier de profil.");}
   };
   r.readAsText(file);
 }
@@ -476,10 +491,24 @@ function chooseProfileImport(){
   input.click();
 }
 
+
+
+const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHABLE_KEY="sb_publishable_zyK0hA08C8Fg8hPYPBT5_g_I0KAi9UN";
+let cloudClient=null;
+function initCloud(){try{if(window.supabase)cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)}catch(e){console.error(e)}}
+async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
+function profileBundle(id){const p=readProfiles().find(x=>x.id===id);if(!p)return null;const storage={},suffix="::"+id;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.endsWith(suffix))storage[k.slice(0,-suffix.length)]=localStorage.getItem(k)}return {name:p.name,storage}}
+async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
+async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}for(const [base,raw] of Object.entries(row.data?.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw)}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profils récupérés")}
+async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else openProfiles()}
+async function cloudLogout(){await cloudClient?.auth.signOut();openProfiles()}
+function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;for(const [t,f] of [["☁️ Envoyer les profils",syncPushAll],["⬇️ Récupérer les profils",syncPullAll],["Se déconnecter",cloudLogout]]){const b=document.createElement("button");b.textContent=t;b.onclick=f;box.appendChild(b)}}else{s.textContent="Non connecté";const e=document.createElement("input");e.type="email";e.placeholder="E-mail";const p=document.createElement("input");p.type="password";p.placeholder="Mot de passe";const b=document.createElement("button");b.textContent="🔐 Se connecter";b.onclick=()=>cloudLogin(e.value.trim(),p.value);box.append(e,p,b)}})}
+
 function openProfiles(){
   if(!adultUnlocked){openAdultGate();return}
   const overlay=document.createElement("div");overlay.className="editor-overlay";
   const panel=document.createElement("div");panel.className="editor";panel.innerHTML="<h2>👤 Utilisateurs</h2>";
+  addSyncPanel(panel);
   const list=document.createElement("div");list.className="profile-list";
   readProfiles().forEach(p=>{
     const row=document.createElement("div");row.className="profile-row";
@@ -729,7 +758,7 @@ render();
 </script>
 
 <script>
-document.addEventListener("DOMContentLoaded",()=>{try{ensureProfiles();repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();}catch(e){}});
+document.addEventListener("DOMContentLoaded",()=>{try{ensureProfiles();repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();initCloud();}catch(e){}});
 </script>
 
 <script>

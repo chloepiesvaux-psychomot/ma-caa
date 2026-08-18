@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v1.7.1</title>
+<title>Ma CAA v1.8</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -32,7 +32,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .catmanage{grid-column:1/-1;border:2px dashed #5576b9;background:#f2f6ff;color:#234b91;border-radius:16px;padding:15px;font-size:16px;font-weight:900}
 .customcat-row{grid-column:1/-1;background:#f8f9fc;border:1px solid #e2e6ef;border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .customcat-row button{border:0;border-radius:10px;padding:8px 10px;font-weight:800;background:#fff0f0;color:#b42318}
-.profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
+.profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.pin-input{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900}.pin-note{font-size:13px;color:#667085;margin-top:10px}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
 @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#0006;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
 
@@ -76,7 +76,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.7.1</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 1.8</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -192,6 +192,7 @@ const CUSTOM_CATS_KEY="ma-caa-custom-categories-v1";
 const PROFILES_KEY="ma-caa-profiles-v1";
 const ACTIVE_PROFILE_KEY="ma-caa-active-profile-v1";
 const PROFILE_DATA_KEYS=[FAV_KEY,HIDDEN_KEY,ORDER_KEY,CUSTOM_KEY,ADDED_KEY,CUSTOM_CATS_KEY];
+const ADULT_PIN_KEY="ma-caa-adult-pin-v1";
 
 function itemId(x){return x[1]+"|"+x[2]}
 function activeProfile(){return localStorage.getItem(ACTIVE_PROFILE_KEY)||"default"}
@@ -305,6 +306,39 @@ function ensureProfiles(){
     localStorage.setItem(migrationKey,"done");
   }
 }
+
+function getAdultPin(){return localStorage.getItem(ADULT_PIN_KEY)||""}
+function setAdultPinFlow(done){
+  const overlay=document.createElement("div");overlay.className="editor-overlay";
+  const panel=document.createElement("div");panel.className="editor";
+  panel.innerHTML="<h2>🔐 Créer le code adulte</h2><p>Choisis un code PIN à 4 chiffres. Il sera demandé pour changer d’utilisateur.</p>";
+  const pin=document.createElement("input");pin.className="pin-input";pin.type="password";pin.inputMode="numeric";pin.maxLength=4;pin.placeholder="••••";panel.appendChild(pin);
+  const row=document.createElement("div");row.className="editor-row";
+  const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Enregistrer le code";
+  save.onclick=()=>{const v=pin.value.trim();if(!/^[0-9]{4}$/.test(v)){alert("Le code doit contenir exactement 4 chiffres.");return}localStorage.setItem(ADULT_PIN_KEY,v);overlay.remove();if(done)done()};
+  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>overlay.remove();
+  row.append(save,cancel);panel.append(row);overlay.appendChild(panel);document.body.appendChild(overlay);pin.focus();
+}
+function requireAdultPin(done){
+  if(!getAdultPin()){setAdultPinFlow(done);return}
+  const overlay=document.createElement("div");overlay.className="editor-overlay";
+  const panel=document.createElement("div");panel.className="editor";
+  panel.innerHTML="<h2>🔐 Code adulte</h2><p>Entre le code PIN à 4 chiffres pour changer d’utilisateur.</p>";
+  const pin=document.createElement("input");pin.className="pin-input";pin.type="password";pin.inputMode="numeric";pin.maxLength=4;pin.placeholder="••••";panel.appendChild(pin);
+  const row=document.createElement("div");row.className="editor-row";
+  const ok=document.createElement("button");ok.className="saveedit";ok.textContent="Valider";
+  ok.onclick=()=>{if(pin.value===getAdultPin()){overlay.remove();done()}else{pin.value="";alert("Code incorrect.")}};
+  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>overlay.remove();
+  row.append(ok,cancel);panel.append(row);overlay.appendChild(panel);document.body.appendChild(overlay);pin.focus();
+}
+function changeAdultPin(){
+  requireAdultPin(()=>{localStorage.removeItem(ADULT_PIN_KEY);setAdultPinFlow()});
+}
+function protectedSwitchProfile(id){
+  if(id===activeProfile())return;
+  requireAdultPin(()=>switchProfile(id));
+}
+
 function switchProfile(id){
   localStorage.setItem(ACTIVE_PROFILE_KEY,id);current=0;syncCustomCategories();render();renderProfileBar();showFeedback("Profil : "+profileName());
 }
@@ -329,11 +363,11 @@ function openProfiles(){
   readProfiles().forEach(p=>{
     const row=document.createElement("div");row.className="profile-row";
     const n=document.createElement("b");n.textContent=(p.id===activeProfile()?"✓ ":"")+p.name;
-    const use=document.createElement("button");use.textContent="Utiliser";use.onclick=()=>{switchProfile(p.id);overlay.remove()};
-    const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{deleteProfile(p.id);overlay.remove()};
+    const use=document.createElement("button");use.textContent="Utiliser";use.onclick=()=>{overlay.remove();protectedSwitchProfile(p.id)};
+    const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{overlay.remove();requireAdultPin(()=>deleteProfile(p.id))};
     row.append(n,use,del);list.appendChild(row);
   });
-  const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un utilisateur";add.onclick=()=>{overlay.remove();addProfile()};
+  const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un utilisateur";add.onclick=()=>{overlay.remove();requireAdultPin(addProfile)};
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>overlay.remove();
   const row=document.createElement("div");row.className="editor-row";row.append(add,close);
   panel.append(list,row);overlay.appendChild(panel);document.body.appendChild(overlay);
@@ -461,6 +495,7 @@ function createNormalCard(x,box){
 }
 function renderPersonalize(box){
   const profBtn=document.createElement("button");profBtn.className="catmanage";profBtn.textContent="👤 Gérer les utilisateurs";profBtn.onclick=openProfiles;box.appendChild(profBtn);
+  const pinBtn=document.createElement("button");pinBtn.className="catmanage";pinBtn.textContent=getAdultPin()?"🔐 Modifier le code PIN adulte":"🔐 Créer le code PIN adulte";pinBtn.onclick=()=>{if(getAdultPin())changeAdultPin();else setAdultPinFlow()};box.appendChild(pinBtn);
 
   const catBtn=document.createElement("button");catBtn.className="catmanage";catBtn.textContent="📁 Créer une catégorie personnalisée";catBtn.onclick=openAddCategory;box.appendChild(catBtn);
   const customs=categories.filter(c=>c.customId);

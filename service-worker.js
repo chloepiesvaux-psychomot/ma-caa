@@ -1,1 +1,15 @@
-const C='ma-caa-v02-corrected';const A=['./','./index.html','./style.css','./app.js','./manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x))))));self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));
+// Ma CAA v0.9.1 — development service worker
+// Do not cache files while the prototype is being updated frequently.
+self.addEventListener('install', event => {
+  self.skipWaiting();
+});
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const names = await caches.keys();
+    await Promise.all(names.map(name => caches.delete(name)));
+    await self.clients.claim();
+  })());
+});
+self.addEventListener('fetch', event => {
+  event.respondWith(fetch(event.request));
+});

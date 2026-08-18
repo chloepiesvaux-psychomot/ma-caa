@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 3</title>
+<title>Ma CAA v2.0 bêta 4</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 3</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 4</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -508,66 +508,55 @@ function dataUrlToBlob(dataUrl){
   return new Blob([arr],{type:mime});
 }
 async function uploadProfilePhotos(userId,profileId,bundle){
-  const storage=bundle?.storage||{};
-  const uploaded={};
+  const storage=bundle?.storage||{},uploaded={};
   for(const [base,raw] of Object.entries(storage)){
     if(typeof raw!=="string")continue;
-    let parsed;
-    try{parsed=JSON.parse(raw)}catch(e){continue}
-    let changed=false;
-    function walk(obj,path=[]){
-      if(!obj||typeof obj!=="object")return [];
-      const found=[];
-      if(Array.isArray(obj)){obj.forEach((v,i)=>{if(v&&typeof v==="object")found.push(...walk(v,path.concat(i)))})}
-      else{
-        for(const [k,v] of Object.entries(obj)){
-          if(k==="image" && typeof v==="string" && v.startsWith("data:image/"))found.push({obj,key:k,val:v,path:path.concat(k)});
-          else if(v&&typeof v==="object")found.push(...walk(v,path.concat(k)));
-        }
+    let parsed;try{parsed=JSON.parse(raw)}catch(e){continue}
+    async function walk(obj,path=[]){
+      if(!obj||typeof obj!=="object")return;
+      if(Array.isArray(obj)){for(let i=0;i<obj.length;i++)await walk(obj[i],path.concat(i));return}
+      for(const [k,v] of Object.entries(obj)){
+        if(typeof v==="string"&&v.startsWith("data:image/")){
+          const blob=dataUrlToBlob(v),ext=(blob.type.split("/")[1]||"jpg").replace("jpeg","jpg");
+          const safeBase=encodeURIComponent(base).replace(/%/g,"_");
+          const safePath=path.concat(k).join("-").replace(/[^a-zA-Z0-9_-]/g,"_");
+          const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
+          const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
+          if(!up.error)obj[k]={__cloud_image:true,path:filePath};
+        }else if(v&&typeof v==="object")await walk(v,path.concat(k));
       }
-      return found;
     }
-    const images=walk(parsed);
-    for(let i=0;i<images.length;i++){
-      const it=images[i];
-      const blob=dataUrlToBlob(it.val);
-      const ext=(blob.type.split("/")[1]||"jpg").replace("jpeg","jpg");
-      const filePath=userId+"/"+profileId+"/"+encodeURIComponent(base)+"-"+i+"-"+Date.now()+"."+ext;
-      const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
-      if(up.error)continue;
-      it.obj[it.key]={__cloud_image:true,path:filePath};
-      changed=true;
-    }
-    if(changed)uploaded[base]=JSON.stringify(parsed);
+    await walk(parsed);uploaded[base]=JSON.stringify(parsed);
   }
   return {...storage,...uploaded};
 }
 async function materializeProfilePhotos(bundle){
-  const storage=bundle?.storage||{};
-  const out={...storage};
+  const storage=bundle?.storage||{},out={...storage};
+  let failures=0;
+  async function blobToDataUrl(blob){
+    return await new Promise((resolve,reject)=>{
+      const fr=new FileReader();fr.onload=()=>resolve(String(fr.result));fr.onerror=reject;fr.readAsDataURL(blob);
+    });
+  }
   for(const [base,raw] of Object.entries(storage)){
     if(typeof raw!=="string")continue;
-    let parsed;
-    try{parsed=JSON.parse(raw)}catch(e){continue}
+    let parsed;try{parsed=JSON.parse(raw)}catch(e){continue}
     async function walk(obj){
       if(!obj||typeof obj!=="object")return;
       if(Array.isArray(obj)){for(const v of obj)await walk(v);return}
-      for(const [k,v] of Object.entries(obj)){
-        if(v&&typeof v==="object"&&v.__cloud_image&&v.path){
+      for(const k of Object.keys(obj)){
+        const v=obj[k];
+        if(v&&typeof v==="object"&&v.__cloud_image===true&&typeof v.path==="string"){
           const dl=await cloudClient.storage.from("pictograms").download(v.path);
-          if(!dl.error){
-            const data=await new Promise(res=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.readAsDataURL(dl.data)});
-            obj[k]=data;
-          }
-        }else if(v&&typeof v==="object"){await walk(v)}
+          if(dl.error){console.error("Photo download",v.path,dl.error);failures++;continue}
+          try{obj[k]=await blobToDataUrl(dl.data)}catch(e){console.error(e);failures++}
+        }else if(v&&typeof v==="object")await walk(v);
       }
     }
-    await walk(parsed);
-    out[base]=JSON.stringify(parsed);
+    await walk(parsed);out[base]=JSON.stringify(parsed);
   }
-  return {...bundle,storage:out};
+  return {bundle:{...bundle,storage:out},failures};
 }
-
 async function syncPushOne(id){
   const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");
   const p=readProfiles().find(x=>x.id===id);if(!p)return;
@@ -586,9 +575,11 @@ async function syncPullOneByName(name){
   if(r.error||!r.data?.[0])return alert(r.error?.message||"Profil introuvable dans le cloud.");
   const row=r.data[0],ps=readProfiles();let p=ps.find(x=>x.name===row.name);
   if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
-  const bundle=await materializeProfilePhotos(row.data||{});
+  const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;
   for(const [base,raw] of Object.entries(bundle.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);
-  writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profil récupéré : "+row.name);
+  writeProfiles(ps);syncCustomCategories();render();renderProfileBar();
+  if(mat.failures)alert("Profil récupéré, mais "+mat.failures+" photo(s) n'ont pas pu être téléchargées.");
+  else showFeedback("Profil et photos récupérés : "+row.name);
 }
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}

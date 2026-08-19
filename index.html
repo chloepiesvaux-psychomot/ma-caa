@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 21</title>
+<title>Ma CAA v2.0 bêta 22</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 21</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 22</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -157,7 +157,15 @@ const localPictos={"Toilettes":"images/toilettes.png","Manger":"images/manger.pn
 const starters=[["👤","Je","je"],["👉","Je veux","je veux"],["🙅","Je ne veux pas","je ne veux pas"],["🙏","J’ai besoin de","j'ai besoin de"],["➕","Encore","encore"],["🛑","C’est fini","c'est fini"]];
 let current=0,phrase=[];
 const el=id=>document.getElementById(id);
-function renderNav(target){target.innerHTML="";categories.forEach((c,i)=>{const b=document.createElement("button");b.className="cat"+(i===current?" active":"");b.textContent=c.icon+" "+c.name;b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};target.appendChild(b)})}
+function renderNav(target){target.innerHTML="";
+const favCatNames=readFavCats();
+const ordered=categories.map((c,i)=>({c,i})).sort((a,b)=>{
+ if(a.c.name==="Favoris")return -1;if(b.c.name==="Favoris")return 1;
+ if(a.c.name==="Mode adulte")return 1;if(b.c.name==="Mode adulte")return -1;
+ const ai=favCatNames.indexOf(a.c.name),bi=favCatNames.indexOf(b.c.name);
+ if(ai>=0&&bi>=0)return ai-bi;if(ai>=0)return -1;if(bi>=0)return 1;return a.i-b.i;
+});
+ordered.forEach(({c,i})=>{const b=document.createElement("button");b.className="cat"+(i===current?" active":"");b.textContent=c.icon+" "+c.name;b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};target.appendChild(b)})}
 
 function readVoiceSettings(){
   try{return JSON.parse(localStorage.getItem(profiledKey(VOICE_KEY))||'{"voice":"","rate":0.9}')}
@@ -249,7 +257,8 @@ const ACTIVE_PROFILE_KEY="ma-caa-active-profile-v1";
 const ADULT_PIN_KEY="ma-caa-adult-pin-v1";
 const VOICE_KEY="ma-caa-voice-v1";
 const FAV_ORDER_KEY="ma-caa-favorites-order-v1";
-const PROFILE_DATA_KEYS=[FAV_KEY,HIDDEN_KEY,ORDER_KEY,CUSTOM_KEY,ADDED_KEY,CUSTOM_CATS_KEY,VOICE_KEY,FAV_ORDER_KEY];
+const FAV_CATS_KEY="ma-caa-favorite-categories-v1";
+const PROFILE_DATA_KEYS=[FAV_KEY,HIDDEN_KEY,ORDER_KEY,CUSTOM_KEY,ADDED_KEY,CUSTOM_CATS_KEY,VOICE_KEY,FAV_ORDER_KEY,FAV_CATS_KEY];
 
 function itemId(x){return x[1]+"|"+x[2]}
 function activeProfile(){return localStorage.getItem(ACTIVE_PROFILE_KEY)||"default"}
@@ -262,6 +271,11 @@ function writeOrder(val){localStorage.setItem(profiledKey(ORDER_KEY),JSON.string
 function getFavIds(){return readList(FAV_KEY)}
 
 function readFavOrder(){return readList(FAV_ORDER_KEY)}
+function readFavCats(){return readList(FAV_CATS_KEY)}
+function writeFavCats(v){writeList(FAV_CATS_KEY,v)}
+function toggleFavCat(name){let v=readFavCats();v=v.includes(name)?v.filter(x=>x!==name):[...v,name];writeFavCats(v);render()}
+function moveFavCat(name,dir){let v=readFavCats(),i=v.indexOf(name),j=i+dir;if(i<0||j<0||j>=v.length)return;[v[i],v[j]]=[v[j],v[i]];writeFavCats(v);render()}
+
 function writeFavOrder(ids){writeList(FAV_ORDER_KEY,ids)}
 
 function isFav(x){return getFavIds().includes(itemId2(x))}
@@ -894,6 +908,21 @@ function renderPersonalize(box){
   const addBtn=document.createElement("button");addBtn.className="addpicto";addBtn.textContent="➕ Ajouter un pictogramme personnalisé";addBtn.onclick=openAddPicto;box.appendChild(addBtn);
 
 
+  const catFavHead=document.createElement("div");catFavHead.className="personal-group";catFavHead.textContent="⭐ Catégories favorites";box.appendChild(catFavHead);
+  const favCatNames=readFavCats();
+  normalCategories().forEach(c=>{
+    const row=document.createElement("div");row.className="manage-card";
+    const info=document.createElement("div");
+    const title=document.createElement("b");title.textContent=(favCatNames.includes(c.name)?"⭐ ":"")+c.icon+" "+c.name;info.appendChild(title);
+    const actions=document.createElement("div");actions.className="manage-actions";
+    const star=document.createElement("button");star.textContent=favCatNames.includes(c.name)?"Retirer ⭐":"Ajouter ⭐";star.onclick=()=>toggleFavCat(c.name);actions.appendChild(star);
+    if(favCatNames.includes(c.name)){
+      const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveFavCat(c.name,-1);
+      const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveFavCat(c.name,1);
+      actions.append(up,down);
+    }
+    info.appendChild(actions);row.appendChild(info);box.appendChild(row);
+  });
   const favHead=document.createElement("div");favHead.className="personal-group";favHead.textContent="⭐ Favoris";box.appendChild(favHead);
   const favItems=favoriteItems();
   if(!favItems.length){

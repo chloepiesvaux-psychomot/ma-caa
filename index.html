@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 18</title>
+<title>Ma CAA v2.0 bêta 19</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 18</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 19</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -626,9 +626,39 @@ document.addEventListener("DOMContentLoaded",()=>{
   obs.observe(document.body,{childList:true,subtree:true});
 });
 
-async function syncPushOne(id){
+
+
+(function(){
+  const originalSetItem=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(k,v){
+    const result=originalSetItem.call(this,k,v);
+    try{
+      const active=localStorage.getItem(ACTIVE_PROFILE_KEY);
+      if(active && typeof k==="string" && k.endsWith("::"+active)){
+        scheduleAutoPush();
+      }
+    }catch(e){console.error(e)}
+    return result;
+  };
+})();
+
+let autoPushTimer=null,autoPushBusy=false;
+function scheduleAutoPush(){
+  clearTimeout(autoPushTimer);
+  autoPushTimer=setTimeout(async()=>{
+    if(autoPushBusy||!cloudClient)return;
+    const id=localStorage.getItem(ACTIVE_PROFILE_KEY);
+    if(!id)return;
+    const u=await cloudUser();if(!u)return;
+    autoPushBusy=true;
+    try{await syncPushOne(id,true)}catch(e){console.error(e)}
+    finally{autoPushBusy=false}
+  },1500);
+}
+
+async function syncPushOne(id,silent=false){
   try{
-    showFeedback("Synchronisation en cours…");
+    if(!silent)showFeedback("Synchronisation en cours…");
     if(!cloudClient)throw new Error("Connexion Supabase non initialisée");
     const u=await cloudUser();if(!u)throw new Error("Compte de synchronisation non connecté");
     const p=readProfiles().find(x=>x.id===id);if(!p)throw new Error("Profil local introuvable");
@@ -639,8 +669,8 @@ async function syncPushOne(id){
     if(q.error)throw q.error;
     const r=q.data?.[0] ? await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id) : await cloudClient.from("profiles").insert(payload);
     if(r.error)throw r.error;
-    alert("✓ Profil synchronisé : "+p.name);
-  }catch(e){console.error(e);alert("Synchronisation impossible : "+(e?.message||e))}
+    if(!silent)alert("✓ Profil synchronisé : "+p.name);
+  }catch(e){console.error(e);if(!silent)alert("Synchronisation impossible : "+(e?.message||e))}
 }
 async function syncPullOneByName(name){
   try{

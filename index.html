@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 35</title>
+<title>Ma CAA v2.0 bêta 36</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -20,7 +20,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .personal-note{grid-column:1/-1;background:#fff7db;border:1px solid #f2d56b;border-radius:16px;padding:14px;font-weight:700;color:#4b3b00}
 .personal-group{grid-column:1/-1;margin-top:10px;font-weight:900;color:#23344f;font-size:18px}
 .manage-card{min-height:150px;border:2px solid #e3e6ec;background:white;border-radius:18px;padding:12px;display:grid;grid-template-columns:82px 1fr;align-items:center;gap:10px;position:relative}
-.manage-card img{width:76px;height:76px;object-fit:contain}.manage-card .emo{font-size:55px;text-align:center}.manage-card b{font-size:14px}.manage-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.manage-actions button{border:0;border-radius:10px;padding:8px 9px;font-weight:800;background:#edf0f5}.manage-actions .hidebtn{background:#fff0f0}.manage-actions .showbtn{background:#eaf8ed}
+.manage-card img{width:76px;height:76px;object-fit:contain}.pic-media{display:inline-grid;place-items:center}.pic-media>img{max-width:100%;max-height:100%;object-fit:contain}.manage-card .emo{font-size:55px;text-align:center}.manage-card b{font-size:14px}.manage-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.manage-actions button{border:0;border-radius:10px;padding:8px 9px;font-weight:800;background:#edf0f5}.manage-actions .hidebtn{background:#fff0f0}.manage-actions .showbtn{background:#eaf8ed}
 .editbtn{background:#eee8ff!important;color:#4b2b96!important}
 .editor-overlay{position:fixed;inset:0;background:#0008;z-index:100;display:flex;align-items:flex-end;justify-content:center}
 .editor{background:white;width:min(680px,100%);max-height:92vh;overflow:auto;border-radius:24px 24px 0 0;padding:22px;box-sizing:border-box}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 35</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 36</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -371,6 +371,9 @@ function adminOverrideFor(x){
 function displayLabel(x){return customFor(x).label||adminOverrideFor(x).label||x[1]}
 function spokenText(x){return customFor(x).speech||adminOverrideFor(x).speech||x[2]}
 function displayImage(x){
+  // Pour un pictogramme de base modifié par l'administrateur,
+  // x[4] contient l'image commune et doit être prioritaire.
+  if(x[4])return x[4];
   if(isAdded(x)){
     const a=readAdded().find(v=>v.id===x[3]);
     if(a&&a.image)return a.image;
@@ -957,11 +960,16 @@ function moveItem(cat,x,dir){
   renderGrid();
 }
 function imageHtml(p,emoji){
+  const safeEmoji=String(emoji||"🖼️");
+  const fallback='<span class="emo image-fallback" style="display:none">'+safeEmoji+'</span>';
+  const onerr="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline-grid'";
   if(p && typeof p==="object" && p.__cloud_image===true && p.path){
-    return '<img src="" data-cloud-path="'+p.path.replace(/"/g,"&quot;")+'" alt="">';
+    return '<span class="pic-media"><img src="" data-cloud-path="'+p.path.replace(/"/g,"&quot;")+'" alt="" onerror="'+onerr+'">'+fallback+'</span>';
   }
-  if(typeof p==="string" && p) return '<img src="'+p+'" alt="">';
-  return '<span class="emo">'+emoji+'</span>';
+  if(typeof p==="string" && p){
+    return '<span class="pic-media"><img src="'+p+'" alt="" onerror="'+onerr+'">'+fallback+'</span>';
+  }
+  return '<span class="emo">'+safeEmoji+'</span>';
 }
 function picHtml(x){
   const p=displayImage(x), label=displayLabel(x);
@@ -1215,7 +1223,7 @@ function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
 function adminItemData(cat,x){
   const e=readAdminBase().items?.[adminItemId(cat,x)]||{};
-  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3]];
+  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||""];
 }
 function adminItemAvailable(cat,x){
   const a=readAdminBase(),id=adminItemId(cat,x);

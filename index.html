@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 46</title>
+<title>Ma CAA v2.0 bêta 47</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 46</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 47</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -444,8 +444,81 @@ function readProfiles(){
     return p.length?p:[{id:"default",name:"Utilisateur"}];
   }catch(e){return [{id:"default",name:"Utilisateur"}]}
 }
-function writeProfiles(p){localStorage.setItem(PROFILES_KEY,JSON.stringify(p));localStorage.setItem("ma-caa-last-save",String(Date.now()))}
+let profilesDirectoryPulling=false;
+function writeProfiles(p){
+  localStorage.setItem(PROFILES_KEY,JSON.stringify(p));
+  localStorage.setItem("ma-caa-last-save",String(Date.now()));
+  if(!profilesDirectoryPulling)scheduleProfilesDirectoryPush();
+}
 function profileName(){const p=readProfiles().find(x=>x.id===activeProfile());return p?p.name:"Utilisateur"}
+
+
+const PROFILES_DIRECTORY_KEY="ma-caa-profiles-directory-sync";
+let profilesDirectoryPushTimer=null;
+function publicProfileDescriptor(p){
+  return {id:p.id,name:p.name,pin:p.pin||"",avatar:p.avatar||""};
+}
+function scheduleProfilesDirectoryPush(){
+  clearTimeout(profilesDirectoryPushTimer);
+  profilesDirectoryPushTimer=setTimeout(pushProfilesDirectory,1400);
+}
+async function pushProfilesDirectory(){
+  if(!cloudClient)return false;
+  const u=await cloudUser();if(!u)return false; // écriture réservée au compte cloud autorisé
+  try{
+    const data={profiles:readProfiles().map(publicProfileDescriptor),updated_at:new Date().toISOString()};
+    const r=await cloudClient.from("app_config").upsert(
+      {key:"profiles_directory",data,updated_at:new Date().toISOString()},
+      {onConflict:"key"}
+    );
+    if(r.error)throw r.error;
+    localStorage.setItem(PROFILES_DIRECTORY_KEY,new Date().toISOString());
+    return true;
+  }catch(e){
+    console.error("Profiles directory push",e);
+    return false;
+  }
+}
+async function pullProfilesDirectory(){
+  if(!cloudClient)return false;
+  try{
+    const r=await cloudClient.from("app_config").select("data,updated_at").eq("key","profiles_directory").maybeSingle();
+    if(r.error)throw r.error;
+    if(!r.data?.data?.profiles)return false;
+    const remote=r.data.data.profiles;
+    const local=readProfiles();
+    const localById=new Map(local.map(p=>[p.id,p]));
+    const merged=remote.map(rp=>{
+      const lp=localById.get(rp.id)||local.find(x=>x.name===rp.name)||{};
+      return {...lp,...rp};
+    });
+    if(!merged.length)return false;
+    profilesDirectoryPulling=true;
+    localStorage.setItem(PROFILES_KEY,JSON.stringify(merged));
+    profilesDirectoryPulling=false;
+    localStorage.setItem(PROFILES_DIRECTORY_KEY,new Date().toISOString());
+
+    const active=localStorage.getItem(ACTIVE_PROFILE_KEY);
+    if(!active || !merged.some(p=>p.id===active)){
+      localStorage.setItem(ACTIVE_PROFILE_KEY,merged[0].id);
+    }
+    syncCustomCategories();
+    render();
+    renderProfileBar();
+    if(document.getElementById("user-home-v38"))openUserHome();
+    return true;
+  }catch(e){
+    profilesDirectoryPulling=false;
+    console.error("Profiles directory pull",e);
+    return false;
+  }
+}
+function startProfilesDirectorySync(){
+  setTimeout(pullProfilesDirectory,700);
+  setTimeout(pullProfilesDirectory,2400);
+  setInterval(()=>{if(document.visibilityState==="visible")pullProfilesDirectory()},10000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pullProfilesDirectory()});
+}
 
 function repairDoubleProfileKeys(){
   try{
@@ -604,7 +677,7 @@ function chooseProfileImport(){
 
 const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHABLE_KEY="sb_publishable_zyK0hA08C8Fg8hPYPBT5_g_I0KAi9UN";
 let cloudClient=null;
-function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(startSafeAutoPull,1200);setTimeout(startAdminBaseCloud,1400)}}catch(e){console.error(e)}}
+function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(startSafeAutoPull,1200);setTimeout(startAdminBaseCloud,1400);setTimeout(startProfilesDirectorySync,1600)}}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){
   const p=readProfiles().find(x=>x.id===id);if(!p)return null;
@@ -1258,8 +1331,25 @@ function writeAdminBase(v){
 
 let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null;
 const ADMIN_LAST_SYNC_KEY="ma-caa-admin-last-sync";
-function markAdminBaseSynced(cloudTime){localStorage.setItem(ADMIN_LAST_SYNC_KEY,cloudTime||new Date().toISOString())}
-function adminSyncLabel(){const raw=localStorage.getItem(ADMIN_LAST_SYNC_KEY);if(!raw)return "Aucune synchronisation réussie sur cet appareil";const d=new Date(raw);if(Number.isNaN(d.getTime()))return "Dernière synchronisation : "+raw;return "Dernière synchronisation : "+d.toLocaleDateString("fr-FR")+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+const ADMIN_BASE_UPDATED_KEY="ma-caa-admin-base-updated";
+function formatFrDateTime(raw){
+  if(!raw)return "—";
+  const d=new Date(raw);
+  if(Number.isNaN(d.getTime()))return String(raw);
+  return d.toLocaleDateString("fr-FR")+" à "+d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}
+function markAdminBaseSynced(cloudTime){
+  if(cloudTime)localStorage.setItem(ADMIN_BASE_UPDATED_KEY,cloudTime);
+  localStorage.setItem(ADMIN_LAST_SYNC_KEY,new Date().toISOString());
+}
+function adminSyncLabel(){
+  const sync=localStorage.getItem(ADMIN_LAST_SYNC_KEY);
+  return sync?"Dernière synchronisation de cet appareil : "+formatFrDateTime(sync):"Aucune synchronisation réussie sur cet appareil";
+}
+function adminBaseUpdatedLabel(){
+  const updated=localStorage.getItem(ADMIN_BASE_UPDATED_KEY);
+  return updated?"Dernière modification de la base : "+formatFrDateTime(updated):"Dernière modification de la base : inconnue";
+}
 function scheduleAdminBasePush(){clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,1200)}
 async function adminBasePush(){
   if(adminBaseCloudBusy||!cloudClient)return false;
@@ -1290,7 +1380,7 @@ async function adminBasePull(showStatus=false){
     adminBaseCloudUpdated=r.data.updated_at||null;
     markAdminBaseSynced(adminBaseCloudUpdated);
     syncAdminCategories();render();
-    if(showStatus)setStatus("✅ Base commune récupérée : "+adminSyncLabel().replace("Dernière synchronisation : ",""),true);
+    if(showStatus)setStatus("✅ Base commune récupérée sur cet appareil : "+formatFrDateTime(localStorage.getItem(ADMIN_LAST_SYNC_KEY)),true);
     updateAdminSyncStatusInPlace();
     return true;
   }catch(e){
@@ -1302,7 +1392,9 @@ async function adminBasePull(showStatus=false){
 
 function updateAdminSyncStatusInPlace(){
   const stamp=document.getElementById("admin-sync-stamp");
+  const updated=document.getElementById("admin-base-updated");
   if(stamp)stamp.textContent=adminSyncLabel();
+  if(updated)updated.textContent=adminBaseUpdatedLabel();
 }
 
 function startAdminBaseCloud(){syncAdminCategories();render();setTimeout(adminBasePull,300);setTimeout(adminBasePull,1800);setInterval(()=>{if(document.visibilityState==="visible")adminBasePull(false)},5000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});window.addEventListener("focus",()=>adminBasePull())}
@@ -1365,7 +1457,11 @@ function addAdminCloudConnection(panel){
   box.style.cssText="background:#eef5ff;border:1px solid #cfdcf2;border-radius:16px;padding:14px";
   const title=document.createElement("b");title.textContent="🔐 Connexion cloud Administrateur";
   const info=document.createElement("div");info.style.cssText="margin-top:5px;font-size:13px";
-  info.textContent="La lecture de la base commune fonctionne sans profil. La connexion cloud est nécessaire uniquement pour envoyer des modifications depuis cet appareil.";
+  info.textContent="La base commune et la liste des utilisateurs sont récupérées entre appareils. La connexion cloud est nécessaire pour envoyer les changements administrateur.";
+  const usersInfo=document.createElement("div");usersInfo.style.cssText="margin-top:6px;font-size:13px";
+  const usersSyncRaw=localStorage.getItem(PROFILES_DIRECTORY_KEY);
+  usersInfo.textContent=usersSyncRaw?"Dernière récupération des utilisateurs : "+formatFrDateTime(usersSyncRaw):"Utilisateurs : aucune récupération sur cet appareil";
+  box.appendChild(usersInfo);
   box.append(title,info);
   const state=document.createElement("div");state.style.cssText="margin-top:10px;font-weight:700";box.appendChild(state);
 
@@ -1391,6 +1487,8 @@ function addAdminCloudConnection(panel){
         if(!r.ok){state.textContent="❌ "+r.message;return}
         state.textContent="✅ Connecté";
         await adminBasePull(true);
+        await pullProfilesDirectory();
+        await pushProfilesDirectory();
         if(adminUnlocked)setTimeout(()=>openAdminPanel(),300);
       };
       box.append(email,pass,login);
@@ -1412,7 +1510,7 @@ function openAdminPanel(){
   const content=document.createElement("div");Object.assign(content.style,{width:"min(980px,calc(100% - 24px))",margin:"18px auto",display:"grid",gap:"14px"});
 
   const notice=document.createElement("section");notice.style.cssText="background:#fff7d6;border-radius:16px;padding:15px";
-  notice.innerHTML="<b>☁️ Base commune</b><br><span id='admin-sync-stamp'>"+adminSyncLabel()+"</span><br><small>Les modifications administrateur sont synchronisées via Supabase entre les appareils.</small><div id='admin-sync-live' style='margin-top:8px'></div>";
+  notice.innerHTML="<b>☁️ Base commune</b><br><span id='admin-base-updated'>"+adminBaseUpdatedLabel()+"</span><br><span id='admin-sync-stamp'>"+adminSyncLabel()+"</span><br><small>La première heure change quand la base est modifiée. La seconde change à chaque récupération réussie sur cet appareil.</small><div id='admin-sync-live' style='margin-top:8px'></div>";
   const syncNow=document.createElement("button");
   syncNow.type="button";syncNow.textContent="🔄 Synchroniser maintenant";
   syncNow.style.cssText="margin-top:10px;min-height:48px;touch-action:manipulation;cursor:pointer;position:relative;z-index:20;-webkit-appearance:none";
@@ -1422,6 +1520,7 @@ function openAdminPanel(){
     if(syncTapBusy)return;
     syncTapBusy=true;syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation…";
     await adminBasePull(true);
+    await pullProfilesDirectory();
     updateAdminSyncStatusInPlace();
     syncNow.disabled=false;syncNow.textContent="🔄 Synchroniser maintenant";syncTapBusy=false;
   };

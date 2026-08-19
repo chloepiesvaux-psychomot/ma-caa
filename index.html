@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 13</title>
+<title>Ma CAA v2.0 bêta 14</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 13</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 14</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -495,7 +495,7 @@ function chooseProfileImport(){
 
 const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHABLE_KEY="sb_publishable_zyK0hA08C8Fg8hPYPBT5_g_I0KAi9UN";
 let cloudClient=null;
-function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(autoPullProfiles,700);startCloudPolling()}}catch(e){console.error(e)}}
+function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(()=>{startSafeAutoSync();safeAutoPull()},1200)}}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){
   const p=readProfiles().find(x=>x.id===id);if(!p)return null;
@@ -618,64 +618,45 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 
+const AUTO_SYNC_KEY="ma-caa-auto-sync-safe-v1";
+const CLOUD_META_KEY="ma-caa-cloud-meta-safe-v1";
+let autoSyncBusy=false,autoTimer=null;
 
-(function(){
-  const original=Storage.prototype.setItem;
-  Storage.prototype.setItem=function(k,v){
-    const r=original.call(this,k,v);
-    try{
-      const id=localStorage.getItem(ACTIVE_PROFILE_KEY);
-      if(id && typeof k==="string" && k.endsWith("::"+id)) scheduleAutoSync();
-    }catch(e){}
-    return r;
-  };
-})();
-
-const AUTO_SYNC_KEY="ma-caa-auto-sync-v1";
-let autoSyncTimer=null,autoSyncBusy=false;
 function autoSyncEnabled(){return localStorage.getItem(AUTO_SYNC_KEY)!=="0"}
-function scheduleAutoSync(){
-  if(!autoSyncEnabled()||autoSyncBusy)return;
-  clearTimeout(autoSyncTimer);
-  autoSyncTimer=setTimeout(async()=>{
-    const id=localStorage.getItem(ACTIVE_PROFILE_KEY);
-    if(id)await autoPushProfile(id);
-  },1200);
+function uiBusyForAutoSync(){
+  return !!document.querySelector('.modal.show,[role="dialog"],.modal:not([style*="display: none"])');
 }
-async function autoPushProfile(id){
-  if(autoSyncBusy||!cloudClient)return;
-  const u=await cloudUser();if(!u)return;
-  autoSyncBusy=true;
-  try{await syncPushOne(id,true)}finally{autoSyncBusy=false}
-}
-const CLOUD_META_KEY="ma-caa-cloud-meta-v1";
 function cloudMeta(){try{return JSON.parse(localStorage.getItem(CLOUD_META_KEY)||"{}")}catch(e){return {}}}
 function setCloudMeta(name,stamp){const m=cloudMeta();m[name]=stamp;localStorage.setItem(CLOUD_META_KEY,JSON.stringify(m))}
-async function autoPullProfiles(){
-  if(autoSyncBusy||!cloudClient||!autoSyncEnabled())return;
-  const u=await cloudUser();if(!u)return;
+
+async function safeAutoPull(){
+  if(autoSyncBusy||!autoSyncEnabled()||!cloudClient||uiBusyForAutoSync())return;
+  const u=await cloudUser(); if(!u)return;
+  const activeBefore=localStorage.getItem(ACTIVE_PROFILE_KEY);
   const r=await cloudClient.from("profiles").select("name,updated_at").eq("user_id",u.id);
   if(r.error)return;
-  const local=readProfiles(),meta=cloudMeta();
+  const meta=cloudMeta();
   for(const row of r.data||[]){
-    const p=local.find(x=>x.name===row.name);
-    const seen=meta[row.name]||"";
-    // Missing profile OR cloud changed since this device last saw it.
-    if(!p || (row.updated_at && row.updated_at!==seen)){
+    if(row.updated_at && row.updated_at!==meta[row.name]){
       try{
-        await syncPullOneByName(row.name,true);
-        setCloudMeta(row.name,row.updated_at||"");
+        await syncPullOneByName(row.name,true,true);
+        setCloudMeta(row.name,row.updated_at);
       }catch(e){console.error(e)}
+      finally{
+        if(activeBefore)localStorage.setItem(ACTIVE_PROFILE_KEY,activeBefore);
+      }
     }
   }
+  render();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);
 }
-function startCloudPolling(){
-  setInterval(()=>{if(document.visibilityState==="visible")autoPullProfiles()},4000);
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")autoPullProfiles()});
+function startSafeAutoSync(){
+  setInterval(()=>{if(document.visibilityState==="visible")safeAutoPull()},5000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(safeAutoPull,500)});
 }
-async function syncPushOne(id,silent=false){
+
+async function syncPushOne(id){
   try{
-    if(!silent)showFeedback("Synchronisation en cours…");
+    showFeedback("Synchronisation en cours…");
     if(!cloudClient)throw new Error("Connexion Supabase non initialisée");
     const u=await cloudUser();if(!u)throw new Error("Compte de synchronisation non connecté");
     const p=readProfiles().find(x=>x.id===id);if(!p)throw new Error("Profil local introuvable");
@@ -686,11 +667,10 @@ async function syncPushOne(id,silent=false){
     if(q.error)throw q.error;
     const r=q.data?.[0] ? await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id) : await cloudClient.from("profiles").insert(payload);
     if(r.error)throw r.error;
-    setCloudMeta(p.name,payload.updated_at);
-    if(!silent)alert("✓ Profil synchronisé : "+p.name);
-  }catch(e){console.error(e);if(!silent)alert("Synchronisation impossible : "+(e?.message||e))}
+    alert("✓ Profil synchronisé : "+p.name);
+  }catch(e){console.error(e);alert("Synchronisation impossible : "+(e?.message||e))}
 }
-async function syncPullOneByName(name,silent=false){
+async function syncPullOneByName(name,silent=false,preserveActive=false){
   try{
     if(!silent)showFeedback("Récupération en cours…");
     if(!name)throw new Error("Entre le nom exact du profil");
@@ -699,6 +679,7 @@ async function syncPullOneByName(name,silent=false){
     const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id).eq("name",name).order("updated_at",{ascending:false}).limit(1);
     if(r.error)throw r.error;
     if(!r.data?.[0])throw new Error("Profil introuvable dans le cloud");
+    const activeBefore=localStorage.getItem(ACTIVE_PROFILE_KEY);
     const row=r.data[0],ps=readProfiles();let p=ps.find(x=>x.name===row.name);
     if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
     const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;
@@ -706,7 +687,10 @@ async function syncPullOneByName(name,silent=false){
       if(typeof raw==="string") localStorage.setItem(base+"::"+p.id,raw);
       else if(raw&&typeof raw==="object"&&raw.__cloud_image===true) localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));
     }
-    writeProfiles(ps);localStorage.setItem(ACTIVE_PROFILE_KEY,p.id);setCloudMeta(row.name,row.updated_at||"");repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();
+    writeProfiles(ps);
+    if(preserveActive && activeBefore)localStorage.setItem(ACTIVE_PROFILE_KEY,activeBefore);
+    else localStorage.setItem(ACTIVE_PROFILE_KEY,p.id);
+    repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();
     setTimeout(()=>{render();renderProfileBar();hydrateAllCloudPictures();},50);
     if(mat.failures)alert("Profil récupéré, mais "+mat.failures+" photo(s) n'ont pas pu être téléchargées.");
     else if(!silent)alert("✓ Profil récupéré : "+row.name);
@@ -715,9 +699,9 @@ async function syncPullOneByName(name,silent=false){
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
 async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}for(const [base,raw] of Object.entries(row.data?.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw)}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profils récupérés")}
-async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else {openProfiles();setTimeout(autoPullProfiles,300)}}
+async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else openProfiles()}
 async function cloudLogout(){await cloudClient?.auth.signOut();openProfiles()}
-function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;const lab=document.createElement("label");lab.style.display="block";lab.style.margin="8px 0";const cb=document.createElement("input");cb.type="checkbox";cb.checked=autoSyncEnabled();cb.onchange=()=>{localStorage.setItem(AUTO_SYNC_KEY,cb.checked?"1":"0");if(cb.checked)autoPullProfiles()};lab.append(cb,document.createTextNode(" Synchronisation automatique"));box.appendChild(lab);const pullName=document.createElement("input");pullName.placeholder="Nom exact du profil à récupérer";
+function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;const pullName=document.createElement("input");pullName.placeholder="Nom exact du profil à récupérer";
       const pullOne=document.createElement("button");pullOne.textContent="⬇️ Récupérer ce profil";pullOne.onclick=()=>syncPullOneByName(pullName.value.trim());
       const out=document.createElement("button");out.textContent="Se déconnecter";out.onclick=cloudLogout;
       box.append(pullName,pullOne,out);}else{s.textContent="Non connecté";const e=document.createElement("input");e.type="email";e.placeholder="E-mail";const p=document.createElement("input");p.type="password";p.placeholder="Mot de passe";const b=document.createElement("button");b.textContent="🔐 Se connecter";b.onclick=()=>cloudLogin(e.value.trim(),p.value);box.append(e,p,b)}})}

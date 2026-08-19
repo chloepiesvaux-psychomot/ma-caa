@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 7</title>
+<title>Ma CAA v2.0 bêta 8</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 7</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 8</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -556,32 +556,36 @@ async function uploadProfilePhotos(userId,profileId,bundle){
   return {...storage,...uploaded};
 }
 async function materializeProfilePhotos(bundle){
-  const storage=bundle?.storage||{},out={...storage};
-  let failures=0;
-  async function blobToDataUrl(blob){
-    return await new Promise((resolve,reject)=>{
-      const fr=new FileReader();fr.onload=()=>resolve(String(fr.result));fr.onerror=reject;fr.readAsDataURL(blob);
-    });
-  }
-  for(const [base,raw] of Object.entries(storage)){
-    if(typeof raw!=="string")continue;
-    let parsed;try{parsed=JSON.parse(raw)}catch(e){continue}
-    async function walk(obj){
-      if(!obj||typeof obj!=="object")return;
-      if(Array.isArray(obj)){for(const v of obj)await walk(v);return}
-      for(const k of Object.keys(obj)){
-        const v=obj[k];
-        if(v&&typeof v==="object"&&v.__cloud_image===true&&typeof v.path==="string"){
-          const dl=await cloudClient.storage.from("pictograms").download(v.path);
-          if(dl.error){console.error("Photo download",v.path,dl.error);failures++;continue}
-          try{obj[k]=await blobToDataUrl(dl.data)}catch(e){console.error(e);failures++}
-        }else if(v&&typeof v==="object")await walk(v);
-      }
-    }
-    await walk(parsed);out[base]=JSON.stringify(parsed);
-  }
-  return {bundle:{...bundle,storage:out},failures};
+  // Les références Storage restent compactes dans localStorage.
+  // L'image est résolue à l'affichage, évitant le dépassement de quota.
+  return {bundle:bundle||{},failures:0};
 }
+async function resolveCloudImageValue(v){
+  if(!(v&&typeof v==="object"&&v.__cloud_image===true&&typeof v.path==="string"))return v;
+  try{
+    const dl=await cloudClient.storage.from("pictograms").download(v.path);
+    if(dl.error)throw dl.error;
+    return URL.createObjectURL(dl.data);
+  }catch(e){console.error("Photo cloud",e);return ""}
+}
+
+async function hydrateCloudPictures(){
+  if(!cloudClient)return;
+  const imgs=[...document.querySelectorAll("img[data-cloud-path]")];
+  for(const img of imgs){
+    const path=img.getAttribute("data-cloud-path");
+    if(!path)continue;
+    try{
+      const dl=await cloudClient.storage.from("pictograms").download(path);
+      if(dl.error)throw dl.error;
+      const old=img.dataset.objectUrl;
+      if(old)URL.revokeObjectURL(old);
+      const url=URL.createObjectURL(dl.data);
+      img.src=url;img.dataset.objectUrl=url;
+    }catch(e){console.error(e)}
+  }
+}
+
 async function syncPushOne(id){
   try{
     showFeedback("Synchronisation en cours…");
@@ -611,7 +615,7 @@ async function syncPullOneByName(name){
     if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
     const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;
     for(const [base,raw] of Object.entries(bundle.storage||{})){if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw)}
-    writeProfiles(ps);localStorage.setItem(ACTIVE_PROFILE_KEY,p.id);repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();
+    writeProfiles(ps);localStorage.setItem(ACTIVE_PROFILE_KEY,p.id);repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();setTimeout(hydrateCloudPictures,0);
     if(mat.failures)alert("Profil récupéré, mais "+mat.failures+" photo(s) n'ont pas pu être téléchargées.");
     else alert("✓ Profil récupéré : "+row.name);
   }catch(e){console.error(e);alert("Récupération impossible : "+(e?.message||e))}

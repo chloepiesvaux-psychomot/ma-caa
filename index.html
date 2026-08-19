@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 45</title>
+<title>Ma CAA v2.0 bêta 46</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 45</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 46</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1291,7 +1291,7 @@ async function adminBasePull(showStatus=false){
     markAdminBaseSynced(adminBaseCloudUpdated);
     syncAdminCategories();render();
     if(showStatus)setStatus("✅ Base commune récupérée : "+adminSyncLabel().replace("Dernière synchronisation : ",""),true);
-    if(adminUnlocked)setTimeout(()=>openAdminPanel(),250);
+    updateAdminSyncStatusInPlace();
     return true;
   }catch(e){
     console.error("Admin base pull",e);
@@ -1299,7 +1299,13 @@ async function adminBasePull(showStatus=false){
     return false;
   }finally{adminBaseCloudBusy=false}
 }
-function startAdminBaseCloud(){syncAdminCategories();render();setTimeout(adminBasePull,300);setTimeout(adminBasePull,1800);setInterval(()=>{if(document.visibilityState==="visible")adminBasePull()},5000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});window.addEventListener("focus",()=>adminBasePull())}
+
+function updateAdminSyncStatusInPlace(){
+  const stamp=document.getElementById("admin-sync-stamp");
+  if(stamp)stamp.textContent=adminSyncLabel();
+}
+
+function startAdminBaseCloud(){syncAdminCategories();render();setTimeout(adminBasePull,300);setTimeout(adminBasePull,1800);setInterval(()=>{if(document.visibilityState==="visible")adminBasePull(false)},5000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});window.addEventListener("focus",()=>adminBasePull())}
 
 function adminItemId(cat,x){return cat.name+"||"+x[1]+"||"+x[2]}
 function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name}
@@ -1416,6 +1422,7 @@ function openAdminPanel(){
     if(syncTapBusy)return;
     syncTapBusy=true;syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation…";
     await adminBasePull(true);
+    updateAdminSyncStatusInPlace();
     syncNow.disabled=false;syncNow.textContent="🔄 Synchroniser maintenant";syncTapBusy=false;
   };
   syncNow.addEventListener("click",runSync,{passive:false});
@@ -1467,7 +1474,12 @@ function openAdminPanel(){
   };security.appendChild(change);content.appendChild(security);
   overlay.appendChild(content);document.body.appendChild(overlay); ;requestAnimationFrame(()=>{overlay.scrollTop=keepScroll});
 }
-function adminRefresh(){openAdminPanel();render()}
+function adminRefresh(){
+  const panel=document.getElementById("admin-panel-beta25");
+  const y=panel?panel.scrollTop:0;
+  openAdminPanel();render();
+  requestAnimationFrame(()=>{const p=document.getElementById("admin-panel-beta25");if(p)p.scrollTop=y});
+}
 function adminEditCategory(cat){const a=readAdminBase(),e=a.catEdits[cat.name]||{},n=prompt("Nom de la catégorie :",e.name||cat.name);if(n===null)return;const i=prompt("Emoji :",e.icon||cat.icon);if(i===null)return;a.catEdits[cat.name]={name:n.trim()||cat.name,icon:i.trim()||cat.icon};writeAdminBase(a);adminRefresh()}
 function adminToggleCat(cat){
   const a=readAdminBase(),k=cat.name;

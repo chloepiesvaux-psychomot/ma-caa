@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 37</title>
+<title>Ma CAA v2.0 bêta 38</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 37</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 38</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -827,11 +827,53 @@ function openProfiles(){
   row.append(add,imp,close);
   panel.append(list,row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
+
+function profileInitials(name){
+  const parts=String(name||"Utilisateur").trim().split(/\s+/).filter(Boolean);
+  return (parts.slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("")||"👤");
+}
+function openUserHome(){
+  let old=document.getElementById("user-home-v38");if(old)old.remove();
+  const overlay=document.createElement("div");overlay.id="user-home-v38";
+  overlay.style.cssText="position:fixed;inset:0;z-index:95000;background:linear-gradient(180deg,#f6f8ff,#eef4fb);overflow:auto;padding:24px 16px";
+  const wrap=document.createElement("div");wrap.style.cssText="max-width:860px;margin:0 auto";
+  const title=document.createElement("div");title.style.cssText="text-align:center;margin:20px 0 24px";
+  title.innerHTML='<div style="font-size:30px;font-weight:900">Ma CAA</div><div style="font-size:18px;margin-top:6px">Qui utilise l’application ?</div>';
+  wrap.appendChild(title);
+
+  const grid=document.createElement("div");
+  grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px";
+  readProfiles().forEach(profile=>{
+    const card=document.createElement("button");card.type="button";
+    card.style.cssText="border:2px solid #dfe5ef;background:white;border-radius:22px;padding:20px 12px;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(35,55,90,.07)";
+    const avatar=document.createElement("div");
+    avatar.style.cssText="width:82px;height:82px;border-radius:50%;display:grid;place-items:center;background:#eef3ff;font-size:28px;font-weight:900;color:#243b6b";
+    avatar.textContent=profileInitials(profile.name);
+    const name=document.createElement("b");name.textContent=profile.name;name.style.fontSize="18px";
+    card.append(avatar,name);
+    card.onclick=()=>{
+      localStorage.setItem(ACTIVE_PROFILE_KEY,profile.id);
+      current=0;syncCustomCategories();render();renderProfileBar();
+      overlay.remove();
+      showFeedback("Profil : "+profile.name);
+    };
+    grid.appendChild(card);
+  });
+  wrap.appendChild(grid);
+
+  const note=document.createElement("div");
+  note.style.cssText="text-align:center;color:#687286;font-size:13px;margin-top:20px";
+  note.textContent="Les codes PIN individuels seront ajoutés à l’étape suivante.";
+  wrap.appendChild(note);
+  overlay.appendChild(wrap);document.body.appendChild(overlay);
+}
+
 function renderProfileBar(){
   let bar=document.getElementById("profileBar");
   if(!bar){bar=document.createElement("div");bar.id="profileBar";bar.className="profilebar";const main=document.querySelector("main")||document.body;main.insertBefore(bar,main.firstChild)}
-  bar.innerHTML="👤 <span>"+profileName()+"</span>";
-  if(adultUnlocked){const b=document.createElement("button");b.textContent="Changer";b.onclick=openProfiles;bar.appendChild(b)}
+  bar.innerHTML="";
+  const who=document.createElement("span");who.innerHTML="👤 <b>"+profileName()+"</b>";bar.appendChild(who);
+  const b=document.createElement("button");b.textContent="👤 Changer d’utilisateur";b.onclick=openUserHome;bar.appendChild(b);
 }
 
 function readCustomCats(){try{return JSON.parse(localStorage.getItem(profiledKey(CUSTOM_CATS_KEY))||"[]")}catch(e){return []}}
@@ -1156,7 +1198,7 @@ render();
 </script>
 
 <script>
-document.addEventListener("DOMContentLoaded",()=>{try{ensureProfiles();repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();initCloud();}catch(e){}});
+document.addEventListener("DOMContentLoaded",()=>{try{ensureProfiles();repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();initCloud();setTimeout(openUserHome,250);}catch(e){}});
 </script>
 
 <script>

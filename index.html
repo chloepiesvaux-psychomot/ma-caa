@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 17</title>
+<title>Ma CAA v2.0 bêta 18</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -70,32 +70,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-document.addEventListener("click",e=>{
-  const b=e.target && e.target.closest ? e.target.closest("button") : null;
-  if(!b)return;
-  const t=(b.textContent||"").trim().toLowerCase();
-  if(t.includes("quitter mode adulte") || t==="fermer" || t==="annuler"){
-    setTimeout(resetAdultHoldVisualState,150);
-  }
-},true);
-
-</script>
-
-<style>
-/* iPhone/iPad: le maintien du bouton Mode adulte ne doit pas déclencher
-   sélection, loupe, callout ou glisser d'image/texte. */
-button, .adult-hold-ios {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-}
-.adult-hold-ios {
-  touch-action: none;
-  -webkit-tap-highlight-color: transparent;
-}
-</style>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -105,7 +80,7 @@ button, .adult-hold-ios {
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 17</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 18</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -272,7 +247,8 @@ const PROFILES_KEY="ma-caa-profiles-v1";
 const ACTIVE_PROFILE_KEY="ma-caa-active-profile-v1";
 const ADULT_PIN_KEY="ma-caa-adult-pin-v1";
 const VOICE_KEY="ma-caa-voice-v1";
-const PROFILE_DATA_KEYS=[FAV_KEY,HIDDEN_KEY,ORDER_KEY,CUSTOM_KEY,ADDED_KEY,CUSTOM_CATS_KEY,VOICE_KEY];
+const FAV_ORDER_KEY="ma-caa-favorites-order-v1";
+const PROFILE_DATA_KEYS=[FAV_KEY,HIDDEN_KEY,ORDER_KEY,CUSTOM_KEY,ADDED_KEY,CUSTOM_CATS_KEY,VOICE_KEY,FAV_ORDER_KEY];
 
 function itemId(x){return x[1]+"|"+x[2]}
 function activeProfile(){return localStorage.getItem(ACTIVE_PROFILE_KEY)||"default"}
@@ -283,11 +259,19 @@ function readOrder(){try{return JSON.parse(localStorage.getItem(profiledKey(ORDE
 function writeOrder(val){localStorage.setItem(profiledKey(ORDER_KEY),JSON.stringify(val))}
 
 function getFavIds(){return readList(FAV_KEY)}
+
+function readFavOrder(){return readList(FAV_ORDER_KEY)}
+function writeFavOrder(ids){writeList(FAV_ORDER_KEY,ids)}
+
 function isFav(x){return getFavIds().includes(itemId2(x))}
 function toggleFav(x){
   let ids=getFavIds(), id=itemId2(x);
-  ids=ids.includes(id)?ids.filter(v=>v!==id):[...ids,id];
+  const removing=ids.includes(id);
+  ids=removing?ids.filter(v=>v!==id):[...ids,id];
   writeList(FAV_KEY,ids);
+  let ord=readFavOrder().filter(v=>v!==id);
+  if(!removing)ord.push(id);
+  writeFavOrder(ord);
   renderGrid();
 }
 
@@ -520,7 +504,7 @@ function chooseProfileImport(){
 
 const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHABLE_KEY="sb_publishable_zyK0hA08C8Fg8hPYPBT5_g_I0KAi9UN";
 let cloudClient=null;
-function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(()=>{startSafeAutoSync();safeAutoPull()},1200)}}catch(e){console.error(e)}}
+function initCloud(){try{if(window.supabase)cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY)}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){
   const p=readProfiles().find(x=>x.id===id);if(!p)return null;
@@ -642,115 +626,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   obs.observe(document.body,{childList:true,subtree:true});
 });
 
-
-
-let adultInteractionLock=false;
-let adultInteractionReleaseTimer=null;
-function lockAutoSyncForAdult(){
-  adultInteractionLock=true;
-  clearTimeout(adultInteractionReleaseTimer);
-}
-function unlockAutoSyncAfterAdult(){
-  clearTimeout(adultInteractionReleaseTimer);
-  adultInteractionReleaseTimer=setTimeout(()=>{adultInteractionLock=false},800);
-}
-
-const AUTO_SYNC_KEY="ma-caa-auto-sync-safe-v1";
-const CLOUD_META_KEY="ma-caa-cloud-meta-safe-v1";
-let autoSyncBusy=false,autoTimer=null;
-
-function autoSyncEnabled(){return localStorage.getItem(AUTO_SYNC_KEY)!=="0"}
-function uiBusyForAutoSync(){
-  if(adultInteractionLock)return true;
-  return !!document.querySelector('.modal.show,[role="dialog"],.modal:not([style*="display: none"])');
-}
-function cloudMeta(){try{return JSON.parse(localStorage.getItem(CLOUD_META_KEY)||"{}")}catch(e){return {}}}
-function setCloudMeta(name,stamp){const m=cloudMeta();m[name]=stamp;localStorage.setItem(CLOUD_META_KEY,JSON.stringify(m))}
-
-
-
-
-function resetAdultHoldVisualState(){
-  // Nettoie seulement les états tactiles/visuels résiduels entre deux ouvertures.
-  document.querySelectorAll(".adult-hold-ios").forEach(btn=>{
-    try{
-      if(btn.hasPointerCapture && window.__adultLastPointerId!=null &&
-         btn.hasPointerCapture(window.__adultLastPointerId)){
-        btn.releasePointerCapture(window.__adultLastPointerId);
-      }
-    }catch(_){}
-    btn.blur();
-  });
-  window.__adultLastPointerId=null;
-  unlockAutoSyncAfterAdult();
-}
-document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible")resetAdultHoldVisualState();
-});
-window.addEventListener("pageshow",resetAdultHoldVisualState);
-
-function installAdultSyncGuard(){
-  const candidates=[...document.querySelectorAll("button")];
-  const btn=candidates.find(b=>(b.textContent||"").includes("Mode adulte"));
-  if(!btn||btn.dataset.syncGuard==="2")return;
-  btn.dataset.syncGuard="2";
-  btn.classList.add("adult-hold-ios");
-  btn.setAttribute("draggable","false");
-
-  // Bloque les comportements natifs iOS sans remplacer le gestionnaire
-  // de maintien déjà utilisé par Ma CAA.
-  btn.addEventListener("contextmenu",e=>e.preventDefault(),{capture:true});
-  btn.addEventListener("selectstart",e=>e.preventDefault(),{capture:true});
-  btn.addEventListener("dragstart",e=>e.preventDefault(),{capture:true});
-  btn.addEventListener("pointerdown",e=>{
-    resetAdultHoldVisualState();
-    lockAutoSyncForAdult();
-    window.__adultLastPointerId=e.pointerId;
-    try{btn.setPointerCapture(e.pointerId)}catch(_){}
-  },{capture:true});
-  btn.addEventListener("pointerup",e=>{
-    try{btn.releasePointerCapture(e.pointerId)}catch(_){}
-    window.__adultLastPointerId=null;
-    unlockAutoSyncAfterAdult();
-    setTimeout(resetAdultHoldVisualState,900);
-  },{capture:true});
-  btn.addEventListener("pointercancel",()=>{
-    window.__adultLastPointerId=null;
-    unlockAutoSyncAfterAdult();
-    setTimeout(resetAdultHoldVisualState,100);
-  },{capture:true});
-}
-document.addEventListener("DOMContentLoaded",()=>{
-  installAdultSyncGuard();
-  const obs=new MutationObserver(installAdultSyncGuard);
-  obs.observe(document.body,{childList:true,subtree:true});
-});
-
-async function safeAutoPull(){
-  if(autoSyncBusy||!autoSyncEnabled()||!cloudClient||uiBusyForAutoSync())return;
-  const u=await cloudUser(); if(!u)return;
-  const activeBefore=localStorage.getItem(ACTIVE_PROFILE_KEY);
-  const r=await cloudClient.from("profiles").select("name,updated_at").eq("user_id",u.id);
-  if(r.error)return;
-  const meta=cloudMeta();
-  for(const row of r.data||[]){
-    if(row.updated_at && row.updated_at!==meta[row.name]){
-      try{
-        await syncPullOneByName(row.name,true,true);
-        setCloudMeta(row.name,row.updated_at);
-      }catch(e){console.error(e)}
-      finally{
-        if(activeBefore)localStorage.setItem(ACTIVE_PROFILE_KEY,activeBefore);
-      }
-    }
-  }
-  render();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);
-}
-function startSafeAutoSync(){
-  setInterval(()=>{if(document.visibilityState==="visible")safeAutoPull()},5000);
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(safeAutoPull,500)});
-}
-
 async function syncPushOne(id){
   try{
     showFeedback("Synchronisation en cours…");
@@ -767,16 +642,15 @@ async function syncPushOne(id){
     alert("✓ Profil synchronisé : "+p.name);
   }catch(e){console.error(e);alert("Synchronisation impossible : "+(e?.message||e))}
 }
-async function syncPullOneByName(name,silent=false,preserveActive=false){
+async function syncPullOneByName(name){
   try{
-    if(!silent)showFeedback("Récupération en cours…");
+    showFeedback("Récupération en cours…");
     if(!name)throw new Error("Entre le nom exact du profil");
     if(!cloudClient)throw new Error("Connexion Supabase non initialisée");
     const u=await cloudUser();if(!u)throw new Error("Compte de synchronisation non connecté");
     const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id).eq("name",name).order("updated_at",{ascending:false}).limit(1);
     if(r.error)throw r.error;
     if(!r.data?.[0])throw new Error("Profil introuvable dans le cloud");
-    const activeBefore=localStorage.getItem(ACTIVE_PROFILE_KEY);
     const row=r.data[0],ps=readProfiles();let p=ps.find(x=>x.name===row.name);
     if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
     const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;
@@ -784,14 +658,11 @@ async function syncPullOneByName(name,silent=false,preserveActive=false){
       if(typeof raw==="string") localStorage.setItem(base+"::"+p.id,raw);
       else if(raw&&typeof raw==="object"&&raw.__cloud_image===true) localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));
     }
-    writeProfiles(ps);
-    if(preserveActive && activeBefore)localStorage.setItem(ACTIVE_PROFILE_KEY,activeBefore);
-    else localStorage.setItem(ACTIVE_PROFILE_KEY,p.id);
-    repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();
+    writeProfiles(ps);localStorage.setItem(ACTIVE_PROFILE_KEY,p.id);repairDoubleProfileKeys();syncCustomCategories();render();renderProfileBar();
     setTimeout(()=>{render();renderProfileBar();hydrateAllCloudPictures();},50);
     if(mat.failures)alert("Profil récupéré, mais "+mat.failures+" photo(s) n'ont pas pu être téléchargées.");
-    else if(!silent)alert("✓ Profil récupéré : "+row.name);
-  }catch(e){console.error(e);if(!silent)alert("Récupération impossible : "+(e?.message||e))}
+    else alert("✓ Profil récupéré : "+row.name);
+  }catch(e){console.error(e);alert("Récupération impossible : "+(e?.message||e))}
 }
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
@@ -923,7 +794,20 @@ function visibleItems(cat){return orderedItems(cat).filter(x=>!isHidden(x))}
 function allItems(){return normalCategories().flatMap(c=>orderedItems(c))}
 function favoriteItems(){
   const favs=getFavIds();
-  return allItems().filter(x=>favs.includes(itemId2(x)) && !isHidden(x));
+  const items=allItems().filter(x=>favs.includes(itemId2(x)) && !isHidden(x));
+  const order=readFavOrder();
+  if(!order.length)return items;
+  const byId=new Map(items.map(x=>[itemId2(x),x])),out=[];
+  order.forEach(id=>{if(byId.has(id)){out.push(byId.get(id));byId.delete(id)}});
+  byId.forEach(x=>out.push(x));
+  return out;
+}
+function moveFavorite(x,dir){
+  const items=favoriteItems(),idx=items.findIndex(y=>itemId2(y)===itemId2(x)),next=idx+dir;
+  if(idx<0||next<0||next>=items.length)return;
+  [items[idx],items[next]]=[items[next],items[idx]];
+  writeFavOrder(items.map(itemId2));
+  renderGrid();
 }
 function moveItem(cat,x,dir){
   let items=orderedItems(cat), idx=items.findIndex(y=>itemId(y)===itemId2(x));
@@ -968,6 +852,26 @@ function renderPersonalize(box){
 
   const addBtn=document.createElement("button");addBtn.className="addpicto";addBtn.textContent="➕ Ajouter un pictogramme personnalisé";addBtn.onclick=openAddPicto;box.appendChild(addBtn);
 
+
+  const favHead=document.createElement("div");favHead.className="personal-group";favHead.textContent="⭐ Favoris";box.appendChild(favHead);
+  const favItems=favoriteItems();
+  if(!favItems.length){
+    const empty=document.createElement("div");empty.className="personal-note";empty.textContent="Aucun favori pour ce profil.";box.appendChild(empty);
+  }else{
+    favItems.forEach(x=>{
+      const card=document.createElement("div");card.className="manage-card";
+      const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),x[0]);
+      const info=document.createElement("div");
+      const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
+      const actions=document.createElement("div");actions.className="manage-actions";
+      const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveFavorite(x,-1);
+      const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveFavorite(x,1);
+      const rem=document.createElement("button");rem.className="hidebtn";rem.textContent="⭐ Retirer des favoris";rem.onclick=()=>toggleFav(x);
+      actions.append(up,down,rem);info.appendChild(actions);
+      card.append(visual,info);box.appendChild(card);
+    });
+  }
+
   const note=document.createElement("div");note.className="personal-note";
   note.textContent="Réglages adulte : masque, réaffiche ou change l’ordre des pictogrammes. Les choix restent enregistrés sur cet appareil.";
   box.appendChild(note);
@@ -1001,15 +905,50 @@ function openAdultGate(){
   const box=document.createElement("div");box.className="adult-box";
   box.innerHTML="<h2>🔒 Mode adulte</h2><p>Maintiens le bouton pendant 3 secondes pour accéder aux réglages.</p><div class='holdbar'><div class='holdfill'></div></div>";
   const btn=document.createElement("button");btn.className="holdbtn";btn.textContent="Maintenir 3 secondes";
+  btn.style.webkitUserSelect="none";btn.style.userSelect="none";btn.style.webkitTouchCallout="none";btn.style.touchAction="none";
   const close=document.createElement("button");close.className="closeadult";close.textContent="Annuler";
   box.append(btn,close);overlay.appendChild(box);document.body.appendChild(overlay);
-  const fill=box.querySelector(".holdfill");let timer=null,start=0,raf=null;
-  function stop(){if(timer)clearTimeout(timer);if(raf)cancelAnimationFrame(raf);timer=null;raf=null;start=0;fill.style.width="0%"}
-  function animate(){if(!start)return;fill.style.width=Math.min(100,(Date.now()-start)/30)+"%";raf=requestAnimationFrame(animate)}
-  function begin(e){e.preventDefault();start=Date.now();animate();timer=setTimeout(()=>{stop();adultUnlocked=true;overlay.remove();renderGrid();showFeedback("Mode adulte")},3000)}
-  btn.addEventListener("pointerdown",begin);
-  ["pointerup","pointercancel","pointerleave"].forEach(ev=>btn.addEventListener(ev,stop));
-  close.onclick=()=>{stop();overlay.remove()};
+
+  const fill=box.querySelector(".holdfill");
+  let timer=null,raf=null,startAt=0,holding=false,opened=false;
+
+  function reset(){
+    holding=false;
+    if(timer)clearTimeout(timer);
+    if(raf)cancelAnimationFrame(raf);
+    timer=null;raf=null;startAt=0;
+    fill.style.width="0%";
+  }
+  function animate(){
+    if(!holding)return;
+    fill.style.width=Math.min(100,((performance.now()-startAt)/3000)*100)+"%";
+    raf=requestAnimationFrame(animate);
+  }
+  function success(){
+    if(opened)return;
+    opened=true;reset();adultUnlocked=true;overlay.remove();renderGrid();showFeedback("Mode adulte");
+  }
+  function begin(e){
+    if(opened||holding)return;
+    if(e.cancelable)e.preventDefault();
+    holding=true;startAt=performance.now();animate();
+    timer=setTimeout(success,3000);
+  }
+  function stop(e){
+    if(e&&e.cancelable)e.preventDefault();
+    if(!opened)reset();
+  }
+
+  // iPhone/iPad first.
+  btn.addEventListener("touchstart",begin,{passive:false});
+  btn.addEventListener("touchend",stop,{passive:false});
+  btn.addEventListener("touchcancel",stop,{passive:false});
+  // Desktop / mouse fallback.
+  btn.addEventListener("mousedown",begin);
+  btn.addEventListener("mouseup",stop);
+  btn.addEventListener("mouseleave",stop);
+  btn.addEventListener("contextmenu",e=>e.preventDefault());
+  close.onclick=()=>{reset();overlay.remove()};
 }
 function lockAdult(){
   adultUnlocked=false;current=0;render();showFeedback("Mode enfant");

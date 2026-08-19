@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 14</title>
+<title>Ma CAA v2.0 bêta 15</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 14</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 15</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -618,16 +618,46 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 
+
+let adultInteractionLock=false;
+let adultInteractionReleaseTimer=null;
+function lockAutoSyncForAdult(){
+  adultInteractionLock=true;
+  clearTimeout(adultInteractionReleaseTimer);
+}
+function unlockAutoSyncAfterAdult(){
+  clearTimeout(adultInteractionReleaseTimer);
+  adultInteractionReleaseTimer=setTimeout(()=>{adultInteractionLock=false},800);
+}
+
 const AUTO_SYNC_KEY="ma-caa-auto-sync-safe-v1";
 const CLOUD_META_KEY="ma-caa-cloud-meta-safe-v1";
 let autoSyncBusy=false,autoTimer=null;
 
 function autoSyncEnabled(){return localStorage.getItem(AUTO_SYNC_KEY)!=="0"}
 function uiBusyForAutoSync(){
+  if(adultInteractionLock)return true;
   return !!document.querySelector('.modal.show,[role="dialog"],.modal:not([style*="display: none"])');
 }
 function cloudMeta(){try{return JSON.parse(localStorage.getItem(CLOUD_META_KEY)||"{}")}catch(e){return {}}}
 function setCloudMeta(name,stamp){const m=cloudMeta();m[name]=stamp;localStorage.setItem(CLOUD_META_KEY,JSON.stringify(m))}
+
+
+function installAdultSyncGuard(){
+  const candidates=[...document.querySelectorAll("button")];
+  const btn=candidates.find(b=>(b.textContent||"").includes("Mode adulte"));
+  if(!btn||btn.dataset.syncGuard==="1")return;
+  btn.dataset.syncGuard="1";
+  const begin=()=>lockAutoSyncForAdult();
+  const end=()=>unlockAutoSyncAfterAdult();
+  ["pointerdown","touchstart","mousedown"].forEach(ev=>btn.addEventListener(ev,begin,{capture:true,passive:true}));
+  ["pointerup","pointercancel","touchend","touchcancel","mouseup","mouseleave"].forEach(ev=>btn.addEventListener(ev,end,{capture:true,passive:true}));
+}
+document.addEventListener("DOMContentLoaded",()=>{
+  installAdultSyncGuard();
+  const obs=new MutationObserver(installAdultSyncGuard);
+  obs.observe(document.body,{childList:true,subtree:true});
+});
 
 async function safeAutoPull(){
   if(autoSyncBusy||!autoSyncEnabled()||!cloudClient||uiBusyForAutoSync())return;

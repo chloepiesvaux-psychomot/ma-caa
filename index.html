@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 24</title>
+<title>Ma CAA v2.0 bêta 25</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 24</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 25</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1117,4 +1117,107 @@ window.addEventListener("pagehide",()=>{
   try{localStorage.setItem(ACTIVE_PROFILE_KEY,activeProfile());localStorage.setItem("ma-caa-last-save",String(Date.now()))}catch(e){}
 });
 </script>
+
+<script>
+/* Ma CAA bêta 25 — première étape du Mode administrateur.
+   Accès séparé uniquement. Aucun pictogramme de base n'est encore modifié. */
+const ADMIN_PIN_KEY="ma-caa-admin-pin-v1";
+const DEFAULT_ADMIN_PIN="2580";
+let adminUnlocked=false;
+
+function getAdminPin(){
+  return localStorage.getItem(ADMIN_PIN_KEY)||DEFAULT_ADMIN_PIN;
+}
+function openAdminAccess(){
+  const entered=prompt("🔐 Mode administrateur\n\nEntrez le code administrateur :");
+  if(entered===null)return;
+  if(entered!==getAdminPin()){
+    alert("Code administrateur incorrect.");
+    return;
+  }
+  adminUnlocked=true;
+  openAdminPanel();
+}
+function openAdminPanel(){
+  const old=document.getElementById("admin-panel-beta25");
+  if(old)old.remove();
+
+  const overlay=document.createElement("div");
+  overlay.id="admin-panel-beta25";
+  overlay.style.position="fixed";
+  overlay.style.inset="0";
+  overlay.style.zIndex="100000";
+  overlay.style.background="rgba(0,0,0,.62)";
+  overlay.style.display="flex";
+  overlay.style.alignItems="center";
+  overlay.style.justifyContent="center";
+  overlay.style.padding="18px";
+
+  const panel=document.createElement("div");
+  panel.style.background="#fff";
+  panel.style.borderRadius="20px";
+  panel.style.width="min(620px,100%)";
+  panel.style.maxHeight="88vh";
+  panel.style.overflow="auto";
+  panel.style.padding="22px";
+  panel.innerHTML='<h2 style="margin-top:0">🛡️ Mode administrateur</h2>'+
+    '<p><b>Accès administrateur activé.</b></p>'+
+    '<p>Cette première version sert uniquement à valider l’accès séparé. Les fonctions permettant de modifier la base commune seront ajoutées après validation.</p>';
+
+  const pinTitle=document.createElement("h3");
+  pinTitle.textContent="Code administrateur";
+  panel.appendChild(pinTitle);
+
+  const change=document.createElement("button");
+  change.type="button";
+  change.textContent="🔑 Changer le code administrateur";
+  change.onclick=()=>{
+    const current=prompt("Code administrateur actuel :");
+    if(current===null)return;
+    if(current!==getAdminPin()){alert("Code actuel incorrect.");return;}
+    const next=prompt("Nouveau code administrateur (4 chiffres) :");
+    if(next===null)return;
+    if(!/^\d{4}$/.test(next)){alert("Le code doit contenir exactement 4 chiffres.");return;}
+    const confirmPin=prompt("Confirmez le nouveau code :");
+    if(confirmPin!==next){alert("Les deux codes ne correspondent pas.");return;}
+    localStorage.setItem(ADMIN_PIN_KEY,next);
+    alert("✓ Code administrateur modifié.");
+  };
+  change.style.padding="10px 14px";
+  change.style.marginRight="8px";
+  panel.appendChild(change);
+
+  const close=document.createElement("button");
+  close.type="button";
+  close.textContent="Fermer";
+  close.onclick=()=>{adminUnlocked=false;overlay.remove();};
+  close.style.padding="10px 14px";
+  panel.appendChild(close);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+
+function installAdminButton(){
+  if(document.getElementById("admin-access-beta25"))return;
+  const b=document.createElement("button");
+  b.id="admin-access-beta25";
+  b.type="button";
+  b.textContent="🛡️ Administrateur";
+  b.title="Accès réservé à l’administrateur de Ma CAA";
+  b.style.position="fixed";
+  b.style.left="12px";
+  b.style.bottom="12px";
+  b.style.zIndex="8000";
+  b.style.border="0";
+  b.style.borderRadius="12px";
+  b.style.padding="9px 12px";
+  b.style.fontWeight="700";
+  b.style.opacity=".72";
+  b.onclick=openAdminAccess;
+  document.body.appendChild(b);
+}
+document.addEventListener("DOMContentLoaded",installAdminButton);
+</script>
+
 </body></html>

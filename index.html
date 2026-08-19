@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 42</title>
+<title>Ma CAA v2.0 bêta 43</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -62,6 +62,13 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
   .pic{min-height:125px}
   .pic img,.token img{width:82px;height:82px}
 }
+
+.admin-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0 22px}
+.admin-picto-card{border:1px solid #dfe4ec;border-radius:16px;background:white;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:220px}
+.admin-picto-card .ap-name{text-align:center;font-weight:800;min-height:24px}
+.admin-picto-card .ap-vis{height:92px;display:flex;justify-content:center;align-items:center;font-size:56px}
+.admin-picto-card .ap-vis img{max-width:92px;max-height:92px;object-fit:contain;border-radius:9px}
+.admin-picto-card button{width:100%;min-height:38px}
 </style>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -80,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 42</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 43</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -151,7 +158,7 @@ const categories=[{icon:"⭐",name:"Favoris",items:[]},
 ]},
 {icon:"💬",name:"Mots essentiels",items:[["👍","Oui","oui"],["👎","Non","non"],["🛑","Stop","stop"],["➕","Encore","encore"],["🏁","Fini","c'est fini"],["🤝","Aide","j'ai besoin d'aide"],["🤷","Je ne sais pas","je ne sais pas"],["😕","Je ne comprends pas","je ne comprends pas"]]},
 {icon:"❓",name:"Questions",items:[["❓","Quoi ?","quoi"],["📍","Où ?","où"],["👤","Qui ?","qui"],["⏰","Quand ?","quand"],["💭","Pourquoi ?","pourquoi"]]},
-{icon:"🔒",name:"Mode adulte",items:[]}
+{icon:"🔒",name:"Mode parents",items:[]}
 ];
 const localPictos={"Toilettes":"images/toilettes.png","Manger":"images/manger.png","Boire":"images/boire.png","Eau":"images/eau.png","Dormir":"images/dormir.png","Aide":"images/aide.png","Se laver":"images/se_laver.svg","Brosser les dents":"images/brosser_dents.svg","S’habiller":"images/shabiller.svg","Laver les mains":"images/laver_mains.svg","Calme":"images/calme.svg","J’ai mal":"images/jai_mal.svg","J’ai froid":"images/jai_froid.svg","J’ai chaud":"images/jai_chaud.svg"};
 const starters=[["👤","Je","je"],["👉","Je veux","je veux"],["🙅","Je ne veux pas","je ne veux pas"],["🙏","J’ai besoin de","j'ai besoin de"],["➕","Encore","encore"],["🛑","C’est fini","c'est fini"]];
@@ -163,10 +170,10 @@ const hiddenCatNames=readHiddenCats();
 const catOrder=orderedCategoryNames();
 const ordered=categories
   .map((c,i)=>({c,i}))
-  .filter(({c})=>c.name==="Favoris"||c.name==="Mode adulte"||!hiddenCatNames.includes(c.name))
+  .filter(({c})=>c.name==="Favoris"||c.name==="Mode parents"||!hiddenCatNames.includes(c.name))
   .sort((a,b)=>{
  if(a.c.name==="Favoris")return -1;if(b.c.name==="Favoris")return 1;
- if(a.c.name==="Mode adulte")return 1;if(b.c.name==="Mode adulte")return -1;
+ if(a.c.name==="Mode parents")return 1;if(b.c.name==="Mode parents")return -1;
  const ao=catOrder.indexOf(a.c.name),bo=catOrder.indexOf(b.c.name);
  if(ao>=0&&bo>=0)return ao-bo;
  const ai=favCatNames.indexOf(a.c.name),bi=favCatNames.indexOf(b.c.name);
@@ -179,7 +186,7 @@ ordered.forEach(({c,i})=>{
   b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};
   target.appendChild(b);
 
-  if(c.name==="Mode adulte"){
+  if(c.name==="Mode parents"){
     const admin=document.createElement("button");
     admin.className="cat";
     admin.textContent="🛡️ Administrateur";
@@ -882,7 +889,7 @@ function writeCustomCats(v){localStorage.setItem(profiledKey(CUSTOM_CATS_KEY),JS
 function customCategoryObjects(){return readCustomCats().map(c=>({icon:c.icon||"📁",name:c.name,items:[],customId:c.id}))}
 function syncCustomCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].customId)categories.splice(i,1)}
-  const modeIndex=categories.findIndex(c=>c.name==="Mode adulte");
+  const modeIndex=categories.findIndex(c=>c.name==="Mode parents");
   const customs=customCategoryObjects();
   if(modeIndex>=0)categories.splice(modeIndex,0,...customs);else categories.push(...customs);
 }
@@ -957,7 +964,7 @@ function normalCategories(){
   syncCustomCategories();
   if(typeof syncAdminCategories==="function")syncAdminCategories();
   const a=readAdminBase();
-  return categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte"&&!a.hiddenCats.includes(c.name)&&!a.deletedCats.includes(c.name));
+  return categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!a.hiddenCats.includes(c.name)&&!a.deletedCats.includes(c.name));
 }
 function adminCategoryDisplay(cat){
   const e=readAdminBase().catEdits?.[cat.name]||{};
@@ -1112,7 +1119,7 @@ let adultUnlocked=false;
 function openAdultGate(){
   const overlay=document.createElement("div");overlay.className="adult-overlay";
   const box=document.createElement("div");box.className="adult-box";
-  box.innerHTML="<h2>🔒 Mode adulte</h2><p>Maintiens le bouton pendant 3 secondes pour accéder aux réglages.</p><div class='holdbar'><div class='holdfill'></div></div>";
+  box.innerHTML="<h2>🔒 Mode parents</h2><p>Maintiens le bouton pendant 3 secondes pour accéder aux réglages.</p><div class='holdbar'><div class='holdfill'></div></div>";
   const btn=document.createElement("button");btn.className="holdbtn";btn.textContent="Maintenir 3 secondes";
   btn.style.webkitUserSelect="none";btn.style.userSelect="none";btn.style.webkitTouchCallout="none";btn.style.touchAction="none";
   const close=document.createElement("button");close.className="closeadult";close.textContent="Annuler";
@@ -1135,7 +1142,7 @@ function openAdultGate(){
   }
   function success(){
     if(opened)return;
-    opened=true;reset();adultUnlocked=true;overlay.remove();render();renderProfileBar();showFeedback("Mode adulte");
+    opened=true;reset();adultUnlocked=true;overlay.remove();render();renderProfileBar();showFeedback("Mode parents");
   }
   function begin(e){
     if(opened||holding)return;
@@ -1166,13 +1173,13 @@ function lockAdult(){
 function ensureAdultBadge(){
   let b=document.getElementById("adultBadge");
   if(!adultUnlocked){if(b)b.remove();return}
-  if(!b){b=document.createElement("button");b.id="adultBadge";b.className="adult-badge";b.textContent="🔓 Quitter mode adulte";b.onclick=lockAdult;document.body.appendChild(b)}
+  if(!b){b=document.createElement("button");b.id="adultBadge";b.className="adult-badge";b.textContent="🔓 Quitter mode parents";b.onclick=lockAdult;document.body.appendChild(b)}
 }
 
 function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
-  if(c.name==="Mode adulte"){if(!adultUnlocked){openAdultGate();return}renderPersonalize(box);return}
+  if(c.name==="Mode parents"){if(!adultUnlocked){openAdultGate();return}renderPersonalize(box);return}
   let items=c.name==="Favoris"?favoriteItems():visibleItems(c);
   items=items.filter(x=>displayLabel(x).toLowerCase().includes(q));
   if(c.name==="Favoris" && items.length===0){
@@ -1239,7 +1246,7 @@ function syncAdminCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].adminAdded)categories.splice(i,1)}
   const a=readAdminBase();
   const extras=(a.addedCats||[]).filter(c=>!c.deleted).map(c=>({icon:c.icon||"📁",name:c.name,items:[],adminAdded:true,adminId:c.id}));
-  const modeIndex=categories.findIndex(c=>c.name==="Mode adulte");
+  const modeIndex=categories.findIndex(c=>c.name==="Mode parents");
   if(modeIndex>=0)categories.splice(modeIndex,0,...extras);else categories.push(...extras);
 }
 function writeAdminBase(v){
@@ -1310,7 +1317,7 @@ function openAdminAccess(){
 function adminManagedBaseItemsFor(cat){
   const a=readAdminBase(),out=[];
   for(const source of categories){
-    if(source.name==="Favoris"||source.name==="Mode adulte")continue;
+    if(source.name==="Favoris"||source.name==="Mode parents")continue;
     for(const x of (source.items||[])){
       const id=adminItemId(source,x);
       if(a.deletedItems.includes(id))continue;
@@ -1323,7 +1330,9 @@ function adminManagedBaseItemsFor(cat){
 }
 
 function openAdminPanel(){
-  const old=document.getElementById("admin-panel-beta25");if(old)old.remove();
+  const old=document.getElementById("admin-panel-beta25");
+  const keepScroll=old?old.scrollTop:0;
+  if(old)old.remove();
   const overlay=document.createElement("div");overlay.id="admin-panel-beta25";
   Object.assign(overlay.style,{position:"fixed",inset:"0",zIndex:"100000",background:"#f4f6fb",overflow:"auto"});
   const top=document.createElement("div");
@@ -1344,33 +1353,29 @@ function openAdminPanel(){
 
   const manage=document.createElement("section");manage.style.cssText="background:white;border-radius:16px;padding:16px";
   manage.innerHTML="<h3>🗂️ Catégories et pictogrammes de base</h3>";
-  categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte").forEach(cat=>{
+  categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
     const a=readAdminBase(),row=document.createElement("div");row.style.cssText="border-top:1px solid #ddd;padding:12px 0";
     const head=document.createElement("div");head.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
     const title=document.createElement("b");title.textContent=adminCatIcon(cat)+" "+adminCatName(cat);head.appendChild(title);
     const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;return b};
     head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
     row.appendChild(head);
+    const cardGrid=document.createElement("div");cardGrid.className="admin-card-grid";
+    function adminCard(label,emoji,image,edit,toggle,toggleLabel,del){
+      const card=document.createElement("div");card.className="admin-picto-card";
+      const name=document.createElement("div");name.className="ap-name";name.textContent=label;
+      const vis=document.createElement("div");vis.className="ap-vis";
+      if(image){const im=document.createElement("img");im.src=image;im.alt="";vis.appendChild(im)}else vis.textContent=emoji||"🖼️";
+      card.append(name,vis,btn("✏️ Modifier",edit),btn(toggleLabel,toggle),btn("🗑️ Supprimer",del));cardGrid.appendChild(card);
+    }
     adminManagedBaseItemsFor(cat).forEach(({source,x,id,e})=>{
-      const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
-      const d=adminItemData(source,x),lab=document.createElement("span");
-      lab.textContent=d[0]+" "+d[1];
-      lab.style.minWidth="150px";ir.appendChild(lab);
-      ir.append(
-        btn("✏️ Modifier",()=>adminEditItem(source,x)),
-        btn(a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleItem(source,x)),
-        btn("🗑️ Supprimer",()=>adminDeleteItem(source,x))
-      );
-      row.appendChild(ir);
+      const d=adminItemData(source,x);
+      adminCard(d[1],d[0],d[4]||"",()=>adminEditItem(source,x),()=>adminToggleItem(source,x),a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer",()=>adminDeleteItem(source,x));
     });
     (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
-      const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
-      if(item.image){
-        const th=document.createElement("img");th.src=item.image;th.alt="";th.style.cssText="width:28px;height:28px;object-fit:contain;border-radius:5px;margin-right:6px";ir.appendChild(th);
-      }
-      const lab=document.createElement("span");lab.textContent=(item.image?"":(item.emoji||"🖼️")+" ")+item.label;lab.style.minWidth="150px";ir.appendChild(lab);
-      ir.append(btn("✏️ Modifier",()=>adminEditAddedItem(item)),btn(item.hidden?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleAddedItem(item)),btn("🗑️ Supprimer",()=>adminDeleteAddedItem(item)));row.appendChild(ir);
+      adminCard(item.label,item.emoji||"🖼️",item.image||"",()=>adminEditAddedItem(item),()=>adminToggleAddedItem(item),item.hidden?"👁️ Réafficher":"🙈 Masquer",()=>adminDeleteAddedItem(item));
     });
+    row.appendChild(cardGrid);
     manage.appendChild(row);
   });
   content.appendChild(manage);
@@ -1381,19 +1386,14 @@ function openAdminPanel(){
     const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");
     if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.");
   };security.appendChild(change);content.appendChild(security);
-  overlay.appendChild(content);document.body.appendChild(overlay);
+  overlay.appendChild(content);document.body.appendChild(overlay); ;requestAnimationFrame(()=>{overlay.scrollTop=keepScroll});
 }
 function adminRefresh(){openAdminPanel();render()}
 function adminEditCategory(cat){const a=readAdminBase(),e=a.catEdits[cat.name]||{},n=prompt("Nom de la catégorie :",e.name||cat.name);if(n===null)return;const i=prompt("Emoji :",e.icon||cat.icon);if(i===null)return;a.catEdits[cat.name]={name:n.trim()||cat.name,icon:i.trim()||cat.icon};writeAdminBase(a);adminRefresh()}
-function adminToggleCat(cat){const a=readAdminBase(),i=a.hiddenCats.indexOf(cat.name);if(i>=0)a.hiddenCats.splice(i,1);else a.hiddenCats.push(cat.name);writeAdminBase(a);adminRefresh()}
-function adminDeleteCat(cat){if(!confirm("Supprimer cette catégorie de la base ?"))return;const a=readAdminBase();if(!a.deletedCats.includes(cat.name))a.deletedCats.push(cat.name);writeAdminBase(a);adminRefresh()}
-function adminEditItem(cat,x){
-  const a=readAdminBase(),id=adminItemId(cat,x),e=a.items[id]||{};
-  adminPermanentPictogramForm({
-    _baseItem:true,_baseId:id,category:e.category||cat.name,
-    label:e.label||x[1],speech:e.speech||x[2],emoji:e.emoji||x[0],
-    image:e.image||""
-  });
+function adminToggleCat(cat){
+  const a=readAdminBase(),k=cat.name;
+  if(a.hiddenCats.includes(k))a.hiddenCats=a.hiddenCats.filter(x=>x!==k);else a.hiddenCats.push(k);
+  writeAdminBase(a);syncAdminCategories();render();if(adminUnlocked)openAdminPanel();
 }
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
 function adminDeleteItem(cat,x){
@@ -1416,7 +1416,7 @@ function adminPermanentPictogramForm(existing){
   panel.innerHTML="<h2>"+(existing?"✏️ Modifier le pictogramme permanent":"➕ Ajouter un pictogramme permanent")+"</h2>";
 
   const categoriesList=[
-    ...categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte").map(c=>c.name),
+    ...categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").map(c=>c.name),
     ...(a.addedCats||[]).filter(c=>!c.deleted).map(c=>c.name)
   ];
 

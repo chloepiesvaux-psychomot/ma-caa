@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 38</title>
+<title>Ma CAA v2.0 bêta 39</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 38</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 39</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -361,6 +361,7 @@ function writeCustom(v){localStorage.setItem(profiledKey(CUSTOM_KEY),JSON.string
 function customFor(x){return readCustom()[itemId2(x)]||{}}
 function adminOverrideFor(x){
   const base=readAdminBase(),items=base.items||{};
+  if(x[6]&&items[x[6]])return items[x[6]];
   for(const c of categories){
     if((c.items||[]).includes(x)){
       return items[adminItemId(c,x)]||{};
@@ -798,7 +799,7 @@ async function syncPullOneByName(name,silent=false,preserveActive=false){
 }
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
-async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}for(const [base,raw] of Object.entries(row.data?.storage||{}))if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw)}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profils récupérés")}
+async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;for(const [base,raw] of Object.entries(bundle.storage||{})){if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);else if(raw&&typeof raw==="object")localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));}}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome()}
 async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else openProfiles()}
 async function cloudLogout(){await cloudClient?.auth.signOut();openProfiles()}
 function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;const pullName=document.createElement("input");pullName.placeholder="Nom exact du profil à récupérer";
@@ -961,8 +962,18 @@ function normalCategories(){
 function baseItems(cat){
   const a=readAdminBase();
   const built=cat.items.filter(x=>adminItemAvailable(cat,x)).map(x=>adminItemData(cat,x));
-  const extra=(a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted&&!x.hidden).map(x=>[x.emoji||"🖼️",x.label,x.speech||x.label,x.id]);
-  return built.concat(extra);
+  const moved=[];
+  for(const source of categories){
+    if(source===cat)continue;
+    for(const x of (source.items||[])){
+      const id=adminItemId(source,x),e=a.items?.[id]||{};
+      if(e.category===cat.name&&!a.hiddenItems.includes(id)&&!a.deletedItems.includes(id)){
+        moved.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||"",false,id]);
+      }
+    }
+  }
+  const extra=(a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted&&!x.hidden).map(x=>[x.emoji||"🖼️",x.label,x.speech||x.label,x.id,x.image||"",true]);
+  return built.concat(moved,extra);
 }
 function orderedItems(cat){
   const items=baseItems(cat).concat(addedForCategory(cat.name));
@@ -1087,7 +1098,7 @@ function renderPersonalize(box){
       const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
       const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
       actions.append(vis,up,down,edit);
-      if(isAdded(x)){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️ Supprimer";del.onclick=()=>deleteAdded(x);actions.appendChild(del);}info.appendChild(actions);
+      if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️ Supprimer";del.onclick=()=>deleteAdded(x);actions.appendChild(del);}info.appendChild(actions);
       card.append(visual,info);box.appendChild(card);
     });
   });
@@ -1268,8 +1279,8 @@ function adminItemData(cat,x){
   return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||""];
 }
 function adminItemAvailable(cat,x){
-  const a=readAdminBase(),id=adminItemId(cat,x);
-  return !a.hiddenItems.includes(id)&&!a.deletedItems.includes(id);
+  const a=readAdminBase(),id=adminItemId(cat,x),e=a.items?.[id]||{};
+  return !a.hiddenItems.includes(id)&&!a.deletedItems.includes(id)&&(!e.category||e.category===cat.name);
 }
 
 let adminUnlocked=false;
@@ -1348,7 +1359,7 @@ function adminDeleteCat(cat){if(!confirm("Supprimer cette catégorie de la base 
 function adminEditItem(cat,x){
   const a=readAdminBase(),id=adminItemId(cat,x),e=a.items[id]||{};
   adminPermanentPictogramForm({
-    _baseItem:true,_baseId:id,category:cat.name,
+    _baseItem:true,_baseId:id,category:e.category||cat.name,
     label:e.label||x[1],speech:e.speech||x[2],emoji:e.emoji||x[0],
     image:e.image||""
   });
@@ -1485,7 +1496,7 @@ function adminPermanentPictogramForm(existing){
     const base=readAdminBase();
     if(existing&&existing._baseItem){
       const cur=base.items[existing._baseId]||{};
-      cur.label=l;cur.speech=s;cur.emoji=e;
+      cur.label=l;cur.speech=s;cur.emoji=e;cur.category=cat.value;
       if(photoValue.value)cur.image=photoValue.value;else delete cur.image;
       base.items[existing._baseId]=cur;
     }else if(existing){

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 48</title>
+<title>Ma CAA v2.0 bêta 49</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 48</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 49</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -182,7 +182,8 @@ const ordered=categories
 ordered.forEach(({c,i})=>{
   const b=document.createElement("button");
   b.className="cat"+(i===current?" active":"");
-  b.textContent=c.icon+" "+c.name;
+  const cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};
+  b.textContent=cd.icon+" "+cd.name;
   b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};
   target.appendChild(b);
 
@@ -930,7 +931,7 @@ async function syncPullOneByName(name,silent=false,preserveActive=false){
 }
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
-async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;for(const [base,raw] of Object.entries(bundle.storage||{})){if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);else if(raw&&typeof raw==="object")localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));}}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome()}
+async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;for(const [base,raw] of Object.entries(bundle.storage||{})){if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);else if(raw&&typeof raw==="object")localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));}}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,100);showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome()}
 async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else openProfiles()}
 async function cloudLogout(){await cloudClient?.auth.signOut();openProfiles()}
 function addSyncPanel(panel){const box=document.createElement("div");box.className="syncbox";box.innerHTML="<b>☁️ Synchronisation entre appareils</b><div class='syncstatus'>Vérification…</div>";panel.insertBefore(box,panel.children[1]||null);cloudUser().then(u=>{const s=box.querySelector(".syncstatus");if(u){s.textContent="✓ Connecté : "+u.email;const pullName=document.createElement("input");pullName.placeholder="Nom exact du profil à récupérer";
@@ -1044,7 +1045,19 @@ function deleteCustomCategory(cat){
   syncCustomCategories();render();showFeedback("Catégorie supprimée");
 }
 
-function readAdded(){try{return JSON.parse(localStorage.getItem(profiledKey(ADDED_KEY))||"[]")}catch(e){return []}}
+function normalizeCloudImageRef(v){
+  if(v&&typeof v==="object"&&v.__cloud_image===true&&v.path)return v;
+  if(typeof v==="string"){
+    try{const o=JSON.parse(v);if(o&&o.__cloud_image===true&&o.path)return o}catch(e){}
+  }
+  return v;
+}
+function readAdded(){
+  try{
+    const arr=JSON.parse(localStorage.getItem(profiledKey(ADDED_KEY))||"[]");
+    return Array.isArray(arr)?arr.map(a=>({...a,image:normalizeCloudImageRef(a.image)})):[];
+  }catch(e){return []}
+}
 function writeAdded(v){localStorage.setItem(profiledKey(ADDED_KEY),JSON.stringify(v));localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush()}
 function addedForCategory(name){return readAdded().filter(a=>a.category===name).map(a=>[a.emoji||"🖼️",a.label,a.speech,a.id])}
 function isAdded(x){return !!x[3]}
@@ -1300,7 +1313,7 @@ function ensureAdultBadge(){
   if(!b){b=document.createElement("button");b.id="adultBadge";b.className="adult-badge";b.textContent="🔓 Quitter mode parents";b.onclick=lockAdult;document.body.appendChild(b)}
 }
 
-function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);
+function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
   if(c.name==="Mode parents"){if(!adultUnlocked){openAdultGate();return}renderPersonalize(box);return}
@@ -1315,7 +1328,7 @@ function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAl
   items.forEach(x=>createNormalCard(x,box));
 }
 function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
-function render(){el("title").textContent=categories[current].name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase()}
+function render(){const c=categories[current],cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};el("title").textContent=cd.name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase();setTimeout(hydrateAllCloudPictures,0)}
 starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});
 el("search").oninput=renderGrid;el("speak").onclick=el("speak2").onclick=speak;el("clear").onclick=el("clear2").onclick=()=>{phrase=[];renderPhrase()};el("undo").onclick=()=>{phrase.pop();renderPhrase()};el("cats").onclick=()=>el("drawer").classList.add("open");el("close").onclick=()=>el("drawer").classList.remove("open");
 render();
@@ -1638,11 +1651,30 @@ function adminRefresh(){
   openAdminPanel();render();
   requestAnimationFrame(()=>{const p=document.getElementById("admin-panel-beta25");if(p)p.scrollTop=y});
 }
-function adminEditCategory(cat){const a=readAdminBase(),e=a.catEdits[cat.name]||{},n=prompt("Nom de la catégorie :",e.name||cat.name);if(n===null)return;const i=prompt("Emoji :",e.icon||cat.icon);if(i===null)return;a.catEdits[cat.name]={name:n.trim()||cat.name,icon:i.trim()||cat.icon};writeAdminBase(a);adminRefresh()}
+function adminEditCategory(cat){
+  const a=readAdminBase(),key=cat.name,e=a.catEdits[key]||{};
+  const oldDisplay=e.name||cat.name;
+  const n=prompt("Nom de la catégorie :",oldDisplay);if(n===null)return;
+  const i=prompt("Emoji :",e.icon||cat.icon);if(i===null)return;
+  const newName=n.trim()||oldDisplay;
+  a.catEdits[key]={name:newName,icon:i.trim()||cat.icon};
+
+  // Les pictogrammes administrateur déplacés/ajoutés peuvent référencer l'ancien nom affiché.
+  Object.values(a.items||{}).forEach(v=>{if(v&&v.category===oldDisplay)v.category=key});
+  (a.addedItems||[]).forEach(v=>{if(v.category===oldDisplay)v.category=key});
+  writeAdminBase(a);
+
+  // Migrer aussi les pictogrammes personnels qui auraient enregistré le nom affiché.
+  const personals=readAdded();
+  let changed=false;
+  personals.forEach(v=>{if(v.category===oldDisplay){v.category=key;changed=true}});
+  if(changed)writeAdded(personals);
+  adminRefresh();
+}
 function adminToggleCat(cat){
   const a=readAdminBase(),k=cat.name;
   if(a.hiddenCats.includes(k))a.hiddenCats=a.hiddenCats.filter(x=>x!==k);else a.hiddenCats.push(k);
-  writeAdminBase(a);syncAdminCategories();render();if(adminUnlocked)openAdminPanel();
+  writeAdminBase(a);syncAdminCategories();render();if(adminUnlocked)adminRefresh();
 }
 
 function adminEditItem(cat,x){

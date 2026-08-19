@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 40</title>
+<title>Ma CAA v2.0 bêta 41</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 40</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 41</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -959,6 +959,10 @@ function normalCategories(){
   const a=readAdminBase();
   return categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte"&&!a.hiddenCats.includes(c.name)&&!a.deletedCats.includes(c.name));
 }
+function adminCategoryDisplay(cat){
+  const e=readAdminBase().catEdits?.[cat.name]||{};
+  return {name:e.name||cat.name,icon:e.icon||cat.icon};
+}
 function baseItems(cat){
   const a=readAdminBase();
   const built=cat.items.filter(x=>adminItemAvailable(cat,x)).map(x=>adminItemData(cat,x));
@@ -1346,7 +1350,7 @@ function openAdminPanel(){
     adminManagedBaseItemsFor(cat).forEach(({source,x,id,e})=>{
       const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
       const d=adminItemData(source,x),lab=document.createElement("span");
-      lab.textContent=d[0]+" "+d[1]+(source.name!==cat.name?"  • déplacé":"");
+      lab.textContent=d[0]+" "+d[1];
       lab.style.minWidth="150px";ir.appendChild(lab);
       ir.append(
         btn("✏️ Modifier",()=>adminEditItem(source,x)),
@@ -1356,11 +1360,11 @@ function openAdminPanel(){
       row.appendChild(ir);
     });
     (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
-      const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap;background:#f7f9fc;padding:7px;border-radius:10px";
+      const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
       if(item.image){
-        const th=document.createElement("img");th.src=item.image;th.alt="";th.style.cssText="width:52px;height:52px;object-fit:contain;border-radius:9px;background:white;border:1px solid #ddd";ir.appendChild(th);
+        const th=document.createElement("img");th.src=item.image;th.alt="";th.style.cssText="width:28px;height:28px;object-fit:contain;border-radius:5px;margin-right:6px";ir.appendChild(th);
       }
-      const lab=document.createElement("span");lab.textContent=(item.image?"":(item.emoji||"🖼️")+" ")+item.label+"  • ajouté";lab.style.minWidth="150px";ir.appendChild(lab);
+      const lab=document.createElement("span");lab.textContent=(item.image?"":(item.emoji||"🖼️")+" ")+item.label;lab.style.minWidth="150px";ir.appendChild(lab);
       ir.append(btn("✏️ Modifier",()=>adminEditAddedItem(item)),btn(item.hidden?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleAddedItem(item)),btn("🗑️ Supprimer",()=>adminDeleteAddedItem(item)));row.appendChild(ir);
     });
     manage.appendChild(row);
@@ -1388,7 +1392,13 @@ function adminEditItem(cat,x){
   });
 }
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
-function adminDeleteItem(cat,x){if(!confirm("Supprimer ce pictogramme de la base ?"))return;const a=readAdminBase(),id=adminItemId(cat,x);if(!a.deletedItems.includes(id))a.deletedItems.push(id);writeAdminBase(a);adminRefresh()}
+function adminDeleteItem(cat,x){
+  if(!confirm("Supprimer ce pictogramme de la base commune ?"))return;
+  const a=readAdminBase(),id=(x&&x[6])||adminItemId(cat,x);
+  if(!a.deletedItems.includes(id))a.deletedItems.push(id);
+  if(a.hiddenItems.includes(id))a.hiddenItems=a.hiddenItems.filter(v=>v!==id);
+  writeAdminBase(a);adminRefresh();
+}
 
 function adminPermanentPictogramForm(existing){
   const a=readAdminBase();

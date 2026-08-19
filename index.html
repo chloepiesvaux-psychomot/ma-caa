@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 39</title>
+<title>Ma CAA v2.0 bêta 40</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 39</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 40</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1298,6 +1298,22 @@ function openAdminAccess(){
   adminUnlocked=true;
   openAdminPanel();
 }
+
+function adminManagedBaseItemsFor(cat){
+  const a=readAdminBase(),out=[];
+  for(const source of categories){
+    if(source.name==="Favoris"||source.name==="Mode adulte")continue;
+    for(const x of (source.items||[])){
+      const id=adminItemId(source,x);
+      if(a.deletedItems.includes(id))continue;
+      const e=a.items?.[id]||{};
+      const currentCat=e.category||source.name;
+      if(currentCat===cat.name)out.push({source,x,id,e});
+    }
+  }
+  return out;
+}
+
 function openAdminPanel(){
   const old=document.getElementById("admin-panel-beta25");if(old)old.remove();
   const overlay=document.createElement("div");overlay.id="admin-panel-beta25";
@@ -1327,10 +1343,17 @@ function openAdminPanel(){
     const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;return b};
     head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
     row.appendChild(head);
-    cat.items.forEach(x=>{
-      const id=adminItemId(cat,x),ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
-      const d=adminItemData(cat,x),lab=document.createElement("span");lab.textContent=d[0]+" "+d[1];lab.style.minWidth="150px";ir.appendChild(lab);
-      ir.append(btn("✏️ Modifier",()=>adminEditItem(cat,x)),btn(a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleItem(cat,x)),btn("🗑️ Supprimer",()=>adminDeleteItem(cat,x)));row.appendChild(ir);
+    adminManagedBaseItemsFor(cat).forEach(({source,x,id,e})=>{
+      const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
+      const d=adminItemData(source,x),lab=document.createElement("span");
+      lab.textContent=d[0]+" "+d[1]+(source.name!==cat.name?"  • déplacé":"");
+      lab.style.minWidth="150px";ir.appendChild(lab);
+      ir.append(
+        btn("✏️ Modifier",()=>adminEditItem(source,x)),
+        btn(a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleItem(source,x)),
+        btn("🗑️ Supprimer",()=>adminDeleteItem(source,x))
+      );
+      row.appendChild(ir);
     });
     (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
       const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap;background:#f7f9fc;padding:7px;border-radius:10px";

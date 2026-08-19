@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 28</title>
+<title>Ma CAA v2.0 bêta 29</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 28</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 29</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -557,7 +557,7 @@ function chooseProfileImport(){
 
 const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHABLE_KEY="sb_publishable_zyK0hA08C8Fg8hPYPBT5_g_I0KAi9UN";
 let cloudClient=null;
-function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(startSafeAutoPull,1200)}}catch(e){console.error(e)}}
+function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(startSafeAutoPull,1200);setTimeout(startAdminBaseCloud,1400)}}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){
   const p=readProfiles().find(x=>x.id===id);if(!p)return null;
@@ -1069,6 +1069,11 @@ function ensureAdultBadge(){
   let b=document.getElementById("adultBadge");
   if(!adultUnlocked){if(b)b.remove();return}
   if(!b){b=document.createElement("button");b.id="adultBadge";b.className="adult-badge";b.textContent="🔓 Quitter mode adulte";b.onclick=lockAdult;document.body.appendChild(b)}
+  const adminNav=document.createElement("button");
+  adminNav.className="navbtn";
+  adminNav.innerHTML="<span>🛡️</span><span>Administrateur</span>";
+  adminNav.onclick=()=>{closeMobileNav();openAdminAccess()};
+  target.appendChild(adminNav);
 }
 
 function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);
@@ -1137,7 +1142,34 @@ const DEFAULT_ADMIN_PIN="2580";
 
 const ADMIN_BASE_KEY="ma-caa-admin-base-v1";
 function readAdminBase(){try{return JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}')}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[]}}}
-function writeAdminBase(v){localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(v));render()}
+function writeAdminBase(v){localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(v));render();scheduleAdminBasePush()}
+
+let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null;
+function scheduleAdminBasePush(){clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,1200)}
+async function adminBasePush(){
+  if(adminBaseCloudBusy||!cloudClient)return;
+  const u=await cloudUser();if(!u)return;
+  adminBaseCloudBusy=true;
+  try{
+    const r=await cloudClient.from("app_config").upsert({key:"admin_base",data:readAdminBase(),updated_at:new Date().toISOString()},{onConflict:"key"}).select("updated_at").single();
+    if(r.error)throw r.error;adminBaseCloudUpdated=r.data?.updated_at||null;
+  }catch(e){console.error("Admin base push",e)}finally{adminBaseCloudBusy=false}
+}
+async function adminBasePull(){
+  if(adminBaseCloudBusy||!cloudClient)return;
+  const u=await cloudUser();if(!u)return;
+  adminBaseCloudBusy=true;
+  try{
+    const r=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
+    if(r.error)throw r.error;
+    if(r.data&&r.data.updated_at!==adminBaseCloudUpdated){
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(r.data.data||{}));adminBaseCloudUpdated=r.data.updated_at||null;render();
+      if(adminUnlocked)openAdminPanel();
+    }
+  }catch(e){console.error("Admin base pull",e)}finally{adminBaseCloudBusy=false}
+}
+function startAdminBaseCloud(){setInterval(()=>{if(document.visibilityState==="visible")adminBasePull()},5000);setTimeout(adminBasePull,1800)}
+
 function adminItemId(cat,x){return cat.name+"||"+x[1]+"||"+x[2]}
 function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name}
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
@@ -1262,7 +1294,7 @@ function installAdminButton(){
   b.onclick=openAdminAccess;
   document.body.appendChild(b);
 }
-document.addEventListener("DOMContentLoaded",installAdminButton);
+
 </script>
 
 </body></html>

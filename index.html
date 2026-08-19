@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 26</title>
+<title>Ma CAA v2.0 bêta 27</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 26</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 27</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -871,8 +871,19 @@ function openAddPicto(){
   row.append(save,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 
-function normalCategories(){syncCustomCategories();return categories.filter(c=>c.name!=="Favoris" && c.name!=="Mode adulte");}
-function baseItems(cat){return cat.items.slice()}
+function normalCategories(){
+  syncCustomCategories();
+  const a=readAdminBase();
+  const built=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte"&&!a.hiddenCats.includes(c.name)&&!a.deletedCats.includes(c.name));
+  const extras=(a.addedCats||[]).filter(c=>!c.deleted).map(c=>({icon:c.icon||"📁",name:c.name,items:[],adminAdded:true}));
+  return built.concat(extras);
+}
+function baseItems(cat){
+  const a=readAdminBase();
+  const built=cat.items.filter(x=>adminItemAvailable(cat,x)).map(x=>adminItemData(cat,x));
+  const extra=(a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).map(x=>[x.emoji||"🖼️",x.label,x.speech||x.label,x.id]);
+  return built.concat(extra);
+}
 function orderedItems(cat){
   const items=baseItems(cat).concat(addedForCategory(cat.name));
   const map=readOrder(), ids=map[cat.name]||[];
@@ -1123,6 +1134,22 @@ window.addEventListener("pagehide",()=>{
    Accès séparé uniquement. Aucun pictogramme de base n'est encore modifié. */
 const ADMIN_PIN_KEY="ma-caa-admin-pin-v1";
 const DEFAULT_ADMIN_PIN="2580";
+
+const ADMIN_BASE_KEY="ma-caa-admin-base-v1";
+function readAdminBase(){try{return JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}')}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[]}}}
+function writeAdminBase(v){localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(v));render()}
+function adminItemId(cat,x){return cat.name+"||"+x[1]+"||"+x[2]}
+function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name}
+function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
+function adminItemData(cat,x){
+  const e=readAdminBase().items?.[adminItemId(cat,x)]||{};
+  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3]];
+}
+function adminItemAvailable(cat,x){
+  const a=readAdminBase(),id=adminItemId(cat,x);
+  return !a.hiddenItems.includes(id)&&!a.deletedItems.includes(id);
+}
+
 let adminUnlocked=false;
 
 function getAdminPin(){
@@ -1139,103 +1166,60 @@ function openAdminAccess(){
   openAdminPanel();
 }
 function openAdminPanel(){
-  const old=document.getElementById("admin-panel-beta25");
-  if(old)old.remove();
-
-  const overlay=document.createElement("div");
-  overlay.id="admin-panel-beta25";
-  overlay.style.position="fixed";
-  overlay.style.inset="0";
-  overlay.style.zIndex="100000";
-  overlay.style.background="#f4f6fb";
-  overlay.style.overflow="auto";
-
+  const old=document.getElementById("admin-panel-beta25");if(old)old.remove();
+  const overlay=document.createElement("div");overlay.id="admin-panel-beta25";
+  Object.assign(overlay.style,{position:"fixed",inset:"0",zIndex:"100000",background:"#f4f6fb",overflow:"auto"});
   const top=document.createElement("div");
-  top.style.position="sticky";
-  top.style.top="0";
-  top.style.zIndex="2";
-  top.style.background="#243b6b";
-  top.style.color="white";
-  top.style.padding="14px 18px";
-  top.style.display="flex";
-  top.style.alignItems="center";
-  top.style.justifyContent="space-between";
-  top.style.gap="12px";
-  top.style.flexWrap="wrap";
+  Object.assign(top.style,{position:"sticky",top:"0",zIndex:"2",background:"#243b6b",color:"white",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"});
+  top.innerHTML='<div><div style="font-size:22px;font-weight:800">🛡️ MODE ADMINISTRATEUR</div><div style="font-size:13px;opacity:.9">Gestion de la base commune</div></div>';
+  const exit=document.createElement("button");exit.textContent="✕ Quitter";exit.onclick=()=>{adminUnlocked=false;overlay.remove();};top.appendChild(exit);overlay.appendChild(top);
+  const content=document.createElement("div");Object.assign(content.style,{width:"min(980px,calc(100% - 24px))",margin:"18px auto",display:"grid",gap:"14px"});
 
-  const title=document.createElement("div");
-  title.innerHTML='<div style="font-size:22px;font-weight:800">🛡️ MODE ADMINISTRATEUR</div><div style="font-size:13px;opacity:.9">Base commune de Ma CAA</div>';
-  top.appendChild(title);
+  const notice=document.createElement("section");notice.style.cssText="background:#fff7d6;border-radius:16px;padding:15px";
+  notice.innerHTML="<b>⚠️ Étape bêta 27</b><br>Tu peux maintenant gérer réellement la base sur cet appareil. La diffusion automatique de ces changements à tous les comptes sera branchée à Supabase à l’étape suivante.";
+  content.appendChild(notice);
 
-  const exit=document.createElement("button");
-  exit.type="button";
-  exit.textContent="✕ Quitter le mode administrateur";
-  exit.style.padding="10px 13px";
-  exit.style.border="0";
-  exit.style.borderRadius="10px";
-  exit.style.fontWeight="800";
-  exit.onclick=()=>{adminUnlocked=false;overlay.remove();};
-  top.appendChild(exit);
-  overlay.appendChild(top);
+  const add=document.createElement("section");add.style.cssText="background:white;border-radius:16px;padding:16px";
+  add.innerHTML="<h3>➕ Ajouter à la base</h3>";
+  const addPic=document.createElement("button");addPic.textContent="➕ Ajouter un pictogramme permanent";addPic.onclick=()=>adminAddPictogram();
+  const addCat=document.createElement("button");addCat.textContent="📁 Ajouter une catégorie";addCat.style.marginLeft="8px";addCat.onclick=()=>adminAddCategory();
+  add.append(addPic,addCat);content.appendChild(add);
 
-  const content=document.createElement("div");
-  content.style.width="min(900px,calc(100% - 28px))";
-  content.style.margin="22px auto";
-  content.style.display="grid";
-  content.style.gap="16px";
+  const manage=document.createElement("section");manage.style.cssText="background:white;border-radius:16px;padding:16px";
+  manage.innerHTML="<h3>🗂️ Catégories et pictogrammes de base</h3>";
+  categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte").forEach(cat=>{
+    const a=readAdminBase(),row=document.createElement("div");row.style.cssText="border-top:1px solid #ddd;padding:12px 0";
+    const head=document.createElement("div");head.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
+    const title=document.createElement("b");title.textContent=adminCatIcon(cat)+" "+adminCatName(cat);head.appendChild(title);
+    const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;return b};
+    head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
+    row.appendChild(head);
+    cat.items.forEach(x=>{
+      const id=adminItemId(cat,x),ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap";
+      const d=adminItemData(cat,x),lab=document.createElement("span");lab.textContent=d[0]+" "+d[1];lab.style.minWidth="150px";ir.appendChild(lab);
+      ir.append(btn("✏️",()=>adminEditItem(cat,x)),btn(a.hiddenItems.includes(id)?"👁️":"🙈",()=>adminToggleItem(cat,x)),btn("🗑️",()=>adminDeleteItem(cat,x)));row.appendChild(ir);
+    });
+    manage.appendChild(row);
+  });
+  content.appendChild(manage);
 
-  const intro=document.createElement("section");
-  intro.style.background="white";
-  intro.style.borderRadius="18px";
-  intro.style.padding="18px";
-  intro.innerHTML='<h2 style="margin-top:0">Administration de Ma CAA</h2>'+
-    '<p>Tu es maintenant dans un espace distinct du Mode adulte.</p>'+
-    '<p><b>Important :</b> les futures modifications réalisées ici concerneront la base commune de l’application, et non un seul profil.</p>';
-  content.appendChild(intro);
-
-  const future=document.createElement("section");
-  future.style.background="white";
-  future.style.borderRadius="18px";
-  future.style.padding="18px";
-  future.innerHTML='<h3 style="margin-top:0">🌐 Base commune</h3>'+
-    '<div style="padding:14px;border:2px dashed #cbd3e1;border-radius:14px">'+
-    '<b>➕ Ajouter un pictogramme permanent</b><br>'+
-    '<span style="font-size:14px">Cette fonction sera activée à l’étape suivante, après validation de cet écran administrateur.</span>'+
-    '</div>';
-  content.appendChild(future);
-
-  const security=document.createElement("section");
-  security.style.background="white";
-  security.style.borderRadius="18px";
-  security.style.padding="18px";
-  const pinTitle=document.createElement("h3");
-  pinTitle.textContent="🔐 Sécurité administrateur";
-  pinTitle.style.marginTop="0";
-  security.appendChild(pinTitle);
-
-  const change=document.createElement("button");
-  change.type="button";
-  change.textContent="🔑 Changer le code administrateur";
-  change.onclick=()=>{
-    const current=prompt("Code administrateur actuel :");
-    if(current===null)return;
-    if(current!==getAdminPin()){alert("Code actuel incorrect.");return;}
-    const next=prompt("Nouveau code administrateur (4 chiffres) :");
-    if(next===null)return;
-    if(!/^\d{4}$/.test(next)){alert("Le code doit contenir exactement 4 chiffres.");return;}
-    const confirmPin=prompt("Confirmez le nouveau code :");
-    if(confirmPin!==next){alert("Les deux codes ne correspondent pas.");return;}
-    localStorage.setItem(ADMIN_PIN_KEY,next);
-    alert("✓ Code administrateur modifié.");
-  };
-  change.style.padding="11px 14px";
-  change.style.borderRadius="10px";
-  security.appendChild(change);
-  content.appendChild(security);
-
-  overlay.appendChild(content);
-  document.body.appendChild(overlay);
+  const security=document.createElement("section");security.style.cssText="background:white;border-radius:16px;padding:16px";
+  const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{
+    const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");
+    const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");
+    if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.");
+  };security.appendChild(change);content.appendChild(security);
+  overlay.appendChild(content);document.body.appendChild(overlay);
 }
+function adminRefresh(){openAdminPanel();render()}
+function adminEditCategory(cat){const a=readAdminBase(),e=a.catEdits[cat.name]||{},n=prompt("Nom de la catégorie :",e.name||cat.name);if(n===null)return;const i=prompt("Emoji :",e.icon||cat.icon);if(i===null)return;a.catEdits[cat.name]={name:n.trim()||cat.name,icon:i.trim()||cat.icon};writeAdminBase(a);adminRefresh()}
+function adminToggleCat(cat){const a=readAdminBase(),i=a.hiddenCats.indexOf(cat.name);if(i>=0)a.hiddenCats.splice(i,1);else a.hiddenCats.push(cat.name);writeAdminBase(a);adminRefresh()}
+function adminDeleteCat(cat){if(!confirm("Supprimer cette catégorie de la base ?"))return;const a=readAdminBase();if(!a.deletedCats.includes(cat.name))a.deletedCats.push(cat.name);writeAdminBase(a);adminRefresh()}
+function adminEditItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),e=a.items[id]||{},lab=prompt("Texte affiché :",e.label||x[1]);if(lab===null)return;const sp=prompt("Phrase prononcée :",e.speech||x[2]);if(sp===null)return;const em=prompt("Emoji :",e.emoji||x[0]);if(em===null)return;a.items[id]={label:lab.trim()||x[1],speech:sp.trim()||x[2],emoji:em.trim()||x[0]};writeAdminBase(a);adminRefresh()}
+function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
+function adminDeleteItem(cat,x){if(!confirm("Supprimer ce pictogramme de la base ?"))return;const a=readAdminBase(),id=adminItemId(cat,x);if(!a.deletedItems.includes(id))a.deletedItems.push(id);writeAdminBase(a);adminRefresh()}
+function adminAddCategory(){const n=prompt("Nom de la nouvelle catégorie :");if(!n)return;const i=prompt("Emoji :","📁");if(i===null)return;const a=readAdminBase();a.addedCats.push({id:"ac"+Date.now(),name:n.trim(),icon:i.trim()||"📁"});writeAdminBase(a);adminRefresh()}
+function adminAddPictogram(){const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte").map(c=>c.name);const c=prompt("Catégorie :\n"+cats.join(" / "),cats[0]||"");if(!c)return;if(!cats.includes(c))return alert("Choisis une catégorie existante.");const l=prompt("Texte affiché :");if(!l)return;const s=prompt("Phrase prononcée :",l.toLowerCase());if(s===null)return;const e=prompt("Emoji :","🖼️");if(e===null)return;const a=readAdminBase();a.addedItems.push({id:"ai"+Date.now(),category:c,label:l.trim(),speech:s.trim()||l.trim(),emoji:e.trim()||"🖼️"});writeAdminBase(a);adminRefresh()}
 function installAdminButton(){
   if(document.getElementById("admin-access-beta25"))return;
   const b=document.createElement("button");

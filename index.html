@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 49</title>
+<title>Ma CAA v2.0 bêta 50</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 49</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 50</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -377,23 +377,36 @@ function adminOverrideFor(x){
   }
   return {};
 }
-function displayLabel(x){return customFor(x).label||adminOverrideFor(x).label||x[1]}
-function spokenText(x){return customFor(x).speech||adminOverrideFor(x).speech||x[2]}
+function displayLabel(x){
+  const ae=adminOverrideFor(x);
+  return ae.label||customFor(x).label||x[1];
+}
+function spokenText(x){
+  const ae=adminOverrideFor(x);
+  return ae.speech||customFor(x).speech||x[2];
+}
+function displayEmoji(x){
+  const ae=adminOverrideFor(x);
+  return ae.emoji||x[0]||"🖼️";
+}
 function displayImage(x){
-  // Pour un pictogramme de base modifié par l'administrateur,
-  // x[4] contient l'image commune et doit être prioritaire.
-  if(x[4])return x[4];
   if(isAdded(x)){
     const a=readAdded().find(v=>v.id===x[3]);
-    if(a&&a.image)return a.image;
+    if(a&&a.image)return normalizeCloudImageRef(a.image);
     const aa=(readAdminBase().addedItems||[]).find(v=>v.id===x[3]);
-    if(aa&&aa.image)return aa.image;
+    if(aa&&aa.image)return normalizeCloudImageRef(aa.image);
     return "";
   }
   const ae=adminOverrideFor(x);
-  return customFor(x).image||ae.image||localPictos[x[1]]||"";
+  // L'Administrateur est la source commune prioritaire.
+  if(ae.image)return normalizeCloudImageRef(ae.image);
+  // Si l'Administrateur a choisi explicitement un emoji, ne pas réafficher
+  // l'ancienne image ARASAAC / locale à sa place.
+  if(ae.emoji)return "";
+  if(x[4])return normalizeCloudImageRef(x[4]);
+  return customFor(x).image||localPictos[x[1]]||"";
 }
-function displayItem(x){return [x[0],displayLabel(x),spokenText(x)]}
+function displayItem(x){return [displayEmoji(x),displayLabel(x),spokenText(x)]}
 function openEditor(x){
   const old=customFor(x), overlay=document.createElement("div");overlay.className="editor-overlay";
   const panel=document.createElement("div");panel.className="editor";
@@ -1174,7 +1187,7 @@ function imageHtml(p,emoji){
 }
 function picHtml(x){
   const p=displayImage(x), label=displayLabel(x);
-  return imageHtml(p,x[0])+'<b>'+label+'</b>';
+  return imageHtml(p,displayEmoji(x))+'<b>'+label+'</b>';
 }
 function createNormalCard(x,box){
   const b=document.createElement("button");b.className="pic";b.innerHTML=picHtml(x);
@@ -1201,7 +1214,7 @@ function renderPersonalize(box){
   }else{
     favItems.forEach(x=>{
       const card=document.createElement("div");card.className="manage-card";
-      const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),x[0]);
+      const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
       const info=document.createElement("div");
       const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
       const actions=document.createElement("div");actions.className="manage-actions";

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 30</title>
+<title>Ma CAA v2.0 bêta 31</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 30</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 31</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -361,7 +361,16 @@ function writeCustom(v){localStorage.setItem(profiledKey(CUSTOM_KEY),JSON.string
 function customFor(x){return readCustom()[itemId2(x)]||{}}
 function displayLabel(x){return customFor(x).label||x[1]}
 function spokenText(x){return customFor(x).speech||x[2]}
-function displayImage(x){if(isAdded(x)){const a=readAdded().find(v=>v.id===x[3]);return (a&&a.image)||""}return customFor(x).image||localPictos[x[1]]||""}
+function displayImage(x){
+  if(isAdded(x)){
+    const a=readAdded().find(v=>v.id===x[3]);
+    if(a&&a.image)return a.image;
+    const aa=(readAdminBase().addedItems||[]).find(v=>v.id===x[3]);
+    if(aa&&aa.image)return aa.image;
+    return "";
+  }
+  return customFor(x).image||localPictos[x[1]]||"";
+}
 function displayItem(x){return [x[0],displayLabel(x),spokenText(x)]}
 function openEditor(x){
   const old=customFor(x), overlay=document.createElement("div");overlay.className="editor-overlay";
@@ -1225,7 +1234,7 @@ function openAdminPanel(){
   const content=document.createElement("div");Object.assign(content.style,{width:"min(980px,calc(100% - 24px))",margin:"18px auto",display:"grid",gap:"14px"});
 
   const notice=document.createElement("section");notice.style.cssText="background:#fff7d6;border-radius:16px;padding:15px";
-  notice.innerHTML="<b>⚠️ Étape bêta 27</b><br>Tu peux maintenant gérer réellement la base sur cet appareil. La diffusion automatique de ces changements à tous les comptes sera branchée à Supabase à l’étape suivante.";
+  notice.innerHTML="<b>✅ Base commune synchronisée</b><br>Les modifications administrateur sont synchronisées via Supabase entre les appareils.";
   content.appendChild(notice);
 
   const add=document.createElement("section");add.style.cssText="background:white;border-radius:16px;padding:16px";
@@ -1250,7 +1259,10 @@ function openAdminPanel(){
     });
     (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
       const ir=document.createElement("div");ir.style.cssText="margin:8px 0 0 18px;display:flex;gap:5px;align-items:center;flex-wrap:wrap;background:#f7f9fc;padding:7px;border-radius:10px";
-      const lab=document.createElement("span");lab.textContent=(item.emoji||"🖼️")+" "+item.label+"  • ajouté";lab.style.minWidth="150px";ir.appendChild(lab);
+      if(item.image){
+        const th=document.createElement("img");th.src=item.image;th.alt="";th.style.cssText="width:52px;height:52px;object-fit:contain;border-radius:9px;background:white;border:1px solid #ddd";ir.appendChild(th);
+      }
+      const lab=document.createElement("span");lab.textContent=(item.image?"":(item.emoji||"🖼️")+" ")+item.label+"  • ajouté";lab.style.minWidth="150px";ir.appendChild(lab);
       ir.append(btn("✏️ Modifier",()=>adminEditAddedItem(item)),btn(item.hidden?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleAddedItem(item)),btn("🗑️ Supprimer",()=>adminDeleteAddedItem(item)));row.appendChild(ir);
     });
     manage.appendChild(row);
@@ -1272,13 +1284,124 @@ function adminDeleteCat(cat){if(!confirm("Supprimer cette catégorie de la base 
 function adminEditItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),e=a.items[id]||{},lab=prompt("Texte affiché :",e.label||x[1]);if(lab===null)return;const sp=prompt("Phrase prononcée :",e.speech||x[2]);if(sp===null)return;const em=prompt("Emoji :",e.emoji||x[0]);if(em===null)return;a.items[id]={label:lab.trim()||x[1],speech:sp.trim()||x[2],emoji:em.trim()||x[0]};writeAdminBase(a);adminRefresh()}
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
 function adminDeleteItem(cat,x){if(!confirm("Supprimer ce pictogramme de la base ?"))return;const a=readAdminBase(),id=adminItemId(cat,x);if(!a.deletedItems.includes(id))a.deletedItems.push(id);writeAdminBase(a);adminRefresh()}
+
+function adminPermanentPictogramForm(existing){
+  const a=readAdminBase();
+  const overlay=document.createElement("div");
+  overlay.className="editor-overlay";
+  overlay.style.zIndex="100500";
+
+  const panel=document.createElement("div");
+  panel.className="editor";
+  panel.style.maxWidth="680px";
+  panel.innerHTML="<h2>"+(existing?"✏️ Modifier le pictogramme permanent":"➕ Ajouter un pictogramme permanent")+"</h2>";
+
+  const categoriesList=[
+    ...categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte").map(c=>c.name),
+    ...(a.addedCats||[]).filter(c=>!c.deleted).map(c=>c.name)
+  ];
+
+  const mkLabel=t=>{const l=document.createElement("label");l.textContent=t;panel.appendChild(l);return l};
+
+  mkLabel("Catégorie");
+  const cat=document.createElement("select");
+  cat.style.width="100%";cat.style.padding="12px";cat.style.fontSize="16px";cat.style.borderRadius="10px";
+  [...new Set(categoriesList)].forEach(name=>{
+    const o=document.createElement("option");o.value=name;o.textContent=name;cat.appendChild(o);
+  });
+  if(existing&&existing.category)cat.value=existing.category;
+  panel.appendChild(cat);
+
+  mkLabel("Nom affiché");
+  const label=document.createElement("input");label.type="text";label.autocomplete="off";
+  label.value=existing?.label||"";label.placeholder="Ex. Goûter";panel.appendChild(label);
+
+  mkLabel("Phrase prononcée");
+  const speech=document.createElement("input");speech.type="text";speech.autocomplete="off";
+  speech.value=existing?.speech||"";speech.placeholder="Ex. Je veux goûter";panel.appendChild(speech);
+
+  mkLabel("Image / photo ou emoji");
+  const previewWrap=document.createElement("div");
+  previewWrap.style.cssText="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 10px";
+  const preview=document.createElement("img");
+  preview.style.cssText="width:110px;height:110px;object-fit:contain;border:2px solid #e3e6ec;border-radius:16px;background:white;display:none";
+  const emojiPreview=document.createElement("div");
+  emojiPreview.style.cssText="font-size:64px;width:110px;height:110px;display:grid;place-items:center;border:2px solid #e3e6ec;border-radius:16px;background:white";
+  previewWrap.append(preview,emojiPreview);panel.appendChild(previewWrap);
+
+  const photoLabel=document.createElement("label");
+  photoLabel.className="photo-label";photoLabel.textContent="🖼️ Choisir une photo / image";
+  const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.style.display="none";
+  photoLabel.appendChild(photo);panel.appendChild(photoLabel);
+
+  const photoValue=document.createElement("input");photoValue.type="hidden";photoValue.value=existing?.image||"";
+  panel.appendChild(photoValue);
+
+  const clearPhoto=document.createElement("button");clearPhoto.type="button";clearPhoto.textContent="Retirer la photo";
+  clearPhoto.style.marginLeft="8px";panel.appendChild(clearPhoto);
+
+  mkLabel("Emoji de remplacement (facultatif)");
+  const emoji=document.createElement("input");emoji.type="text";emoji.autocomplete="off";
+  emoji.value=existing?.emoji||"🖼️";emoji.placeholder="Ex. 🍎";panel.appendChild(emoji);
+
+  function refreshPreview(){
+    if(photoValue.value){
+      preview.src=photoValue.value;preview.style.display="block";emojiPreview.style.display="none";
+    }else{
+      preview.removeAttribute("src");preview.style.display="none";
+      emojiPreview.style.display="grid";emojiPreview.textContent=emoji.value.trim()||"🖼️";
+    }
+  }
+  emoji.oninput=refreshPreview;
+  clearPhoto.onclick=()=>{photoValue.value="";photo.value="";refreshPreview()};
+
+  photo.onchange=()=>{
+    const f=photo.files&&photo.files[0];if(!f)return;
+    if(f.size>4*1024*1024){alert("Choisis une image de moins de 4 Mo.");photo.value="";return}
+    const reader=new FileReader();
+    reader.onload=()=>{photoValue.value=reader.result;refreshPreview()};
+    reader.readAsDataURL(f);
+  };
+  refreshPreview();
+
+  const info=document.createElement("div");
+  info.style.cssText="font-size:13px;color:#5b6472;margin-top:10px";
+  info.textContent="La photo/image sera enregistrée dans la base commune et synchronisée avec les autres appareils.";
+  panel.appendChild(info);
+
+  const row=document.createElement("div");row.className="editor-row";
+  const save=document.createElement("button");save.className="saveedit";save.textContent=existing?"✓ Enregistrer":"✓ Ajouter";
+  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";
+
+  save.onclick=()=>{
+    const l=label.value.trim();
+    if(!l){alert("Indique le nom du pictogramme.");label.focus();return}
+    const s=speech.value.trim()||l;
+    const e=emoji.value.trim()||"🖼️";
+    const base=readAdminBase();
+    if(existing){
+      const cur=(base.addedItems||[]).find(x=>x.id===existing.id);if(!cur)return;
+      cur.category=cat.value;cur.label=l;cur.speech=s;cur.emoji=e;
+      if(photoValue.value)cur.image=photoValue.value;else delete cur.image;
+    }else{
+      base.addedItems.push({
+        id:"ai"+Date.now(),category:cat.value,label:l,speech:s,emoji:e,
+        image:photoValue.value||undefined
+      });
+    }
+    try{writeAdminBase(base)}
+    catch(err){alert("L’image est trop volumineuse. Essaie une image plus légère.");return}
+    overlay.remove();adminRefresh();
+  };
+  cancel.onclick=()=>overlay.remove();
+  row.append(save,cancel);panel.appendChild(row);
+  overlay.appendChild(panel);document.body.appendChild(overlay);
+  setTimeout(()=>label.focus(),100);
+}
+
 function adminEditAddedItem(item){
-  const a=readAdminBase(),cur=(a.addedItems||[]).find(x=>x.id===item.id);if(!cur)return;
-  const l=prompt("Texte affiché :",cur.label);if(l===null)return;
-  const s=prompt("Phrase prononcée :",cur.speech||cur.label);if(s===null)return;
-  const e=prompt("Emoji :",cur.emoji||"🖼️");if(e===null)return;
-  cur.label=l.trim()||cur.label;cur.speech=s.trim()||cur.speech||cur.label;cur.emoji=e.trim()||cur.emoji||"🖼️";
-  writeAdminBase(a);adminRefresh();
+  const cur=(readAdminBase().addedItems||[]).find(x=>x.id===item.id);if(!cur)return;
+  adminPermanentPictogramForm(cur);
 }
 function adminToggleAddedItem(item){
   const a=readAdminBase(),cur=(a.addedItems||[]).find(x=>x.id===item.id);if(!cur)return;
@@ -1291,7 +1414,7 @@ function adminDeleteAddedItem(item){
 }
 
 function adminAddCategory(){const n=prompt("Nom de la nouvelle catégorie :");if(!n)return;const i=prompt("Emoji :","📁");if(i===null)return;const a=readAdminBase();a.addedCats.push({id:"ac"+Date.now(),name:n.trim(),icon:i.trim()||"📁"});writeAdminBase(a);adminRefresh()}
-function adminAddPictogram(){const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode adulte").map(c=>c.name);const c=prompt("Catégorie :\n"+cats.join(" / "),cats[0]||"");if(!c)return;if(!cats.includes(c))return alert("Choisis une catégorie existante.");const l=prompt("Texte affiché :");if(!l)return;const s=prompt("Phrase prononcée :",l.toLowerCase());if(s===null)return;const e=prompt("Emoji :","🖼️");if(e===null)return;const a=readAdminBase();a.addedItems.push({id:"ai"+Date.now(),category:c,label:l.trim(),speech:s.trim()||l.trim(),emoji:e.trim()||"🖼️"});writeAdminBase(a);adminRefresh()}
+function adminAddPictogram(){adminPermanentPictogramForm(null)}
 function installAdminButton(){
   if(document.getElementById("admin-access-beta25"))return;
   const b=document.createElement("button");

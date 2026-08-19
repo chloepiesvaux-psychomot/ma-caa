@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 16</title>
+<title>Ma CAA v2.0 bêta 17</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -70,7 +70,17 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+document.addEventListener("click",e=>{
+  const b=e.target && e.target.closest ? e.target.closest("button") : null;
+  if(!b)return;
+  const t=(b.textContent||"").trim().toLowerCase();
+  if(t.includes("quitter mode adulte") || t==="fermer" || t==="annuler"){
+    setTimeout(resetAdultHoldVisualState,150);
+  }
+},true);
+
+</script>
 
 <style>
 /* iPhone/iPad: le maintien du bouton Mode adulte ne doit pas déclencher
@@ -95,7 +105,7 @@ button, .adult-hold-ios {
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 16</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 17</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -659,6 +669,26 @@ function setCloudMeta(name,stamp){const m=cloudMeta();m[name]=stamp;localStorage
 
 
 
+
+function resetAdultHoldVisualState(){
+  // Nettoie seulement les états tactiles/visuels résiduels entre deux ouvertures.
+  document.querySelectorAll(".adult-hold-ios").forEach(btn=>{
+    try{
+      if(btn.hasPointerCapture && window.__adultLastPointerId!=null &&
+         btn.hasPointerCapture(window.__adultLastPointerId)){
+        btn.releasePointerCapture(window.__adultLastPointerId);
+      }
+    }catch(_){}
+    btn.blur();
+  });
+  window.__adultLastPointerId=null;
+  unlockAutoSyncAfterAdult();
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible")resetAdultHoldVisualState();
+});
+window.addEventListener("pageshow",resetAdultHoldVisualState);
+
 function installAdultSyncGuard(){
   const candidates=[...document.querySelectorAll("button")];
   const btn=candidates.find(b=>(b.textContent||"").includes("Mode adulte"));
@@ -673,14 +703,22 @@ function installAdultSyncGuard(){
   btn.addEventListener("selectstart",e=>e.preventDefault(),{capture:true});
   btn.addEventListener("dragstart",e=>e.preventDefault(),{capture:true});
   btn.addEventListener("pointerdown",e=>{
+    resetAdultHoldVisualState();
     lockAutoSyncForAdult();
+    window.__adultLastPointerId=e.pointerId;
     try{btn.setPointerCapture(e.pointerId)}catch(_){}
   },{capture:true});
   btn.addEventListener("pointerup",e=>{
     try{btn.releasePointerCapture(e.pointerId)}catch(_){}
+    window.__adultLastPointerId=null;
     unlockAutoSyncAfterAdult();
+    setTimeout(resetAdultHoldVisualState,900);
   },{capture:true});
-  btn.addEventListener("pointercancel",()=>unlockAutoSyncAfterAdult(),{capture:true});
+  btn.addEventListener("pointercancel",()=>{
+    window.__adultLastPointerId=null;
+    unlockAutoSyncAfterAdult();
+    setTimeout(resetAdultHoldVisualState,100);
+  },{capture:true});
 }
 document.addEventListener("DOMContentLoaded",()=>{
   installAdultSyncGuard();

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 23</title>
+<title>Ma CAA v2.0 bêta 24</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -80,7 +80,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 23</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 24</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -935,66 +935,10 @@ function renderPersonalize(box){
   const pinBtn=document.createElement("button");pinBtn.className="catmanage";pinBtn.textContent=getAdultPin()?"🔐 Modifier le code PIN adulte":"🔐 Créer le code PIN adulte";pinBtn.onclick=()=>{if(getAdultPin())changeAdultPin();else setAdultPinFlow()};box.appendChild(pinBtn);
 
   const catBtn=document.createElement("button");catBtn.className="catmanage";catBtn.textContent="📁 Créer une catégorie personnalisée";catBtn.onclick=openAddCategory;box.appendChild(catBtn);
-  const customs=categories.filter(c=>c.customId);
-  customs.forEach(cat=>{
-    const row=document.createElement("div");row.className="customcat-row";
-    const txt=document.createElement("b");txt.textContent=cat.icon+" "+cat.name;
-    const del=document.createElement("button");del.textContent="🗑️ Supprimer la catégorie";del.onclick=()=>deleteCustomCategory(cat);
-    row.append(txt,del);box.appendChild(row);
-  });
-
   const addBtn=document.createElement("button");addBtn.className="addpicto";addBtn.textContent="➕ Ajouter un pictogramme personnalisé";addBtn.onclick=openAddPicto;box.appendChild(addBtn);
 
 
   
-  const catManageHead=document.createElement("div");catManageHead.className="personal-group";catManageHead.textContent="🗂️ Gérer les catégories";box.appendChild(catManageHead);
-  const hiddenCatNames=readHiddenCats();
-  const catOrderNames=orderedCategoryNames();
-
-  catOrderNames.forEach(name=>{
-    const c=normalCategories().find(x=>x.name===name);
-    if(!c)return;
-    const row=document.createElement("div");row.className="manage-card";
-    const info=document.createElement("div");
-    const title=document.createElement("b");
-    title.textContent=(hiddenCatNames.includes(c.name)?"🙈 ":"")+c.icon+" "+c.name;
-    info.appendChild(title);
-
-    const actions=document.createElement("div");actions.className="manage-actions";
-
-    const vis=document.createElement("button");
-    vis.textContent=hiddenCatNames.includes(c.name)?"👁️ Réafficher":"🙈 Masquer";
-    vis.onclick=()=>toggleHiddenCat(c.name);
-
-    const up=document.createElement("button");
-    up.textContent="↑ Monter";
-    up.onclick=()=>moveCategory(c.name,-1);
-
-    const down=document.createElement("button");
-    down.textContent="↓ Descendre";
-    down.onclick=()=>moveCategory(c.name,1);
-
-    actions.append(vis,up,down);
-    info.appendChild(actions);
-    row.appendChild(info);
-    box.appendChild(row);
-  });
-
-const catFavHead=document.createElement("div");catFavHead.className="personal-group";catFavHead.textContent="⭐ Catégories favorites";box.appendChild(catFavHead);
-  const favCatNames=readFavCats();
-  normalCategories().forEach(c=>{
-    const row=document.createElement("div");row.className="manage-card";
-    const info=document.createElement("div");
-    const title=document.createElement("b");title.textContent=(favCatNames.includes(c.name)?"⭐ ":"")+c.icon+" "+c.name;info.appendChild(title);
-    const actions=document.createElement("div");actions.className="manage-actions";
-    const star=document.createElement("button");star.textContent=favCatNames.includes(c.name)?"Retirer ⭐":"Ajouter ⭐";star.onclick=()=>toggleFavCat(c.name);actions.appendChild(star);
-    if(favCatNames.includes(c.name)){
-      const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveFavCat(c.name,-1);
-      const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveFavCat(c.name,1);
-      actions.append(up,down);
-    }
-    info.appendChild(actions);row.appendChild(info);box.appendChild(row);
-  });
   const favHead=document.createElement("div");favHead.className="personal-group";favHead.textContent="⭐ Favoris";box.appendChild(favHead);
   const favItems=favoriteItems();
   if(!favItems.length){
@@ -1015,10 +959,24 @@ const catFavHead=document.createElement("div");catFavHead.className="personal-gr
   }
 
   const note=document.createElement("div");note.className="personal-note";
-  note.textContent="Réglages adulte : masque, réaffiche ou change l’ordre des pictogrammes. Les choix restent enregistrés sur cet appareil.";
+  note.textContent="Réglages adulte : gère directement chaque catégorie depuis son titre, puis les pictogrammes juste en dessous.";
   box.appendChild(note);
-  normalCategories().forEach(cat=>{
-    const h=document.createElement("div");h.className="personal-group";h.textContent=cat.icon+" "+cat.name;box.appendChild(h);
+  orderedCategoryNames().forEach(catName=>{
+    const cat=normalCategories().find(c=>c.name===catName);
+    if(!cat)return;
+    const h=document.createElement("div");h.className="personal-group";
+    h.style.display="flex";h.style.alignItems="center";h.style.gap="6px";h.style.flexWrap="wrap";
+    const label=document.createElement("span");label.textContent=cat.icon+" "+cat.name;h.appendChild(label);
+
+    const mk=(txt,fn,cls="")=>{const b=document.createElement("button");b.type="button";b.textContent=txt;if(cls)b.className=cls;b.style.fontSize="12px";b.style.padding="4px 7px";b.onclick=fn;return b};
+    const starred=readFavCats().includes(cat.name);
+    h.appendChild(mk(starred?"★":"☆",()=>toggleFavCat(cat.name)));
+    h.appendChild(mk(readHiddenCats().includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>toggleHiddenCat(cat.name)));
+    h.appendChild(mk("↑ Monter",()=>moveCategory(cat.name,-1)));
+    h.appendChild(mk("↓ Descendre",()=>moveCategory(cat.name,1)));
+    if(cat.customId)h.appendChild(mk("🗑️ Supprimer",()=>deleteCustomCategory(cat),"resetedit"));
+    box.appendChild(h);
+
     orderedItems(cat).forEach(x=>{
       const card=document.createElement("div");card.className="manage-card";
       const p=displayImage(x);

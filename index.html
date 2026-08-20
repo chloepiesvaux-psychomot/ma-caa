@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 59</title>
+<title>Ma CAA v2.0 bêta 60</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 59</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 60</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -281,7 +281,8 @@ function showFeedback(label){
 }
 function add(x){
   showFeedback(x[1]);
-  phrase.push({icon:x[0],label:x[1],speech:x[2],picto:localPictos[x[1]]||null});
+  let picto=localPictos[x[1]]||x[3]||null;
+  phrase.push({icon:x[0],label:x[1],speech:x[2],picto});
   renderPhrase();
   speakText(x[2]);
 }
@@ -395,10 +396,14 @@ function spokenText(x){
   return ae.speech||customFor(x).speech||x[2];
 }
 function displayEmoji(x){
-  const ae=adminOverrideFor(x);
+  const ae=adminOverrideFor(x),cu=customFor(x);
+  if(cu.visualMode==="emoji"&&cu.emoji)return cu.emoji;
   return ae.emoji||x[0]||"🖼️";
 }
 function displayImage(x){
+  const cu=customFor(x);
+  if(cu.visualMode==="emoji")return "";
+  if(cu.visualMode==="image"&&cu.image)return normalizeCloudImageRef(cu.image);
   if(isAdded(x)){
     const a=readAdded().find(v=>v.id===x[3]);
     if(a&&a.image)return normalizeCloudImageRef(a.image);
@@ -419,52 +424,49 @@ function displayImage(x){
   if(x[6])return "";
   return customFor(x).image||localPictos[x[1]]||"";
 }
-function displayItem(x){return [displayEmoji(x),displayLabel(x),spokenText(x)]}
-function openEditor(x){
-  const old=customFor(x), overlay=document.createElement("div");overlay.className="editor-overlay";
-  const panel=document.createElement("div");panel.className="editor";
-  panel.innerHTML="<h2>✏️ Modifier le pictogramme</h2>";
-  const img=document.createElement("img");img.className="editor-preview";img.alt="";
-  const fallback=x[0];
-  function refreshPreview(){
-    const data=photo.dataset.value||old.image||localPictos[x[1]]||"";
-    if(data){img.src=data;img.style.display="block"}else{img.removeAttribute("src");img.style.display="none"}
+function activeProfileVisualFor(x){
+  const p=readProfiles().find(v=>v.id===activeProfile());if(!p||!p.avatar)return null;
+  const label=displayLabel(x).trim().toLocaleLowerCase("fr");
+  const pname=(p.name||"").trim().toLocaleLowerCase("fr");
+  if(!pname||label!==pname)return null;
+  return p.avatar;
+}
+function displayItem(x){
+  const pv=activeProfileVisualFor(x);
+  if(pv){
+    if(pv.startsWith("data:image/")||pv.startsWith("http")||pv.startsWith("/"))return [displayEmoji(x),displayLabel(x),spokenText(x),pv];
+    return [pv,displayLabel(x),spokenText(x),null];
   }
-  panel.appendChild(img);
+  return [displayEmoji(x),displayLabel(x),spokenText(x),displayImage(x)||null];
+}
+function openEditor(x){
+  const old=customFor(x),overlay=document.createElement("div");overlay.className="editor-overlay";
+  const panel=document.createElement("div");panel.className="editor";panel.innerHTML="<h2>✏️ Modifier le pictogramme</h2>";
+  const preview=document.createElement("div");preview.style.cssText="width:110px;height:110px;margin:auto;display:grid;place-items:center;border:2px solid #e3e6ec;border-radius:16px;background:white;font-size:60px;overflow:hidden";
+  panel.appendChild(preview);
   const l1=document.createElement("label");l1.textContent="Texte affiché";panel.appendChild(l1);
-  const label=document.createElement("input");label.type="text";label.value=old.label||x[1];panel.appendChild(label);
+  const label=document.createElement("input");label.value=old.label||x[1];panel.appendChild(label);
   const l2=document.createElement("label");l2.textContent="Ce que la voix prononce";panel.appendChild(l2);
-  const speech=document.createElement("input");speech.type="text";speech.value=old.speech||x[2];panel.appendChild(speech);
-  const l3=document.createElement("label");l3.textContent="Image personnelle";panel.appendChild(l3);
-  const photoLabel=document.createElement("label");photoLabel.className="photo-label";photoLabel.textContent="📷 Choisir une photo";
+  const speech=document.createElement("input");speech.value=old.speech||x[2];panel.appendChild(speech);
+  let chosenEmoji=old.emoji||"",chosenImage=old.image||"",mode=old.visualMode||(old.emoji?"emoji":(old.image?"image":"default"));
+  function show(){preview.innerHTML="";if(mode==="image"&&chosenImage){const im=document.createElement("img");im.src=chosenImage;im.style.cssText="width:100%;height:100%;object-fit:contain";preview.appendChild(im)}else preview.textContent=mode==="emoji"?(chosenEmoji||x[0]):displayEmoji(x)}
+  const photoLabel=document.createElement("label");photoLabel.className="photo-label";photoLabel.textContent="📷 Choisir une photo / image";
   const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.style.display="none";photoLabel.appendChild(photo);panel.appendChild(photoLabel);
-  photo.onchange=()=>{
-    const f=photo.files&&photo.files[0];if(!f)return;
-    if(f.size>4*1024*1024){alert("Choisis une image de moins de 4 Mo.");photo.value="";return}
-    const reader=new FileReader();
-    reader.onload=()=>{photo.dataset.value=reader.result;img.src=reader.result;img.style.display="block"};
-    reader.readAsDataURL(f);
-  };
-  refreshPreview();
+  photo.onchange=()=>{const f=photo.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{chosenImage=String(r.result);mode="image";show()};r.readAsDataURL(f)};
+  const eb=document.createElement("button");eb.type="button";eb.textContent="😊 Choisir un emoji";panel.appendChild(eb);
+  const pal=document.createElement("div");pal.style.cssText="display:none;max-height:250px;overflow:auto;padding:8px;border:1px solid #ddd;border-radius:12px";
+  const chars="😀 😃 😄 😊 😍 🥰 😎 🤩 🥳 😇 🙂 😉 🤗 🤓 👶 🧒 👦 👧 🧑 👨 👩 👴 👵 👍 👎 👋 ❤️ 🧡 💛 💚 💙 💜 ⭐ 🌈 ☀️ 🌙 🐶 🐱 🐰 🦊 🐻 🐼 🦁 🐯 🦄 🐸 🦋 🌸 🌻 🍎 🍓 🍌 🍕 🍦 🥛 💧 🧃 🥤 🏠 🏫 🚽 🚿 🛏️ ⚽ 🎾 🎨 🎵 🎮 🧩 🚗 🚲 ✈️ 📚";
+  chars.split(" ").forEach(ch=>{const b=document.createElement("button");b.type="button";b.textContent=ch;b.style.cssText="font-size:28px;width:44px;height:44px;margin:3px";b.onclick=()=>{chosenEmoji=ch;mode="emoji";show()};pal.appendChild(b)});
+  eb.onclick=()=>pal.style.display=pal.style.display==="none"?"block":"none";panel.appendChild(pal);
+  const original=document.createElement("button");original.type="button";original.textContent="↺ Image d’origine";original.onclick=()=>{mode="default";show()};panel.appendChild(original);
+  show();
   const row=document.createElement("div");row.className="editor-row";
   const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Enregistrer";
-  save.onclick=()=>{
-    const all=readCustom(), id=itemId2(x);
-    const next={label:label.value.trim()||x[1],speech:speech.value.trim()||x[2]};
-    if(photo.dataset.value)next.image=photo.dataset.value;else if(old.image)next.image=old.image;
-    all[id]=next;
-    try{writeCustom(all)}catch(e){alert("La photo est trop volumineuse pour être enregistrée. Essaie une photo plus légère.");return}
-    overlay.remove();renderGrid();
-  };
-  const reset=document.createElement("button");reset.className="resetedit";reset.textContent="↺ Réinitialiser";
-  reset.onclick=()=>{const all=readCustom();delete all[itemId2(x)];writeCustom(all);overlay.remove();renderGrid()};
+  save.onclick=()=>{const all=readCustom(),id=itemId2(x);all[id]={...old,label:label.value.trim()||x[1],speech:speech.value.trim()||x[2],emoji:chosenEmoji,image:chosenImage,visualMode:mode};try{writeCustom(all)}catch(e){alert("L’image est trop volumineuse.");return}overlay.remove();renderGrid()};
+  const reset=document.createElement("button");reset.className="resetedit";reset.textContent="↺ Réinitialiser";reset.onclick=()=>{const all=readCustom();delete all[itemId2(x)];writeCustom(all);overlay.remove();renderGrid()};
   const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>overlay.remove();
   row.append(save,reset,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
-
-
-
-
 function readProfiles(){
   try{
     const p=JSON.parse(localStorage.getItem(PROFILES_KEY)||"[]");
@@ -1355,7 +1357,7 @@ function createNormalCard(x,box){
     star.onclick=(e)=>{e.stopPropagation();toggleFav(x)};
     b.appendChild(star);
   }
-  b.onclick=()=>add(displayItem(x));box.appendChild(b);
+  b.onclick=()=>{if(submenuFor(x).length){activeSubmenu=x;renderGrid()}else add(displayItem(x))};box.appendChild(b);
 }
 function renderPersonalize(box){
   const tools=document.createElement("div");
@@ -1383,7 +1385,7 @@ function renderPersonalize(box){
   }else{
     favItems.forEach(x=>{
       const card=document.createElement("div");card.className="manage-card";
-      const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
+      const visual=document.createElement("div");visual.innerHTML=imageHtml((activeProfileVisualFor(x)&&String(activeProfileVisualFor(x)).startsWith("data:image/"))?activeProfileVisualFor(x):displayImage(x),(activeProfileVisualFor(x)&&!String(activeProfileVisualFor(x)).startsWith("data:image/"))?activeProfileVisualFor(x):displayEmoji(x));
       const info=document.createElement("div");
       const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
       const actions=document.createElement("div");actions.className="manage-actions";
@@ -1427,6 +1429,9 @@ function renderPersonalize(box){
       const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
       const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
       const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
+      if(submenuFor(x).length){
+        const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=()=>{activeSubmenu=x;current=categories.findIndex(c=>c.name==="Mode parents");renderGrid()};actions.appendChild(sub);
+      }
       const fav=document.createElement("button");
       fav.textContent=isFav(x)?"⭐ Retirer des favoris":"☆ Ajouter aux favoris";
       fav.onclick=()=>{toggleFav(x);renderGrid()};
@@ -1511,9 +1516,45 @@ function ensureAdultBadge(){
   if(!b){b=document.createElement("button");b.id="adultBadge";b.className="adult-badge";b.textContent="🔓 Quitter mode parents";b.onclick=lockAdult;document.body.appendChild(b)}
 }
 
+const SUBMENU_PARENT_KEY="ma-caa-submenu-parent-v1";
+function adminSubmenuEntries(parentId){
+  const a=readAdminBase();return (a.submenus?.[parentId]||[]).filter(e=>!e.deleted).sort((a,b)=>(a.order||0)-(b.order||0));
+}
+function submenuFor(x){const ae=adminOverrideFor(x);return ae.action==="submenu"?adminSubmenuEntries(x[6]||ae.id||""):[]}
+let activeSubmenu=null;
+function renderSubmenu(box,parent){
+  const entries=submenuFor(parent),custom=readCustom(),hidden=hiddenIds();
+  const back=document.createElement("button");back.className="catmanage";back.textContent="← Retour";back.style.gridColumn="1/-1";back.onclick=()=>{activeSubmenu=null;renderGrid()};box.appendChild(back);
+  const pid=parent[6]||"";
+  const order=custom["submenu-order:"+pid]||[];
+  let list=[...entries];
+  if(order.length){const map=new Map(list.map(e=>[e.id,e])),out=[];order.forEach(id=>{if(map.has(id)){out.push(map.get(id));map.delete(id)}});map.forEach(e=>out.push(e));list=out}
+  list.filter(e=>!hidden.includes("sub:"+e.id)).forEach(e=>{
+    const x=[e.emoji||"🖼️",e.label,e.speech||e.label,"sub:"+e.id,e.image||"",false,"submenu:"+e.id];
+    const b=document.createElement("button");b.className="pic";b.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️")+"<b>"+e.label+"</b>";b.onclick=()=>add([e.emoji||"🖼️",e.label,e.speech||e.label]);box.appendChild(b);
+  });
+}
+function adminManageSubmenu(parentId,parentLabel){
+  const a=readAdminBase();a.submenus=a.submenus||{};a.submenus[parentId]=a.submenus[parentId]||[];
+  const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
+  const panel=document.createElement("div");panel.className="editor";panel.innerHTML="<h2>📂 Sous-menu : "+parentLabel+"</h2>";
+  const list=document.createElement("div");
+  const refresh=()=>{list.innerHTML="";const arr=(a.submenus[parentId]||[]).filter(e=>!e.deleted).sort((x,y)=>(x.order||0)-(y.order||0));arr.forEach((e,i)=>{
+    const row=document.createElement("div");row.className="manage-card";const name=document.createElement("b");name.textContent=(e.hidden?"🙈 ":"")+e.emoji+" "+e.label;
+    const edit=document.createElement("button");edit.textContent="✏️";edit.onclick=()=>{const n=prompt("Nom :",e.label);if(n===null)return;e.label=n.trim()||e.label;const sp=prompt("Phrase prononcée :",e.speech||e.label);if(sp!==null)e.speech=sp.trim()||e.label;const em=prompt("Emoji :",e.emoji||"🖼️");if(em!==null)e.emoji=em.trim()||"🖼️";writeAdminBase(a);refresh()};
+    const hide=document.createElement("button");hide.textContent=e.hidden?"👁️":"🙈";hide.onclick=()=>{e.hidden=!e.hidden;writeAdminBase(a);refresh()};
+    const up=document.createElement("button");up.textContent="↑";up.onclick=()=>{if(i<1)return;[arr[i-1].order,arr[i].order]=[arr[i].order,arr[i-1].order];writeAdminBase(a);refresh()};
+    const down=document.createElement("button");down.textContent="↓";down.onclick=()=>{if(i>=arr.length-1)return;[arr[i+1].order,arr[i].order]=[arr[i].order,arr[i+1].order];writeAdminBase(a);refresh()};
+    const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{if(confirm("Supprimer ce pictogramme du sous-menu ?")){e.deleted=true;writeAdminBase(a);refresh()}};
+    row.append(name,edit,hide,up,down,del);list.appendChild(row);
+  })};panel.appendChild(list);
+  const addb=document.createElement("button");addb.className="saveedit";addb.textContent="➕ Ajouter un pictogramme permanent";addb.onclick=()=>{const n=prompt("Nom du pictogramme :");if(!n)return;const em=prompt("Emoji :","🖼️")||"🖼️";const arr=a.submenus[parentId];arr.push({id:"sm"+Date.now(),label:n.trim(),speech:n.trim(),emoji:em,order:arr.length});writeAdminBase(a);refresh()};
+  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{overlay.remove();adminRefresh()};panel.append(addb,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
+}
 function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
+  if(activeSubmenu){renderSubmenu(box,activeSubmenu);return}
   if(c.name==="Mode parents"){
     if(!adultUnlocked){
       if(!document.getElementById("adult-gate"))openAdultGate();
@@ -1981,6 +2022,14 @@ function adminPermanentPictogramForm(existing){
   const speech=document.createElement("input");speech.type="text";speech.autocomplete="off";
   speech.value=existing?.speech||"";speech.placeholder="Ex. Je veux goûter";panel.appendChild(speech);
 
+    mkLabel("Action au clic");
+  const action=document.createElement("select");action.style.cssText="width:100%;padding:12px;border-radius:10px";
+  [["phrase","Ajouter à la phrase"],["submenu","Ouvrir un sous-menu"]].forEach(v=>{const o=document.createElement("option");o.value=v[0];o.textContent=v[1];action.appendChild(o)});
+  action.value=existing?.action||"phrase";panel.appendChild(action);
+  if(existing&&existing._baseId){
+    const manageSub=document.createElement("button");manageSub.type="button";manageSub.textContent="📂 Gérer le sous-menu";manageSub.style.marginTop="8px";manageSub.onclick=()=>adminManageSubmenu(existing._baseId,existing.label||"Pictogramme");panel.appendChild(manageSub);
+  }
+
   mkLabel("Image / photo ou emoji");
   const previewWrap=document.createElement("div");
   previewWrap.style.cssText="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 10px";
@@ -2075,16 +2124,16 @@ function adminPermanentPictogramForm(existing){
     const base=readAdminBase();
     if(existing&&existing._baseItem){
       const cur=base.items[existing._baseId]||{};
-      cur.label=l;cur.speech=s;cur.emoji=e;cur.category=cat.value;
+      cur.label=l;cur.speech=s;cur.emoji=e;cur.category=cat.value;cur.action=action.value;
       if(photoValue.value)cur.image=photoValue.value;else delete cur.image;
       base.items[existing._baseId]=cur;
     }else if(existing){
       const cur=(base.addedItems||[]).find(x=>x.id===existing.id);if(!cur)return;
-      cur.category=cat.value;cur.label=l;cur.speech=s;cur.emoji=e;
+      cur.category=cat.value;cur.label=l;cur.speech=s;cur.emoji=e;cur.action=action.value;
       if(photoValue.value)cur.image=photoValue.value;else delete cur.image;
     }else{
       base.addedItems.push({
-        id:"ai"+Date.now(),category:cat.value,label:l,speech:s,emoji:e,
+        id:"ai"+Date.now(),category:cat.value,label:l,speech:s,emoji:e,action:action.value,
         image:photoValue.value||undefined
       });
     }

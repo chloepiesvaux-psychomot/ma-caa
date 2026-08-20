@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 103</title>
+<title>Ma CAA v2.0 bêta 104</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -165,7 +165,7 @@ function adminReturnToPictogramsV101(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 103</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 104</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1540,22 +1540,37 @@ function adminCategoryDisplay(cat){
   const e=readAdminBase().catEdits?.[cat.name]||{};
   return {name:e.name||cat.name,icon:e.icon||cat.icon};
 }
+
+function adminItemCategories(sourceCatName,e){
+  if(Array.isArray(e?.categories)&&e.categories.length)return [...new Set(e.categories.filter(Boolean))];
+  if(e?.category)return [e.category];
+  return [sourceCatName];
+}
+function addedItemCategories(item){
+  if(Array.isArray(item?.categories)&&item.categories.length)return [...new Set(item.categories.filter(Boolean))];
+  return item?.category?[item.category]:[];
+}
 function baseItems(cat){
-  const a=readAdminBase();
-  const built=cat.items.filter(x=>adminItemAvailable(cat,x)).map(x=>adminItemData(cat,x));
-  const moved=[];
+  const a=readAdminBase(),items=[];
+  const seen=new Set();
+
   for(const source of categories){
-    if(source===cat)continue;
+    if(source.name==="Favoris"||source.name==="Mode parents")continue;
     for(const x of (source.items||[])){
       const id=adminItemId(source,x),e=a.items?.[id]||{};
-      if(e.category===cat.name&&!a.hiddenItems.includes(id)&&!a.deletedItems.includes(id)){
-        const hasAdminEmoji=!!(e.emoji&&e.emoji!=="🖼️");
-        moved.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],hasAdminEmoji?"":(e.image||x[4]||""),false,id]);
-      }
+      if(a.hiddenItems.includes(id)||a.deletedItems.includes(id))continue;
+      if(!adminItemCategories(source.name,e).includes(cat.name))continue;
+      if(seen.has(id))continue;seen.add(id);
+      const hasAdminEmoji=!!(e.emoji&&e.emoji!=="🖼️");
+      items.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],hasAdminEmoji?"":(e.image||x[4]||""),false,id]);
     }
   }
-  const extra=(a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted&&!x.hidden).map(x=>[x.emoji||"🖼️",x.label,x.speech||x.label,x.id,x.image||"",true]);
-  const items=built.concat(moved,extra);
+
+  (a.addedItems||[]).filter(x=>!x.deleted&&!x.hidden&&addedItemCategories(x).includes(cat.name)).forEach(x=>{
+    if(seen.has(x.id))return;seen.add(x.id);
+    items.push([x.emoji||"🖼️",x.label,x.speech||x.label,x.id,x.image||"",true,x.id]);
+  });
+
   const order=(a.adminOrder||{})[cat.name]||[];
   if(!order.length)return items;
   const byId=new Map(items.map(x=>[permanentItemId(x),x])),out=[];
@@ -2542,7 +2557,7 @@ function adminItemData(cat,x){
 }
 function adminItemAvailable(cat,x){
   const a=readAdminBase(),id=adminItemId(cat,x),e=a.items?.[id]||{};
-  return !a.hiddenItems.includes(id)&&!a.deletedItems.includes(id)&&(!e.category||e.category===cat.name);
+  return !a.hiddenItems.includes(id)&&!a.deletedItems.includes(id)&&adminItemCategories(cat.name,e).includes(cat.name);
 }
 
 let adminUnlocked=false;
@@ -2569,18 +2584,16 @@ function adminManagedBaseItemsFor(cat){
       const id=adminItemId(source,x);
       if(a.deletedItems.includes(id))continue;
       const e=a.items?.[id]||{};
-      const currentCat=e.category||source.name;
-      if(currentCat===cat.name)out.push({source,x,id,e});
+      if(adminItemCategories(source.name,e).includes(cat.name))out.push({source,x,id,e});
     }
   }
   return out;
 }
 
-
 function adminPermanentEntries(cat){
   const a=readAdminBase(),out=[];
   adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{const d=adminItemData(source,x);out.push({id,label:d[1],emoji:d[0],image:d[4]||"",kind:"base",source,x,hidden:a.hiddenItems.includes(id)})});
-  (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>out.push({id:item.id,label:item.label,emoji:item.emoji||"🖼️",image:item.image||"",kind:"added",item,hidden:!!item.hidden}));
+  (a.addedItems||[]).filter(x=>addedItemCategories(x).includes(cat.name)&&!x.deleted).forEach(item=>out.push({id:item.id,label:item.label,emoji:item.emoji||"🖼️",image:item.image||"",kind:"added",item,hidden:!!item.hidden}));
   const saved=(a.adminOrder||{})[cat.name]||[],map=new Map(out.map(x=>[x.id,x])),ordered=[];
   saved.forEach(id=>{if(map.has(id)){ordered.push(map.get(id));map.delete(id)}});map.forEach(v=>ordered.push(v));return ordered
 }
@@ -2912,6 +2925,7 @@ function adminEditItem(cat,x){
     _baseItem:true,
     _baseId:id,
     category:e.category||cat.name,
+    categories:adminItemCategories(cat.name,e),
     label:e.label||x[1],
     speech:e.speech||x[2],
     emoji:e.emoji||x[0],
@@ -3030,6 +3044,34 @@ function adminPermanentPictogramForm(existing){
   if(existing&&existing.category)cat.value=existing.category;
   panel.appendChild(cat);
 
+  mkLabel("Afficher aussi dans d’autres catégories");
+  const categoryPicker=document.createElement("div");
+  categoryPicker.style.cssText="width:100%;max-height:220px;overflow:auto;border:2px solid #ccd5e2;border-radius:12px;padding:6px;background:#fff";
+  panel.appendChild(categoryPicker);
+
+  let selectedCategoryNames=new Set(
+    Array.isArray(existing?.categories)&&existing.categories.length
+      ? existing.categories
+      : (existing?.category?[existing.category]:[cat.value])
+  );
+  selectedCategoryNames.add(cat.value);
+
+  function refreshCategoryPicker(){
+    selectedCategoryNames.add(cat.value);
+    categoryPicker.innerHTML="";
+    [...new Set(categoriesList)].forEach(name=>{
+      const row=document.createElement("label");
+      row.style.cssText="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid #eef1f5;cursor:pointer";
+      const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedCategoryNames.has(name);
+      cb.style.cssText="width:20px;height:20px;accent-color:#2563eb";
+      if(name===cat.value){cb.checked=true;cb.disabled=true}
+      cb.onchange=()=>{if(cb.checked)selectedCategoryNames.add(name);else selectedCategoryNames.delete(name);refreshFolderPicker()};
+      const txt=document.createElement("span");txt.textContent=(name===cat.value?"★ ":"")+name;
+      if(name===cat.value)txt.style.fontWeight="900";
+      row.append(cb,txt);categoryPicker.appendChild(row);
+    });
+  }
+
   mkLabel("Dossiers / sous-dossiers où afficher ce pictogramme");
   const folderPicker=document.createElement("div");
   folderPicker.style.cssText="width:100%;max-height:360px;overflow:auto;border:2px solid #ccd5e2;border-radius:12px;padding:6px;background:#fff";
@@ -3044,36 +3086,50 @@ function adminPermanentPictogramForm(existing){
   }
   function refreshFolderPicker(){
     const baseNow=readAdminBase();folderPicker.innerHTML="";
-    const folders=(baseNow.subcategories||[]).filter(sc=>sc.category===cat.value&&!sc.deleted);
+    const selectedCats=[...selectedCategoryNames];
+    const folders=(baseNow.subcategories||[]).filter(sc=>selectedCats.includes(sc.category)&&!sc.deleted);
     if(!folders.length){
-      const empty=document.createElement("div");empty.textContent="Aucun dossier / sous-dossier dans cette catégorie.";
+      const empty=document.createElement("div");empty.textContent="Aucun dossier / sous-dossier dans les catégories sélectionnées.";
       empty.style.cssText="padding:12px;color:#667085";folderPicker.appendChild(empty);return;
     }
-    const byParent={};
-    folders.forEach(sc=>{
-      const parent=(sc.parentId&&folders.some(x=>x.id===sc.parentId))?sc.parentId:"__root__";
-      (byParent[parent]||(byParent[parent]=[])).push(sc);
-    });
-    Object.values(byParent).forEach(arr=>arr.sort((a,b)=>(a.order||0)-(b.order||0)||String(a.name||"").localeCompare(String(b.name||""),"fr")));
-    function addLevel(parentId,depth){
-      (byParent[parentId]||[]).forEach(sc=>{
-        const row=document.createElement("label");
-        row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 8px 9px "+(10+depth*28)+"px;border-bottom:1px solid #eef1f5;cursor:pointer;background:"+(depth?"#fbfcfe":"#fff")+"";
-        const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedFolderIds.has(sc.id);
-        cb.style.cssText="width:21px;height:21px;flex:0 0 auto;accent-color:#2563eb";
-        cb.onchange=()=>{if(cb.checked)selectedFolderIds.add(sc.id);else selectedFolderIds.delete(sc.id)};
-        const branch=document.createElement("span");branch.textContent=depth?"↳":"";
-        branch.style.cssText="color:#98a2b3;font-weight:900";
-        const icon=document.createElement("span");icon.textContent=sc.icon||"📁";
-        const txt=document.createElement("span");txt.textContent=sc.name||"Dossier";txt.style.cssText="font-weight:"+(depth?"700":"900");
-        row.append(cb,branch,icon,txt);folderPicker.appendChild(row);
-        addLevel(sc.id,depth+1);
+
+    selectedCats.forEach(catName=>{
+      const catFolders=folders.filter(sc=>sc.category===catName);
+      if(!catFolders.length)return;
+      const title=document.createElement("div");
+      title.textContent="📁 "+catName;title.style.cssText="font-weight:900;padding:10px 8px;background:#eef4ff;border-radius:9px;margin:5px 0";
+      folderPicker.appendChild(title);
+
+      const byParent={};
+      catFolders.forEach(sc=>{
+        const parent=(sc.parentId&&catFolders.some(x=>x.id===sc.parentId))?sc.parentId:"__root__";
+        (byParent[parent]||(byParent[parent]=[])).push(sc);
       });
-    }
-    addLevel("__root__",0);
+      Object.values(byParent).forEach(arr=>arr.sort((a,b)=>(a.order||0)-(b.order||0)||String(a.name||"").localeCompare(String(b.name||""),"fr")));
+      function addLevel(parentId,depth){
+        (byParent[parentId]||[]).forEach(sc=>{
+          const row=document.createElement("label");
+          row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 8px 9px "+(10+depth*28)+"px;border-bottom:1px solid #eef1f5;cursor:pointer;background:"+(depth?"#fbfcfe":"#fff");
+          const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedFolderIds.has(sc.id);
+          cb.style.cssText="width:21px;height:21px;flex:0 0 auto;accent-color:#2563eb";
+          cb.onchange=()=>{if(cb.checked)selectedFolderIds.add(sc.id);else selectedFolderIds.delete(sc.id)};
+          const branch=document.createElement("span");branch.textContent=depth?"↳":"";branch.style.cssText="color:#98a2b3;font-weight:900";
+          const icon=document.createElement("span");icon.textContent=sc.icon||"📁";
+          const txt=document.createElement("span");txt.textContent=sc.name||"Dossier";txt.style.cssText="font-weight:"+(depth?"700":"900");
+          row.append(cb,branch,icon,txt);folderPicker.appendChild(row);
+          addLevel(sc.id,depth+1);
+        });
+      }
+      addLevel("__root__",0);
+    });
   }
+  refreshCategoryPicker();
   refreshFolderPicker();
-  cat.addEventListener("change",()=>{selectedFolderIds=new Set();refreshFolderPicker()});
+  cat.addEventListener("change",()=>{
+    selectedCategoryNames.add(cat.value);
+    refreshCategoryPicker();
+    refreshFolderPicker();
+  });
 
   mkLabel("Nom affiché");
   const label=document.createElement("input");label.type="text";label.autocomplete="off";
@@ -3224,20 +3280,20 @@ function adminPermanentPictogramForm(existing){
     if(existing&&existing._baseItem){
       savedItemId=existing._baseId;
       const cur=base.items[existing._baseId]||{};
-      cur.label=l;cur.speech=s;cur.emoji=e;cur.category=cat.value;cur.action=action.value;
+      cur.label=l;cur.speech=s;cur.emoji=e;cur.category=cat.value;cur.categories=[...new Set([cat.value,...selectedCategoryNames])];cur.action=action.value;
       const finalImage=await storeAdminPictogramImage(chosenAdminImage);
       if(finalImage)cur.image=finalImage;else delete cur.image;
       base.items[existing._baseId]=cur;
     }else if(existing){
       savedItemId=existing.id;
       const cur=(base.addedItems||[]).find(x=>x.id===existing.id);if(!cur)return;
-      cur.category=cat.value;cur.label=l;cur.speech=s;cur.emoji=e;cur.action=action.value;
+      cur.category=cat.value;cur.categories=[...new Set([cat.value,...selectedCategoryNames])];cur.label=l;cur.speech=s;cur.emoji=e;cur.action=action.value;
       const finalImage=await storeAdminPictogramImage(chosenAdminImage);
       if(finalImage)cur.image=finalImage;else delete cur.image;
     }else{
       savedItemId="ai"+Date.now();
       base.addedItems.push({
-        id:savedItemId,category:cat.value,label:l,speech:s,emoji:e,action:action.value,
+        id:savedItemId,category:cat.value,categories:[...new Set([cat.value,...selectedCategoryNames])],label:l,speech:s,emoji:e,action:action.value,
         image:(await storeAdminPictogramImage(chosenAdminImage))||undefined
       });
     }
@@ -3246,7 +3302,7 @@ function adminPermanentPictogramForm(existing){
     (base.subcategories||[]).forEach(sc=>{
       sc.itemIds=Array.isArray(sc.itemIds)?sc.itemIds:[];
       sc.itemIds=sc.itemIds.filter(id=>id!==savedItemId);
-      if(sc.category===cat.value&&selectedFolderIds.has(sc.id)&&!sc.itemIds.includes(savedItemId)){
+      if(selectedCategoryNames.has(sc.category)&&selectedFolderIds.has(sc.id)&&!sc.itemIds.includes(savedItemId)){
         sc.itemIds.push(savedItemId);
       }
     });

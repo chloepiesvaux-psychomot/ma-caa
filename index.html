@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 102</title>
+<title>Ma CAA v2.0 bêta 103</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -165,7 +165,7 @@ function adminReturnToPictogramsV101(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 102</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 103</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3032,7 +3032,7 @@ function adminPermanentPictogramForm(existing){
 
   mkLabel("Dossiers / sous-dossiers où afficher ce pictogramme");
   const folderPicker=document.createElement("div");
-  folderPicker.style.cssText="width:100%;max-height:280px;overflow:auto;border:1px solid #ccd5e2;border-radius:12px;padding:8px;background:#fff";
+  folderPicker.style.cssText="width:100%;max-height:360px;overflow:auto;border:2px solid #ccd5e2;border-radius:12px;padding:6px;background:#fff";
   panel.appendChild(folderPicker);
 
   const editedPermanentId=(existing&&existing._baseId)?existing._baseId:((existing&&existing.id)?existing.id:"");
@@ -3044,20 +3044,33 @@ function adminPermanentPictogramForm(existing){
   }
   function refreshFolderPicker(){
     const baseNow=readAdminBase();folderPicker.innerHTML="";
-    const folders=(baseNow.subcategories||[])
-      .filter(sc=>sc.category===cat.value&&!sc.deleted)
-      .sort((x,y)=>{let px=x.name||"",py=y.name||"";try{px=adminSubcatPath(x);py=adminSubcatPath(y)}catch(e){}return px.localeCompare(py,"fr")});
+    const folders=(baseNow.subcategories||[]).filter(sc=>sc.category===cat.value&&!sc.deleted);
     if(!folders.length){
-      const empty=document.createElement("div");empty.textContent="Aucun dossier dans cette catégorie.";
-      empty.style.cssText="padding:10px;color:#667085";folderPicker.appendChild(empty);return;
+      const empty=document.createElement("div");empty.textContent="Aucun dossier / sous-dossier dans cette catégorie.";
+      empty.style.cssText="padding:12px;color:#667085";folderPicker.appendChild(empty);return;
     }
+    const byParent={};
     folders.forEach(sc=>{
-      const row=document.createElement("label");row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #eef1f5;cursor:pointer";
-      const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedFolderIds.has(sc.id);cb.style.cssText="width:20px;height:20px;flex:0 0 auto";
-      cb.onchange=()=>{if(cb.checked)selectedFolderIds.add(sc.id);else selectedFolderIds.delete(sc.id)};
-      const txt=document.createElement("span");let path=sc.name||"Dossier";try{path=adminSubcatPath(sc)}catch(e){}txt.textContent=(sc.icon||"📁")+" "+path;
-      row.append(cb,txt);folderPicker.appendChild(row);
+      const parent=(sc.parentId&&folders.some(x=>x.id===sc.parentId))?sc.parentId:"__root__";
+      (byParent[parent]||(byParent[parent]=[])).push(sc);
     });
+    Object.values(byParent).forEach(arr=>arr.sort((a,b)=>(a.order||0)-(b.order||0)||String(a.name||"").localeCompare(String(b.name||""),"fr")));
+    function addLevel(parentId,depth){
+      (byParent[parentId]||[]).forEach(sc=>{
+        const row=document.createElement("label");
+        row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 8px 9px "+(10+depth*28)+"px;border-bottom:1px solid #eef1f5;cursor:pointer;background:"+(depth?"#fbfcfe":"#fff")+"";
+        const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedFolderIds.has(sc.id);
+        cb.style.cssText="width:21px;height:21px;flex:0 0 auto;accent-color:#2563eb";
+        cb.onchange=()=>{if(cb.checked)selectedFolderIds.add(sc.id);else selectedFolderIds.delete(sc.id)};
+        const branch=document.createElement("span");branch.textContent=depth?"↳":"";
+        branch.style.cssText="color:#98a2b3;font-weight:900";
+        const icon=document.createElement("span");icon.textContent=sc.icon||"📁";
+        const txt=document.createElement("span");txt.textContent=sc.name||"Dossier";txt.style.cssText="font-weight:"+(depth?"700":"900");
+        row.append(cb,branch,icon,txt);folderPicker.appendChild(row);
+        addLevel(sc.id,depth+1);
+      });
+    }
+    addLevel("__root__",0);
   }
   refreshFolderPicker();
   cat.addEventListener("change",()=>{selectedFolderIds=new Set();refreshFolderPicker()});

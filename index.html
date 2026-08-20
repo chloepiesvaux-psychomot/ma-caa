@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 56</title>
+<title>Ma CAA v2.0 bêta 57</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 56</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 57</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -691,7 +691,13 @@ function requireUserPin(profile,done){
   const row=document.createElement("div");row.className="editor-row";
   const ok=document.createElement("button");ok.className="saveedit";ok.textContent="Valider";
   const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";
-  ok.onclick=()=>{if(pin.value===String(profile.pin)){overlay.remove();done()}else{pin.value="";alert("Code utilisateur incorrect.");pin.focus()}};
+  ok.onclick=()=>{
+    if(pin.value===String(profile.pin)){
+      overlay.remove();
+      const home=document.getElementById("user-home-v38");if(home)home.remove();
+      done();
+    }else{pin.value="";alert("Code utilisateur incorrect.");pin.focus()}
+  };
   pin.addEventListener("keydown",e=>{if(e.key==="Enter")ok.click()});
   cancel.onclick=()=>overlay.remove();row.append(ok,cancel);panel.append(row);overlay.appendChild(panel);document.body.appendChild(overlay);pin.focus();
 }
@@ -727,18 +733,22 @@ function adminDeleteUser(id){
 function adminUsersSection(){
   const section=document.createElement("section");section.style.cssText="background:white;border-radius:16px;padding:16px";
   const h=document.createElement("h3");h.textContent="👤 Utilisateurs et codes PIN";section.appendChild(h);
-  const note=document.createElement("div");note.style.cssText="font-size:13px;color:#667085;margin-bottom:10px";note.textContent="La création, la modification, la suppression et les codes PIN sont gérés uniquement ici.";section.appendChild(note);
-  const list=document.createElement("div");list.className="profile-list";
+  const note=document.createElement("div");note.style.cssText="font-size:13px;color:#667085;margin-bottom:14px";note.textContent="La création, la modification, la suppression et les codes PIN sont gérés uniquement ici.";section.appendChild(note);
+  const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px";
   readProfiles().forEach(p=>{
-    const row=document.createElement("div");row.className="profile-row";
-    const n=document.createElement("b");n.textContent=(p.id===activeProfile()?"✓ ":"")+p.name+"  "+(p.pin?"🔐":"⚠️ sans PIN");
+    const card=document.createElement("div");card.style.cssText="border:2px solid #e1e6ef;border-radius:20px;background:#fbfcff;padding:16px 12px;min-height:220px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 5px 16px rgba(35,55,90,.06)";
+    const avatar=document.createElement("div");avatar.style.cssText="width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:#eef3ff;color:#243b6b;font-size:25px;font-weight:900";avatar.textContent=profileInitials(p.name);
+    const n=document.createElement("div");n.style.cssText="font-size:18px;font-weight:900;text-align:center";n.textContent=(p.id===activeProfile()?"✓ ":"")+p.name;
+    const status=document.createElement("div");status.style.cssText="font-size:13px;font-weight:800;color:"+(p.pin?"#176b2c":"#9a6700");status.textContent=p.pin?"🔐 PIN configuré":"⚠️ Sans PIN";
+    const actions=document.createElement("div");actions.style.cssText="display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:auto;width:100%";
     const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditUser(p.id);
-    const reset=document.createElement("button");reset.textContent="🔑 PIN";reset.onclick=()=>adminResetUserPin(p.id);
+    const reset=document.createElement("button");reset.textContent=p.pin?"🔑 Changer PIN":"🔑 Créer PIN";reset.onclick=()=>adminResetUserPin(p.id);
     const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteUser(p.id);
-    row.append(n,edit,reset,del);list.appendChild(row);
+    [edit,reset,del].forEach(b=>b.style.cssText="border:0;border-radius:10px;padding:9px;font-weight:800;cursor:pointer");
+    actions.append(edit,reset,del);card.append(avatar,n,status,actions);grid.appendChild(card);
   });
   const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un utilisateur";add.onclick=adminCreateUser;
-  section.append(list,add);return section;
+  section.append(grid,add);return section;
 }
 function addProfile(){
   const name=prompt("Prénom ou nom du nouvel utilisateur :");if(!name||!name.trim())return;
@@ -1074,7 +1084,7 @@ function openUserHome(){
       requireUserPin(profile,()=>{
         localStorage.setItem(ACTIVE_PROFILE_KEY,profile.id);
         current=0;syncCustomCategories();render();renderProfileBar();
-        overlay.remove();
+        const home=document.getElementById("user-home-v38");if(home)home.remove();
         showFeedback("Profil : "+profile.name);
       });
     };

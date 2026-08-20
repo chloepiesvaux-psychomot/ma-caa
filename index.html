@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 81</title>
+<title>Ma CAA v2.0 bêta 82</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 81</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 82</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2143,110 +2143,130 @@ function addAdminCloudConnection(panel){
   panel.appendChild(box);
 }
 
-function openAdminPanel(){
+function openAdminPanel(initialView="home"){
   const old=document.getElementById("admin-panel-beta25");
-  const keepScroll=old?old.scrollTop:0;
   if(old)old.remove();
   const overlay=document.createElement("div");overlay.id="admin-panel-beta25";
   Object.assign(overlay.style,{position:"fixed",inset:"0",zIndex:"100000",background:"#f4f6fb",overflow:"auto"});
   const top=document.createElement("div");
   Object.assign(top.style,{position:"sticky",top:"0",zIndex:"2",background:"#243b6b",color:"white",padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:"12px",flexWrap:"wrap"});
-  top.innerHTML='<div><div style="font-size:22px;font-weight:800">🛡️ MODE ADMINISTRATEUR</div><div style="font-size:13px;opacity:.9">Gestion de la base commune</div></div>';
-  const exit=document.createElement("button");exit.textContent="✕ Quitter";exit.onclick=()=>{adminUnlocked=false;overlay.remove();};top.appendChild(exit);overlay.appendChild(top);
-  const content=document.createElement("div");Object.assign(content.style,{width:"min(980px,calc(100% - 24px))",margin:"18px auto",display:"grid",gap:"14px"});
+  const title=document.createElement("div");title.innerHTML='<div style="font-size:22px;font-weight:800">🛡️ MODE ADMINISTRATEUR</div><div id="admin-view-title" style="font-size:13px;opacity:.9">Tableau de bord</div>';
+  const topActions=document.createElement("div");topActions.style.cssText="display:flex;gap:8px";
+  const home=document.createElement("button");home.textContent="⌂ Accueil";home.onclick=()=>showView("home");
+  const exit=document.createElement("button");exit.textContent="✕ Quitter";exit.onclick=()=>{adminUnlocked=false;overlay.remove()};
+  topActions.append(home,exit);top.append(title,topActions);overlay.appendChild(top);
 
-  const dashboard=document.createElement("section");dashboard.style.cssText="background:white;border-radius:18px;padding:16px";
-  dashboard.innerHTML="<h2 style='margin:0 0 12px'>Tableau de bord</h2>";
-  const dashGrid=document.createElement("div");dashGrid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px";
-  const dashBtn=(icon,title,txt,target)=>{const b=document.createElement("button");b.type="button";b.style.cssText="text-align:left;padding:18px;border:1px solid #dce4ef;border-radius:16px;background:#f8fbff;min-height:120px;cursor:pointer";b.innerHTML="<div style='font-size:36px'>"+icon+"</div><b style='font-size:17px'>"+title+"</b><div style='font-size:12px;color:#667085;margin-top:5px'>"+txt+"</div>";b.onclick=()=>document.getElementById(target)?.scrollIntoView({behavior:"smooth",block:"start"});return b};
-  dashGrid.append(dashBtn("👤","Profils / utilisateurs","Créer, modifier, masquer, supprimer et ordonner les profils.","admin-users-zone"),dashBtn("🧩","Pictogrammes permanents","Ajouter et paramétrer les pictogrammes permanents.","admin-pictos-zone"),dashBtn("📁","Catégories et dossiers","Gérer les catégories et toute l’arborescence.","admin-categories-zone"),dashBtn("🔐","Réglages et sécurité","Synchronisation et code administrateur.","admin-security-zone"));dashboard.appendChild(dashGrid);content.appendChild(dashboard);
-  const notice=document.createElement("section");notice.style.cssText="background:#fff7d6;border-radius:16px;padding:15px";
-  notice.innerHTML="<b>☁️ Base commune</b><br><span id='admin-base-updated'>"+adminBaseUpdatedLabel()+"</span><br><span id='admin-sync-stamp'>"+adminSyncLabel()+"</span><br><small>La première heure change quand la base est modifiée. La seconde change à chaque récupération réussie sur cet appareil.</small><div id='admin-sync-live' style='margin-top:8px'></div>";
-  const syncNow=document.createElement("button");
-  syncNow.type="button";syncNow.textContent="🔄 Synchroniser maintenant";
-  syncNow.style.cssText="margin-top:10px;min-height:48px;touch-action:manipulation;cursor:pointer;position:relative;z-index:20;-webkit-appearance:none";
-  let syncTapBusy=false;
-  const runSync=async(ev)=>{
-    if(ev){ev.preventDefault();ev.stopPropagation()}
-    if(syncTapBusy)return;
-    syncTapBusy=true;syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation…";
-    await adminBasePull(true);
-    await pullProfilesDirectory();
-    const recovered=await recoverProfilesFromProfilesTable();
-    await pullProfilesDirectory();
-    const live=document.getElementById("admin-sync-live");
-    if(live && recovered.ok && recovered.count>0){
-      live.textContent="✅ Base et utilisateurs synchronisés — "+recovered.count+" utilisateur(s) retrouvé(s).";
-      live.style.color="#176b2c";
-    }
-    updateAdminSyncStatusInPlace();
-    syncNow.disabled=false;syncNow.textContent="🔄 Synchroniser maintenant";syncTapBusy=false;
+  const content=document.createElement("div");Object.assign(content.style,{width:"min(1050px,calc(100% - 24px))",margin:"18px auto"});
+  overlay.appendChild(content);document.body.appendChild(overlay);
+
+  const mkSection=()=>{const sec=document.createElement("section");sec.style.cssText="background:white;border-radius:18px;padding:16px";return sec};
+  const adminCardBtn=(icon,label,subtitle,view,color)=>{
+    const b=document.createElement("button");b.type="button";
+    b.style.cssText="min-height:170px;border:0;border-radius:20px;padding:22px 16px;background:"+color+";color:white;text-align:center;box-shadow:0 6px 16px rgba(0,0,0,.12);cursor:pointer";
+    b.innerHTML="<div style='font-size:52px;margin-bottom:8px'>"+icon+"</div><div style='font-size:20px;font-weight:900'>"+label+"</div><div style='font-size:12px;margin-top:6px;opacity:.92'>"+subtitle+"</div>";
+    b.onclick=()=>showView(view);return b
   };
-  syncNow.addEventListener("click",runSync,{passive:false});
-  syncNow.addEventListener("touchend",runSync,{passive:false});
-  notice.appendChild(syncNow);
-  content.appendChild(notice);
-  addAdminCloudConnection(content);
-  {const us=adminUsersSection();us.id="admin-users-zone";content.appendChild(us)}
 
-  const add=document.createElement("section");add.id="admin-pictos-zone";add.style.cssText="background:white;border-radius:16px;padding:16px";
-  add.innerHTML="<h3>➕ Ajouter à la base</h3>";
-  const addPic=document.createElement("button");addPic.textContent="➕ Ajouter un pictogramme permanent";addPic.onclick=()=>adminAddPictogram();
-  const addCat=document.createElement("button");addCat.textContent="📁 Ajouter une catégorie";addCat.style.marginLeft="8px";addCat.onclick=()=>adminAddCategory();
-  add.append(addPic,addCat);content.appendChild(add);
+  function showView(view){
+    content.innerHTML="";
+    const subtitle=document.getElementById("admin-view-title");
+    if(subtitle)subtitle.textContent=view==="home"?"Tableau de bord":view==="profiles"?"Profils / utilisateurs":view==="pictos"?"Pictogrammes permanents":view==="categories"?"Catégories et dossiers":"Paramètres";
+    home.style.display=view==="home"?"none":"inline-block";
 
-  const manage=document.createElement("section");manage.id="admin-categories-zone";manage.style.cssText="background:white;border-radius:16px;padding:16px";
-  manage.innerHTML="<h3>📁 Catégories et dossiers</h3><p style=\"color:#667085\">Ouvre « Dossiers » pour créer une arborescence à plusieurs niveaux.</p>";
-  categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
-    const a=readAdminBase(),row=document.createElement("div");row.style.cssText="border:1px solid #dfe6ef;border-radius:16px;padding:12px;margin:12px 0;background:#fbfcfe";
-    const head=document.createElement("div");head.style.cssText="display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#eef4ff;border-radius:12px;margin-bottom:10px";
-    const title=document.createElement("b");title.textContent=adminCatIcon(cat)+" "+adminCatName(cat);title.style.cssText="font-size:18px;margin-right:auto";head.appendChild(title);
-    const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;b.style.cssText="padding:7px 10px;border-radius:9px;border:1px solid #ccd5e3;background:white;font-weight:700";return b};
-    head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn("📁 Dossiers",()=>adminManageSubcategories(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
-    row.appendChild(head);
-    const cardGrid=document.createElement("div");cardGrid.className="admin-card-grid";
-    function adminCard(label,emoji,image,edit,toggle,toggleLabel,del){
-      const card=document.createElement("div");card.className="admin-picto-card";
-      const name=document.createElement("div");name.className="ap-name";name.textContent=label;
-      const vis=document.createElement("div");vis.className="ap-vis";
-      if(image){
-        if(typeof image==="object"&&image.__cloud_image===true&&image.path){
-          vis.innerHTML=imageHtml(image,emoji||"🖼️");
-        }else if(typeof image==="object"&&image.__local_image===true&&image.key){
-          vis.innerHTML=imageHtml(image,emoji||"🖼️");
-        }else{
-          const im=document.createElement("img");im.src=String(image);im.alt="";vis.appendChild(im);
-        }
-      }else vis.textContent=emoji||"🖼️";
-      card.append(name,vis,btn("✏️ Modifier",edit),btn(toggleLabel,toggle),btn("🗑️ Supprimer",del));cardGrid.appendChild(card);
+    if(view==="home"){
+      const sec=mkSection();sec.innerHTML="<h2 style='margin:0 0 14px'>Que veux-tu gérer ?</h2>";
+      const g=document.createElement("div");g.style.cssText="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px";
+      g.append(
+        adminCardBtn("👤","Profils / utilisateurs","Utilisateurs, codes PIN, ordre, suppression…","profiles","#4f7fd8"),
+        adminCardBtn("🧩","Pictogrammes","Ajouter et modifier les pictogrammes permanents","pictos","#8b63d9"),
+        adminCardBtn("📁","Catégories","Catégories, dossiers, sous-dossiers et arborescence","categories","#20a464"),
+        adminCardBtn("⚙️","Paramètres","Sécurité, synchronisation et code administrateur","settings","#6b7280")
+      );sec.appendChild(g);content.appendChild(sec);return
     }
-    adminManagedBaseItemsFor(cat).forEach(({source,x,id,e})=>{
-      const d=adminItemData(source,x);
-      adminCard(d[1],d[0],d[4]||"",()=>adminEditItem(source,x),()=>adminToggleItem(source,x),a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer",()=>adminDeleteItem(source,x));
-    });
-    (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
-      adminCard(item.label,item.emoji||"🖼️",item.image||"",()=>adminEditAddedItem(item),()=>adminToggleAddedItem(item),item.hidden?"👁️ Réafficher":"🙈 Masquer",()=>adminDeleteAddedItem(item));
-    });
-    row.appendChild(cardGrid);
-    manage.appendChild(row);
-  });
-  content.appendChild(manage);
-  setTimeout(hydrateAllCloudPictures,0);
-  setTimeout(hydrateAllCloudPictures,150);
 
-  const security=document.createElement("section");security.id="admin-security-zone";security.style.cssText="background:white;border-radius:16px;padding:16px";
-  const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{
-    const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");
-    const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");
-    if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.");
-  };security.appendChild(change);content.appendChild(security);
-  overlay.appendChild(content);document.body.appendChild(overlay); ;requestAnimationFrame(()=>{overlay.scrollTop=keepScroll});
+    if(view==="profiles"){
+      content.appendChild(adminUsersSection());return
+    }
+
+    if(view==="pictos"){
+      const add=mkSection();add.innerHTML="<h2>🧩 Pictogrammes permanents</h2>";
+      const addPic=document.createElement("button");addPic.className="saveedit";addPic.textContent="➕ Ajouter un pictogramme permanent";addPic.onclick=()=>adminAddPictogram();add.appendChild(addPic);
+      const search=document.createElement("input");search.placeholder="🔎 Rechercher un pictogramme…";search.style.cssText="width:100%;padding:12px;margin:12px 0;border:1px solid #d9e0ea;border-radius:12px";add.appendChild(search);
+      const grid=document.createElement("div");grid.className="admin-card-grid";add.appendChild(grid);
+      const renderPictos=()=>{
+        grid.innerHTML="";const q=search.value.trim().toLowerCase(),a=readAdminBase();
+        categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
+          adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{
+            const d=adminItemData(source,x);if(q&&!d[1].toLowerCase().includes(q))return;
+            const card=document.createElement("div");card.className="admin-picto-card";
+            const name=document.createElement("div");name.className="ap-name";name.textContent=d[1];
+            const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(d[4]||"",d[0]||"🖼️");
+            const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditItem(source,x);
+            const hide=document.createElement("button");hide.textContent=a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer";hide.onclick=()=>adminToggleItem(source,x);
+            const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteItem(source,x);
+            card.append(name,vis,edit,hide,del);grid.appendChild(card);
+          });
+          (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
+            if(q&&!item.label.toLowerCase().includes(q))return;
+            const card=document.createElement("div");card.className="admin-picto-card";
+            const name=document.createElement("div");name.className="ap-name";name.textContent=item.label;
+            const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(item.image||"",item.emoji||"🖼️");
+            const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditAddedItem(item);
+            const hide=document.createElement("button");hide.textContent=item.hidden?"👁️ Réafficher":"🙈 Masquer";hide.onclick=()=>adminToggleAddedItem(item);
+            const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteAddedItem(item);
+            card.append(name,vis,edit,hide,del);grid.appendChild(card);
+          });
+        });setTimeout(hydrateAllCloudPictures,0)
+      };
+      search.oninput=renderPictos;renderPictos();content.appendChild(add);return
+    }
+
+    if(view==="categories"){
+      const sec=mkSection();sec.innerHTML="<h2>📁 Catégories et dossiers</h2><p style='color:#667085'>Clique sur une catégorie pour gérer ses pictogrammes et son arborescence de dossiers.</p>";
+      const cats=document.createElement("div");cats.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px";
+      categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
+        const a=readAdminBase(),card=document.createElement("div");card.style.cssText="border:1px solid #dde4ee;border-radius:16px;padding:14px;background:#fbfcff";
+        const open=document.createElement("button");open.style.cssText="width:100%;min-height:88px;border:0;border-radius:14px;background:#edf5ff;font-size:18px;font-weight:900;text-align:left;padding:14px";
+        open.textContent=adminCatIcon(cat)+" "+adminCatName(cat);
+        const actions=document.createElement("div");actions.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px";
+        const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditCategory(cat);
+        const folders=document.createElement("button");folders.textContent="📁 Arborescence";folders.onclick=()=>adminManageSubcategories(cat);
+        const hide=document.createElement("button");hide.textContent=a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer";hide.onclick=()=>adminToggleCat(cat);
+        const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteCat(cat);
+        actions.append(edit,folders,hide,del);card.append(open,actions);
+        open.onclick=()=>openAdminCategoryDetail(cat);
+        cats.appendChild(card)
+      });
+      const addCat=document.createElement("button");addCat.className="saveedit";addCat.textContent="➕ Ajouter une catégorie";addCat.onclick=()=>adminAddCategory();
+      sec.append(cats,addCat);content.appendChild(sec);return
+    }
+
+    if(view==="settings"){
+      const sync=mkSection();sync.innerHTML="<h2>☁️ Synchronisation</h2><p>"+adminBaseUpdatedLabel()+"<br>"+adminSyncLabel()+"</p>";
+      const syncNow=document.createElement("button");syncNow.textContent="🔄 Synchroniser maintenant";syncNow.onclick=async()=>{syncNow.disabled=true;await adminBasePull(true);await pullProfilesDirectory();await recoverProfilesFromProfilesTable();syncNow.disabled=false;syncNow.textContent="✅ Synchronisé"};
+      sync.appendChild(syncNow);content.appendChild(sync);addAdminCloudConnection(content);
+      const security=mkSection();security.innerHTML="<h2>🔐 Sécurité</h2>";
+      const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.")};
+      security.appendChild(change);content.appendChild(security);return
+    }
+  }
+
+  function openAdminCategoryDetail(cat){
+    content.innerHTML="";
+    const back=document.createElement("button");back.textContent="← Catégories";back.style.cssText="margin-bottom:12px;padding:9px 12px";back.onclick=()=>showView("categories");content.appendChild(back);
+    const sec=mkSection();sec.innerHTML="<h2>"+adminCatIcon(cat)+" "+adminCatName(cat)+"</h2><p style='color:#667085'>Pictogrammes de la catégorie et structure des dossiers.</p>";
+    const folders=document.createElement("button");folders.className="saveedit";folders.textContent="📁 Gérer l’arborescence des dossiers";folders.onclick=()=>adminManageSubcategories(cat);sec.appendChild(folders);
+    const grid=document.createElement("div");grid.className="admin-card-grid";const a=readAdminBase();
+    const card=(label,emoji,image,edit,toggle,toggleLabel,del)=>{const c=document.createElement("div");c.className="admin-picto-card";const n=document.createElement("div");n.className="ap-name";n.textContent=label;const v=document.createElement("div");v.className="ap-vis";v.innerHTML=imageHtml(image||"",emoji||"🖼️");const e=document.createElement("button");e.textContent="✏️ Modifier";e.onclick=edit;const h=document.createElement("button");h.textContent=toggleLabel;h.onclick=toggle;const d=document.createElement("button");d.textContent="🗑️ Supprimer";d.onclick=del;c.append(n,v,e,h,d);grid.appendChild(c)};
+    adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{const d=adminItemData(source,x);card(d[1],d[0],d[4]||"",()=>adminEditItem(source,x),()=>adminToggleItem(source,x),a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer",()=>adminDeleteItem(source,x))});
+    (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>card(item.label,item.emoji||"🖼️",item.image||"",()=>adminEditAddedItem(item),()=>adminToggleAddedItem(item),item.hidden?"👁️ Réafficher":"🙈 Masquer",()=>adminDeleteAddedItem(item)));
+    sec.appendChild(grid);content.appendChild(sec);setTimeout(hydrateAllCloudPictures,0)
+  }
+
+  showView(initialView);
 }
 function adminRefresh(){
-  const panel=document.getElementById("admin-panel-beta25");
-  const y=panel?panel.scrollTop:0;
-  openAdminPanel();render();
-  requestAnimationFrame(()=>{const p=document.getElementById("admin-panel-beta25");if(p)p.scrollTop=y});
+  openAdminPanel("home");render();
 }
 function adminEditCategory(cat){
   const a=readAdminBase(),key=cat.name,e=a.catEdits[key]||{};

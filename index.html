@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 91</title>
+<title>Ma CAA v2.0 bêta 92</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 91</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 92</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1517,40 +1517,44 @@ function openParentPictoQuickActions(x,cat){
   add("↑ Monter",()=>moveItem(cat,x,-1));
   add("↓ Descendre",()=>moveItem(cat,x,1));
   add("✏️ Modifier",()=>openEditor(x));
-  if(submenuFor(x).length)add("📂 Sous-menu",()=>{ov.remove();setTimeout(()=>openParentSubmenuMobile(x),0)});
+  if(submenuFor(x).length||expandSubmenuEntries(x).length)add("📂 Sous-menu",()=>{ov.remove();setTimeout(()=>openParentSubmenuMobile(x),0)});
   if(isAdded(x)&&!x[5])add("🗑️ Supprimer",()=>deleteAdded(x));
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
   p.append(actions,close);ov.appendChild(p);document.body.appendChild(ov);
 }
 
 function openParentSubmenuMobile(x){
-  // Use resolved/expanded entries: raw submenu references may only contain sourceId,
-  // which caused the "undefined" label seen on mobile.
-  const items=expandSubmenuEntries(x).filter(e=>!e.hidden);
-  if(!items.length){
-    alert("Ce sous-menu ne contient actuellement aucun pictogramme.");
-    return;
-  }
+  const items=expandSubmenuEntries(x);
+  if(!items.length){alert("Ce sous-menu ne contient actuellement aucun pictogramme.");return}
   const ov=document.createElement("div");ov.className="editor-overlay";ov.style.zIndex="100720";
-  const p=document.createElement("div");p.className="editor";p.style.maxWidth="560px";
+  const p=document.createElement("div");p.className="editor";p.style.maxWidth="620px";
   const h=document.createElement("h2");h.textContent="📂 "+displayLabel(x);p.appendChild(h);
-  const grid=document.createElement("div");
-  grid.style.cssText="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:55vh;overflow:auto";
+
+  // Parent can hide/re-show the whole submenu, without changing permanent base.
+  const folderId=(x&&x._subcatId)||("submenu:"+itemId2(x));
+  const folderCtl=document.createElement("button");
+  folderCtl.type="button";
+  const folderHidden=()=>readHiddenSubcats().includes(folderId);
+  folderCtl.textContent=folderHidden()?"👁️ Réafficher ce sous-dossier":"🙈 Masquer ce sous-dossier";
+  folderCtl.style.cssText="width:100%;margin:0 0 10px;padding:11px;border:1px solid #d8dee8;border-radius:10px;background:#f8faff;font-weight:800";
+  folderCtl.onclick=()=>{const hidden=parentToggleSubcatFast(folderId);folderCtl.textContent=hidden?"👁️ Réafficher ce sous-dossier":"🙈 Masquer ce sous-dossier"};
+  p.appendChild(folderCtl);
+
+  const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:58vh;overflow:auto";
   items.forEach(y=>{
     const label=y.label||"Pictogramme", emoji=y.emoji||"🖼️", image=y.image||"";
-    const b=document.createElement("button");b.type="button";
-    b.style.cssText="min-height:105px;border:1px solid #dce2eb;border-radius:13px;background:#fff;padding:8px;font:inherit";
-    b.innerHTML=imageHtml(image,emoji)+"<br><b>"+label+"</b>";
-    // In parent mode, tapping an item opens its management actions.
-    b.onclick=()=>{
-      const pseudo=[emoji,label,y.speech||label,null,image||null,false,y.sourceId||y.id];
-      openParentPictoQuickActions(pseudo,categories.find(c=>(c.items||[]).includes(x))||categories[0]);
-    };
-    grid.appendChild(b);
+    const pseudo=[emoji,label,y.speech||label,null,image||null,false,y.sourceId||y.id];
+    const card=document.createElement("div");card.style.cssText="border:1px solid #dce2eb;border-radius:13px;background:#fff;padding:8px;text-align:center";
+    const face=document.createElement("div");face.style.cssText="min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center";
+    face.innerHTML=imageHtml(image,emoji)+"<b style='margin-top:4px'>"+label+"</b>";
+    const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px";
+    const fav=document.createElement("button");fav.type="button";fav.textContent=isFav(pseudo)?"⭐":"☆";fav.onclick=()=>{const n=!isFav(pseudo);parentSetFavoriteFast(pseudo,n);fav.textContent=n?"⭐":"☆"};
+    const vis=document.createElement("button");vis.type="button";vis.textContent=isHidden(pseudo)?"👁️":"🙈";vis.onclick=()=>{const n=!isHidden(pseudo);parentSetHiddenFast(pseudo,n);vis.textContent=n?"👁️":"🙈";card.style.opacity=n?".48":"1"};
+    [fav,vis].forEach(b=>b.style.cssText="padding:8px;border:1px solid #d8dee8;border-radius:9px;background:#f8faff;font-size:20px");
+    row.append(fav,vis);card.append(face,row);if(isHidden(pseudo))card.style.opacity=".48";grid.appendChild(card);
   });
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
   p.append(grid,close);ov.appendChild(p);document.body.appendChild(ov);
-  setTimeout(hydrateAllCloudPictures,0);
 }
 function adminItemSubcatIds(x){
   const vals=[];

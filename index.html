@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 77</title>
+<title>Ma CAA v2.0 bêta 78</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 77</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 78</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -938,10 +938,19 @@ async function hydrateCloudPictures(){
 
 
 let cloudPictureHydrationBusy=false;
+async function hydrateLocalPictures(){
+  const imgs=[...document.querySelectorAll("img[data-local-image-key]")];
+  for(const img of imgs){
+    if(img.dataset.localLoaded==="1")continue;
+    const key=img.getAttribute("data-local-image-key");if(!key)continue;
+    const url=await loadLocalAdminImage(key);
+    if(url){img.src=url;img.dataset.objectUrl=url;img.dataset.localLoaded="1";}
+  }
+}
 async function hydrateAllCloudPictures(){
   if(cloudPictureHydrationBusy)return;
   cloudPictureHydrationBusy=true;
-  try{await hydrateCloudPictures()}finally{cloudPictureHydrationBusy=false}
+  try{await hydrateCloudPictures();await hydrateLocalPictures()}finally{cloudPictureHydrationBusy=false}
 }
 document.addEventListener("DOMContentLoaded",()=>{
   hydrateAllCloudPictures();
@@ -1338,6 +1347,9 @@ function imageHtml(p,emoji){
   const onerr="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline-grid'";
   if(p && typeof p==="object" && p.__cloud_image===true && p.path){
     return '<span class="pic-media"><img data-cloud-path="'+p.path.replace(/"/g,"&quot;")+'" alt="">'+fallback+'</span>';
+  }
+  if(p && typeof p==="object" && p.__local_image===true && p.key){
+    return '<span class="pic-media"><img data-local-image-key="'+String(p.key).replace(/"/g,"&quot;")+'" alt="">'+fallback+'</span>';
   }
   if(typeof p==="string" && p){
     return '<span class="pic-media"><img src="'+p+'" alt="" onerror="'+onerr+'">'+fallback+'</span>';
@@ -2317,7 +2329,7 @@ function adminDeleteItem(cat,x){
   writeAdminBase(a);adminRefresh();
 }
 
-async function compressPictogramImage(file,maxSide=520,quality=.76){
+async function compressPictogramImage(file,maxSide=360,quality=.66){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onerror=()=>reject(new Error("Lecture impossible"));
@@ -2330,12 +2342,12 @@ async function compressPictogramImage(file,maxSide=520,quality=.76){
         w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale));
         const c=document.createElement("canvas");
         let data="",tries=0;
-        while(tries<6){
+        while(tries<7){
           c.width=w;c.height=h;
           const ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
-          data=c.toDataURL("image/jpeg",Math.max(.48,quality-tries*.07));
-          if(data.length<=180000)break;
-          w=Math.max(1,Math.round(w*.78));h=Math.max(1,Math.round(h*.78));tries++;
+          data=c.toDataURL("image/jpeg",Math.max(.42,quality-tries*.05));
+          if(data.length<=70000)break;
+          w=Math.max(1,Math.round(w*.82));h=Math.max(1,Math.round(h*.82));tries++;
         }
         resolve(data);
       };
@@ -2344,13 +2356,32 @@ async function compressPictogramImage(file,maxSide=520,quality=.76){
     reader.readAsDataURL(file);
   });
 }
+function openLocalImageDB(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open("ma-caa-images",1);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains("images"))db.createObjectStore("images")};
+    req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+  });
+}
+async function saveLocalAdminImage(blob){
+  const db=await openLocalImageDB(),key="admin-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);
+  await new Promise((resolve,reject)=>{const tx=db.transaction("images","readwrite");tx.objectStore("images").put(blob,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});
+  db.close();return {__local_image:true,key:key};
+}
+async function loadLocalAdminImage(key){
+  try{
+    const db=await openLocalImageDB();
+    const blob=await new Promise((resolve,reject)=>{const tx=db.transaction("images","readonly");const r=tx.objectStore("images").get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});
+    db.close();return blob?URL.createObjectURL(blob):"";
+  }catch(e){console.error("Image locale",e);return ""}
+}
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
+  const blob=dataUrlToBlob(dataUrl);
   try{
     if(cloudClient){
       const u=await cloudUser();
       if(u){
-        const blob=dataUrlToBlob(dataUrl);
         const path="admin/"+u.id+"/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+".jpg";
         const up=await cloudClient.storage.from("pictograms").upload(path,blob,{upsert:true,contentType:blob.type});
         if(!up.error)return {__cloud_image:true,path:path};
@@ -2358,7 +2389,8 @@ async function storeAdminPictogramImage(dataUrl){
       }
     }
   }catch(e){console.error("Admin image storage",e)}
-  return dataUrl;
+  // Fallback: keep the image outside localStorage so it cannot overflow the app's settings storage.
+  return await saveLocalAdminImage(blob);
 }
 function adminPermanentPictogramForm(existing){
   const a=readAdminBase();
@@ -2496,8 +2528,12 @@ function adminPermanentPictogramForm(existing){
     if(chosenAdminImage){
       preview.style.display="block";emojiPreview.style.display="none";
       if(typeof chosenAdminImage==="object"&&chosenAdminImage.__cloud_image){
-        preview.removeAttribute("src");
+        preview.removeAttribute("src");preview.removeAttribute("data-local-image-key");
         preview.setAttribute("data-cloud-path",chosenAdminImage.path);
+        setTimeout(hydrateAllCloudPictures,0);
+      }else if(typeof chosenAdminImage==="object"&&chosenAdminImage.__local_image){
+        preview.removeAttribute("src");preview.removeAttribute("data-cloud-path");
+        preview.setAttribute("data-local-image-key",chosenAdminImage.key);
         setTimeout(hydrateAllCloudPictures,0);
       }else{
         preview.src=String(chosenAdminImage);
@@ -2578,7 +2614,7 @@ function adminPermanentPictogramForm(existing){
     }
 
     try{writeAdminBase(base)}
-    catch(err){alert("L’image est trop volumineuse. Essaie une image plus légère.");return}
+    catch(err){console.error(err);alert("Impossible d’enregistrer cette image. Réessaie ou choisis une autre image.");return}
     overlay.remove();adminRefresh();
   };
   cancel.onclick=()=>overlay.remove();

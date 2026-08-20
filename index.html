@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 70</title>
+<title>Ma CAA v2.0 bêta 72</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 70</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 72</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1384,73 +1384,86 @@ function renderPersonalize(box){
   );
   box.appendChild(tools);
 
-  const favHead=document.createElement("div");favHead.className="personal-group";favHead.textContent="⭐ Favoris";box.appendChild(favHead);
+  const note=document.createElement("div");note.className="personal-note";
+  note.textContent="Choisis une rubrique à gérer. Les pictogrammes ne sont chargés qu'à l'ouverture de la catégorie pour garder l'application rapide.";
+  box.appendChild(note);
+
+  const favBtn=document.createElement("button");favBtn.type="button";favBtn.className="personal-group";
+  favBtn.style.cssText="grid-column:1/-1;width:100%;text-align:left;border:1px solid #ead27c;border-radius:13px;padding:12px;background:#fff9df;font-weight:900";
+  favBtn.textContent="⭐ Favoris  ›";
+  favBtn.onclick=()=>renderParentFavoritesLazy(box,favBtn);
+  box.appendChild(favBtn);
+
+  normalCategories().forEach(cat=>{
+    const b=document.createElement("button");b.type="button";
+    b.style.cssText="grid-column:1/-1;width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #dfe5ef;background:white;border-radius:14px;padding:13px 15px;font:inherit;cursor:pointer";
+    const ic=document.createElement("span");ic.textContent=cat.icon;ic.style.fontSize="26px";
+    const tx=document.createElement("span");tx.style.flex="1";tx.innerHTML="<b>"+cat.name+"</b><br><small style='color:#687286'>Gérer la catégorie, ses sous-catégories et ses pictogrammes</small>";
+    const ar=document.createElement("b");ar.textContent="›";ar.style.fontSize="24px";
+    b.append(ic,tx,ar);b.onclick=()=>renderParentCategoryLazy(box,cat);
+    box.appendChild(b);
+  });
+}
+function clearParentLazy(box){
+  [...box.children].forEach((el,idx)=>{if(idx>2)el.remove()});
+}
+function parentBackButton(box){
+  const b=document.createElement("button");b.type="button";b.textContent="← Retour aux rubriques";b.style.cssText="grid-column:1/-1;padding:9px 12px;border-radius:10px;border:1px solid #ccd5e3;background:#f7f9fc;font-weight:800";
+  b.onclick=()=>{box.innerHTML="";renderPersonalize(box)};return b;
+}
+function renderParentFavoritesLazy(box){
+  box.innerHTML="";box.appendChild(parentBackButton(box));
+  const h=document.createElement("div");h.className="personal-group";h.textContent="⭐ Favoris";box.appendChild(h);
   const favItems=favoriteItems();
-  if(!favItems.length){
-    const empty=document.createElement("div");empty.className="personal-note";empty.textContent="Aucun favori pour ce profil.";box.appendChild(empty);
-  }else{
-    favItems.forEach(x=>{
-      const card=document.createElement("div");card.className="manage-card";
-      const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
-      const info=document.createElement("div");
-      const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
-      const actions=document.createElement("div");actions.className="manage-actions";
-      const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveFavorite(x,-1);
-      const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveFavorite(x,1);
-      const rem=document.createElement("button");rem.className="hidebtn";rem.textContent="⭐ Retirer des favoris";rem.onclick=()=>toggleFav(x);
-      actions.append(up,down,rem);info.appendChild(actions);
-      card.append(visual,info);box.appendChild(card);
+  if(!favItems.length){const e=document.createElement("div");e.className="personal-note";e.textContent="Aucun favori pour ce profil.";box.appendChild(e);return}
+  favItems.forEach(x=>{
+    const card=document.createElement("div");card.className="manage-card";
+    const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
+    const info=document.createElement("div"),title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
+    const actions=document.createElement("div");actions.className="manage-actions";
+    const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveFavorite(x,-1);
+    const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveFavorite(x,1);
+    const rem=document.createElement("button");rem.className="hidebtn";rem.textContent="⭐ Retirer";rem.onclick=()=>toggleFav(x);
+    actions.append(up,down,rem);info.appendChild(actions);card.append(visual,info);box.appendChild(card);
+  });
+}
+function renderParentCategoryLazy(box,cat){
+  box.innerHTML="";box.appendChild(parentBackButton(box));
+  const h=document.createElement("div");h.className="personal-group";h.style.cssText="grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap";
+  const label=document.createElement("b");label.textContent=cat.icon+" "+cat.name;label.style.cssText="font-size:18px;margin-right:auto";h.appendChild(label);
+  const mk=(txt,fn,cls="")=>{const b=document.createElement("button");b.type="button";b.textContent=txt;if(cls)b.className=cls;b.style.cssText+="font-size:12px;padding:5px 8px";b.onclick=fn;return b};
+  const starred=readFavCats().includes(cat.name);
+  h.appendChild(mk(starred?"★ Favori":"☆ Favori",()=>toggleFavCat(cat.name)));
+  h.appendChild(mk(readHiddenCats().includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>toggleHiddenCat(cat.name)));
+  h.appendChild(mk("↑",()=>moveCategory(cat.name,-1)));h.appendChild(mk("↓",()=>moveCategory(cat.name,1)));
+  if(cat.customId)h.appendChild(mk("🗑️",()=>deleteCustomCategory(cat),"resetedit"));
+  box.appendChild(h);
+
+  const subs=adminSubcats(cat.name);
+  if(subs.length){
+    const sh=document.createElement("div");sh.className="personal-note";sh.textContent="📁 Sous-catégories";box.appendChild(sh);
+    subs.forEach(sc=>{
+      const sr=document.createElement("div");sr.className="manage-card";sr.style.gridColumn="1/-1";
+      const sn=document.createElement("b");sn.textContent=(sc.icon||"📁")+" "+sc.name;
+      const sb=document.createElement("button");const hidden=readHiddenSubcats().includes(sc.id);sb.textContent=hidden?"👁️ Réafficher":"🙈 Masquer";sb.onclick=()=>parentToggleSubcat(sc.id);
+      sr.append(sn,sb);box.appendChild(sr);
     });
   }
 
-  const note=document.createElement("div");note.className="personal-note";
-  note.textContent="Réglages parents : gère les catégories, les favoris et les pictogrammes de ce profil.";
-  box.appendChild(note);
-  normalCategories().forEach(cat=>{
-    const h=document.createElement("div");h.className="personal-group";
-    h.style.display="flex";h.style.alignItems="center";h.style.gap="6px";h.style.flexWrap="wrap";
-    const label=document.createElement("span");label.textContent=cat.icon+" "+cat.name;h.appendChild(label);
-
-    const mk=(txt,fn,cls="")=>{const b=document.createElement("button");b.type="button";b.textContent=txt;if(cls)b.className=cls;b.style.fontSize="12px";b.style.padding="4px 7px";b.onclick=fn;return b};
-    const starred=readFavCats().includes(cat.name);
-    h.appendChild(mk(starred?"★":"☆",()=>toggleFavCat(cat.name)));
-    h.appendChild(mk(readHiddenCats().includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>toggleHiddenCat(cat.name)));
-    h.appendChild(mk("↑ Monter",()=>moveCategory(cat.name,-1)));
-    h.appendChild(mk("↓ Descendre",()=>moveCategory(cat.name,1)));
-    if(cat.customId)h.appendChild(mk("🗑️ Supprimer",()=>deleteCustomCategory(cat),"resetedit"));
-    box.appendChild(h);
-    adminSubcats(cat.name).forEach(sc=>{
-      const sr=document.createElement("div");sr.className="manage-card";sr.style.gridColumn="1/-1";
-      const sn=document.createElement("b");sn.textContent=(sc.icon||"📁")+" "+sc.name+" (sous-catégorie)";
-      const sb=document.createElement("button");const sh=readHiddenSubcats().includes(sc.id);sb.textContent=sh?"👁️ Réafficher":"🙈 Masquer";sb.onclick=()=>parentToggleSubcat(sc.id);
-      sr.append(sn,sb);box.appendChild(sr);
-    });
-
-    orderedItems(cat).forEach(x=>{
-      const card=document.createElement("div");card.className="manage-card";
-      const p=displayImage(x);
-      const visual=document.createElement("div");
-      visual.innerHTML=imageHtml(p,displayEmoji(x));
-      const info=document.createElement("div");
-      const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
-      const actions=document.createElement("div");actions.className="manage-actions";
-      const vis=document.createElement("button");
-      vis.className=isHidden(x)?"showbtn":"hidebtn";
-      vis.textContent=isHidden(x)?"👁️ Réafficher":"🙈 Masquer";
-      vis.onclick=()=>setHidden(x,!isHidden(x));
-      const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
-      const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
-      const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
-      if(submenuFor(x).length){
-        const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=()=>{activeSubmenu=x;current=categories.findIndex(c=>c.name==="Mode parents");renderGrid()};actions.appendChild(sub);
-      }
-      const fav=document.createElement("button");
-      fav.textContent=isFav(x)?"⭐ Retirer des favoris":"☆ Ajouter aux favoris";
-      fav.onclick=()=>{toggleFav(x);renderGrid()};
-      actions.append(fav,vis,up,down,edit);
-      if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️ Supprimer";del.onclick=()=>deleteAdded(x);actions.appendChild(del);}info.appendChild(actions);
-      card.append(visual,info);box.appendChild(card);
-    });
+  orderedItems(cat).forEach(x=>{
+    const card=document.createElement("div");card.className="manage-card";
+    const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
+    const info=document.createElement("div"),title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
+    const actions=document.createElement("div");actions.className="manage-actions";
+    const vis=document.createElement("button");vis.className=isHidden(x)?"showbtn":"hidebtn";vis.textContent=isHidden(x)?"👁️ Réafficher":"🙈 Masquer";vis.onclick=()=>setHidden(x,!isHidden(x));
+    const up=document.createElement("button");up.textContent="↑";up.onclick=()=>moveItem(cat,x,-1);
+    const down=document.createElement("button");down.textContent="↓";down.onclick=()=>moveItem(cat,x,1);
+    const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
+    const fav=document.createElement("button");fav.textContent=isFav(x)?"⭐":"☆";fav.onclick=()=>{toggleFav(x);renderParentCategoryLazy(box,cat)};
+    actions.append(fav,vis,up,down,edit);
+    if(submenuFor(x).length){const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=()=>{activeSubmenu=x;current=categories.findIndex(c=>c.name==="Mode parents");renderGrid()};actions.appendChild(sub)}
+    if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️";del.onclick=()=>deleteAdded(x);actions.appendChild(del)}
+    info.appendChild(actions);card.append(visual,info);box.appendChild(card);
   });
 }
 
@@ -1702,11 +1715,13 @@ function subcatVisible(sc){return !sc.hidden&&!readHiddenSubcats().includes(sc.i
 function itemInSubcat(x,sc){return (sc.itemIds||[]).includes(permanentItemId(x)||itemId2(x))}
 function renderSubcategoryFilters(box,cat,items){
  const subs=adminSubcats(cat.name).filter(subcatVisible);if(!subs.length)return items;
- const wrap=document.createElement("div");wrap.style.cssText="grid-column:1/-1;display:flex;gap:12px;overflow-x:auto;padding:13px 12px 14px;margin:0 0 14px;background:#dbe8ff;border:2px solid #9db9e8;border-radius:18px;box-shadow:0 3px 10px rgba(45,75,125,.10)";
+ const wrap=document.createElement("div");wrap.style.cssText="grid-column:1/-1;display:flex;gap:12px;overflow-x:auto;padding:13px 12px 14px;margin:0 0 14px;background:#f7f9fc;border:3px solid #1f5fbf;border-radius:18px;box-shadow:0 3px 10px rgba(45,75,125,.10)";
  const selected=activeSubcategoryByCategory[cat.name]||"all";
- subs.forEach(sc=>{
-   const b=document.createElement("button");b.type="button";b.textContent=(sc.icon||"📁")+" "+sc.name;
-   b.style.cssText="flex:0 0 auto;border:2px solid "+(selected===sc.id?"#315f9f":"#7197cc")+";border-radius:15px;padding:13px 18px;background:"+(selected===sc.id?"#9fc2f3":"#f3f7ff")+";font-weight:900;font-size:17px;line-height:1.25;box-shadow:0 3px 7px rgba(45,75,125,.12)";
+ const subColors=["#1976d2","#b84fc4","#ff7a18","#65b81d","#13a8a8","#f2a900","#ec6689","#26a6d1","#8b62d9","#e8563f"];
+ subs.forEach((sc,idx)=>{
+   const b=document.createElement("button");b.type="button";b.innerHTML="<span style='font-size:34px;line-height:1'>"+(sc.icon||"📁")+"</span><span>"+sc.name+"</span>";
+   const col=subColors[idx%subColors.length];
+   b.style.cssText="flex:0 0 auto;min-width:155px;min-height:76px;display:flex;align-items:center;justify-content:center;gap:10px;border:3px solid "+(selected===sc.id?"#153d72":"rgba(255,255,255,.7)")+";border-radius:16px;padding:12px 18px;background:"+col+";color:white;font-weight:900;font-size:19px;line-height:1.15;box-shadow:0 4px 9px rgba(0,0,0,.16);text-shadow:0 1px 2px rgba(0,0,0,.25)";
    b.onclick=()=>{activeSubcategoryByCategory[cat.name]=(selected===sc.id?"all":sc.id);renderGrid()};
    wrap.appendChild(b);
  });
@@ -1716,7 +1731,7 @@ function renderSubcategoryFilters(box,cat,items){
  return sc?items.filter(x=>itemInSubcat(x,sc)):items;
 }
 function parentToggleSubcat(id){let h=readHiddenSubcats();h=h.includes(id)?h.filter(x=>x!==id):[...h,id];writeHiddenSubcats(h);renderGrid()}
-const SUBCAT_EMOJIS=("😀 😃 😄 😁 😆 😅 😂 🙂 😊 😇 🥰 😍 🤩 😘 😋 😛 🤗 🤔 😐 😶 🙄 😴 😢 😭 😡 😱 🤒 🤕 🥳 😎 ❤️ 🧡 💛 💚 💙 💜 🤍 ⭐ 🌟 ✨ ☀️ 🌤️ ☁️ 🌧️ 🌈 🌙 ⚡ ❄️ 🔥 💧 🌊 🌳 🌸 🌻 🍀 🐶 🐱 🐭 🐰 🦊 🐻 🐼 🐸 🐵 🐔 🐧 🐦 🦋 🐞 🐟 🐠 🐬 🐳 🦁 🐯 🐮 🐷 🐴 🦄 🐝 🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍒 🍑 🥝 🍅 🥑 🥦 🥕 🌽 🥔 🍞 🥐 🥖 🧀 🥚 🍳 🥞 🍗 🍖 🍔 🍟 🍕 🌭 🥪 🌮 🍝 🍜 🍚 🍦 🍧 🍰 🧁 🍪 🍫 🍬 🍭 🥤 🧃 🥛 ☕ 🍵 🍼 🥄 🍴 🏠 🏡 🏫 🏥 🏪 🛒 🛝 🏖️ 🏊 🚗 🚕 🚌 🚲 🛴 ✈️ 🚂 🚑 🚒 🚓 🚪 🛏️ 🛋️ 🚽 🚿 🛁 🧼 🪥 🧻 👕 👖 👗 👟 🧢 🎒 📚 ✏️ 🖍️ 🎨 🧩 🎲 🎮 ⚽ 🏀 🎾 🏓 🏸 🏊 🤸 🎵 🎤 🎧 📺 📱 💻 📷 🎁 🎈 🎂 🧸 👶 🧒 👦 👧 🧑 👨 👩 👴 👵 👪 🫶 👍 👎 👋 👏 🙏 👉 👈 👆 👇 ✋ 💪 👀 👂 👃 👄 🦷 🧠 🫀 🦶 🖐️ 📁 📂 🏷️ 🔔 ⏰ ✅ ❌ ➕ ➖ ⬆️ ⬇️ ⬅️ ➡️").split(" ");
+const SUBCAT_EMOJIS=("😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐 🤓 😎 🥸 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 ☹️ 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🫣 🤭 🫢 🫡 🤫 🤥 😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤 😪 😵 🤐 🥴 🤢 🤮 🤧 😷 🤒 🤕 🤑 🤠 😈 👿 👹 👺 🤡 💩 👻 💀 ☠️ 👽 🤖 🎃 😺 😸 😹 😻 😼 😽 🙀 😿 😾 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 👍 👎 👌 🤌 🤏 ✌️ 🤞 🫰 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤝 👏 🙌 🫶 🙏 ✍️ 💅 🤳 💪 🦾 🦵 🦶 👂 👃 🧠 🫀 🫁 🦷 👀 👁️ 👅 👄 👶 🧒 👦 👧 🧑 👨 👩 👴 👵 👪 🧍 🚶 🏃 💃 🕺 🧘 🛌 🛀 🏊 🚴 🤸 ⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🥅 🏒 🥊 🎨 🎭 🎤 🎧 🎵 🎹 🥁 🎮 🎲 🧩 🧸 📚 ✏️ 🖍️ 🖌️ 📱 💻 ⌚ 📷 📺 💡 🔦 ⏰ 🔔 🔑 🔒 🧰 🛠️ 🧹 🧺 🧻 🧼 🪥 🚽 🚿 🛁 🛏️ 🛋️ 👕 👖 👗 👟 🧢 🎒 🏠 🏡 🏫 🏥 🏪 🏬 🏨 🏖️ 🏕️ 🛝 🛒 🚗 🚕 🚌 🚑 🚒 🚓 🚲 🛴 ✈️ 🚂 🚢 🍎 🍏 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🥦 🥬 🥒 🌶️ 🫑 🌽 🥕 🫒 🧄 🧅 🥔 🍠 🥐 🥯 🍞 🥖 🥨 🧀 🥚 🍳 🧈 🥞 🧇 🥓 🥩 🍗 🍖 🌭 🍔 🍟 🍕 🥪 🥙 🌮 🌯 🥗 🥘 🫕 🥫 🍝 🍜 🍲 🍛 🍣 🍱 🍚 🍙 🍘 🍥 🥠 🥟 🍤 🍦 🍧 🍨 🍩 🍪 🎂 🍰 🧁 🥧 🍫 🍬 🍭 🍮 🍯 🍼 🥛 ☕ 🍵 🧃 🥤 🧋 🧊 🥄 🍴 🥣 🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦆 🦅 🦉 🐴 🦄 🐝 🪱 🐛 🦋 🐌 🐞 🐜 🕷️ 🐢 🐍 🦎 🐙 🦑 🦀 🐠 🐟 🐬 🐳 🌸 🌹 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🍀 🍁 🍂 🍃 🌈 ☀️ 🌤️ ☁️ 🌧️ ⛈️ 🌩️ ❄️ ☃️ 💨 💧 🌊 🔥 ⭐ 🌟 ✨ 🌙 🌍 🎁 🎈 🎉 🎂 📁 📂 🏷️ ✅ ❌ ➕ ➖ ⬆️ ⬇️ ⬅️ ➡️").split(" ");
 function chooseSubcategoryEmoji(title,current,onChoose){
  const ov=document.createElement("div");ov.className="editor-overlay";ov.style.zIndex="100850";
  const p=document.createElement("div");p.className="editor";p.style.maxWidth="620px";
@@ -1734,7 +1749,7 @@ function chooseSubcategoryEmoji(title,current,onChoose){
 }
 function adminManageSubcategories(cat){
  const a=readAdminBase(),overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
- const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="760px";panel.innerHTML="<h2>📁 Sous-catégories : "+adminCatName(cat)+"</h2>";
+ const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="900px";panel.innerHTML="<h2 style='margin-bottom:14px'>📁 Sous-catégories : "+adminCatName(cat)+"</h2>";
  const list=document.createElement("div");panel.appendChild(list);
  const sm=(t,f)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.style.cssText="padding:5px 8px;min-height:34px;border:1px solid #dfe3ea;border-radius:8px;background:#f8f9fc";b.onclick=f;return b};
  function pickItems(sc){
@@ -1759,7 +1774,7 @@ function adminManageSubcategories(cat){
     });
   });list.after(pick);
  }
- function refresh(){list.innerHTML="";const arr=adminSubcats(cat.name);arr.forEach((sc,i)=>{const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:10px;align-items:center;padding:10px 8px;margin:5px 0;border:1px solid #e0e6ef;border-radius:12px;background:#f8faff";const n=document.createElement("b");n.textContent=(sc.hidden?"🙈 ":"")+(sc.icon||"📁")+" "+sc.name;n.style.cssText="font-size:16px";const ac=document.createElement("div");ac.style.cssText="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end";ac.append(sm("✏️",()=>{const n=prompt("Nom :",sc.name);if(n===null)return;const newName=n.trim()||sc.name;chooseSubcategoryEmoji("Sous-catégorie : <b>"+newName+"</b>",sc.icon||"📁",e=>{const now=readAdminBase(),target=(now.subcategories||[]).find(x=>x.id===sc.id);if(!target)return;target.name=newName;target.icon=e;writeAdminBase(now);refresh()})}),sm("🧩",()=>pickItems(sc)),sm(sc.hidden?"👁️":"🙈",()=>{sc.hidden=!sc.hidden;writeAdminBase(a);refresh()}),sm("↑",()=>{if(i<1)return;const p=arr[i-1];[p.order,sc.order]=[sc.order,p.order];writeAdminBase(a);refresh()}),sm("↓",()=>{if(i>=arr.length-1)return;const n=arr[i+1];[n.order,sc.order]=[sc.order,n.order];writeAdminBase(a);refresh()}),sm("🗑️",()=>{if(confirm("Supprimer cette sous-catégorie ?")){sc.deleted=true;writeAdminBase(a);refresh()}}));row.append(n,ac);list.appendChild(row)})}
+ function refresh(){list.innerHTML="";const arr=adminSubcats(cat.name);arr.forEach((sc,i)=>{const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:minmax(150px,1fr) auto;gap:10px;align-items:center;padding:10px 12px;margin:7px 0;border:1px solid #d8e0eb;border-radius:13px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.05)";const n=document.createElement("b");n.innerHTML="<span style='display:inline-flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:10px;background:"+["#1976d2","#b84fc4","#ff7a18","#65b81d","#13a8a8","#f2a900","#ec6689"][Math.max(0,adminSubcats(cat.name).findIndex(x=>x.id===sc.id))%7]+";font-size:25px;margin-right:9px'>"+(sc.icon||"📁")+"</span>"+(sc.hidden?"🙈 ":"")+sc.name;n.style.cssText="font-size:17px;display:flex;align-items:center";const ac=document.createElement("div");ac.style.cssText="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end";ac.append(sm("✏️",()=>{const n=prompt("Nom :",sc.name);if(n===null)return;const newName=n.trim()||sc.name;chooseSubcategoryEmoji("Sous-catégorie : <b>"+newName+"</b>",sc.icon||"📁",e=>{const now=readAdminBase(),target=(now.subcategories||[]).find(x=>x.id===sc.id);if(!target)return;target.name=newName;target.icon=e;writeAdminBase(now);refresh()})}),sm("🧩",()=>pickItems(sc)),sm(sc.hidden?"👁️":"🙈",()=>{sc.hidden=!sc.hidden;writeAdminBase(a);refresh()}),sm("↑",()=>{if(i<1)return;const p=arr[i-1];[p.order,sc.order]=[sc.order,p.order];writeAdminBase(a);refresh()}),sm("↓",()=>{if(i>=arr.length-1)return;const n=arr[i+1];[n.order,sc.order]=[sc.order,n.order];writeAdminBase(a);refresh()}),sm("🗑️",()=>{if(confirm("Supprimer cette sous-catégorie ?")){sc.deleted=true;writeAdminBase(a);refresh()}}));row.append(n,ac);list.appendChild(row)})}
  const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter une sous-catégorie";
  add.onclick=()=>{const n=prompt("Nom de la sous-catégorie :");if(!n)return;const name=n.trim();if(!name)return;chooseSubcategoryEmoji("Sous-catégorie : <b>"+name+"</b>","📁",chosen=>{const now=readAdminBase();now.subcategories=now.subcategories||[];now.subcategories.push({id:"sc"+Date.now(),category:cat.name,name:name,icon:chosen,itemIds:[],order:adminSubcats(cat.name).length,hidden:false});writeAdminBase(now);refresh()})};
  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{scheduleAdminBasePush();overlay.remove();adminRefresh()};panel.append(add,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
@@ -2078,10 +2093,10 @@ function openAdminPanel(){
   const manage=document.createElement("section");manage.style.cssText="background:white;border-radius:16px;padding:16px";
   manage.innerHTML="<h3>🗂️ Catégories et pictogrammes de base</h3>";
   categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
-    const a=readAdminBase(),row=document.createElement("div");row.style.cssText="border-top:1px solid #ddd;padding:12px 0";
-    const head=document.createElement("div");head.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
-    const title=document.createElement("b");title.textContent=adminCatIcon(cat)+" "+adminCatName(cat);head.appendChild(title);
-    const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;return b};
+    const a=readAdminBase(),row=document.createElement("div");row.style.cssText="border:1px solid #dfe6ef;border-radius:16px;padding:12px;margin:12px 0;background:#fbfcfe";
+    const head=document.createElement("div");head.style.cssText="display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:8px 10px;background:#eef4ff;border-radius:12px;margin-bottom:10px";
+    const title=document.createElement("b");title.textContent=adminCatIcon(cat)+" "+adminCatName(cat);title.style.cssText="font-size:18px;margin-right:auto";head.appendChild(title);
+    const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;b.style.cssText="padding:7px 10px;border-radius:9px;border:1px solid #ccd5e3;background:white;font-weight:700";return b};
     head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn("📁 Sous-catégories",()=>adminManageSubcategories(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
     row.appendChild(head);
     const cardGrid=document.createElement("div");cardGrid.className="admin-card-grid";

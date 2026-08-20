@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 85</title>
+<title>Ma CAA v2.0 bêta 86</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 85</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 86</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1395,12 +1395,23 @@ function createNormalCard(x,box){
 }
 let parentLazyView=null;
 function renderPersonalize(box){
+  // Bêta 86 : écran parent léger. On ne construit les pictogrammes
+  // et les dossiers détaillés qu'après sélection d'une catégorie.
+  if(parentLazyView){
+    if(parentLazyView.type==="favorites"){renderParentFavoritesLazy(box);return}
+    if(parentLazyView.type==="category"){
+      const target=normalCategories().find(c=>c.name===parentLazyView.name);
+      if(target){renderParentCategoryLazy(box,target);return}
+      parentLazyView=null;
+    }
+  }
+
   const tools=document.createElement("div");
   tools.style.cssText="grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:6px";
   const tool=(icon,title,subtitle,fn)=>{
     const b=document.createElement("button");b.type="button";
-    b.style.cssText="border:1px solid #dfe5ef;background:#f8faff;border-radius:16px;padding:14px 10px;min-height:108px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;font:inherit;cursor:pointer";
-    const i=document.createElement("div");i.textContent=icon;i.style.fontSize="30px";
+    b.style.cssText="border:1px solid #dfe5ef;background:#f8faff;border-radius:16px;padding:12px 9px;min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;font:inherit;cursor:pointer";
+    const i=document.createElement("div");i.textContent=icon;i.style.fontSize="29px";
     const t=document.createElement("b");t.textContent=title;t.style.fontSize="14px";
     const sub=document.createElement("small");sub.textContent=subtitle;sub.style.cssText="color:#687286;font-size:11px;line-height:1.2";
     b.append(i,t,sub);b.onclick=fn;return b;
@@ -1414,31 +1425,27 @@ function renderPersonalize(box){
   box.appendChild(tools);
 
   const note=document.createElement("div");note.className="personal-note";
-  note.textContent="Choisis une rubrique à gérer. Les pictogrammes ne sont chargés qu'à l'ouverture de la catégorie pour garder l'application rapide.";
+  note.textContent="Choisis une catégorie. Son contenu sera chargé uniquement quand tu l’ouvres.";
   box.appendChild(note);
 
-  const favBtn=document.createElement("button");favBtn.type="button";favBtn.className="personal-group";
-  favBtn.style.cssText="grid-column:1/-1;width:100%;text-align:left;border:1px solid #ead27c;border-radius:13px;padding:12px;background:#fff9df;font-weight:900";
-  favBtn.textContent="⭐ Favoris  ›";
-  favBtn.onclick=()=>{parentLazyView={type:"favorites"};renderParentFavoritesLazy(box,favBtn)};
-  box.appendChild(favBtn);
+  const nav=document.createElement("div");
+  nav.style.cssText="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px";
+  const colors=["#1976d2","#8b63d9","#20a464","#e67e22","#d64c7f","#179ca5","#c99a11","#5966c4"];
 
-  normalCategories().forEach(cat=>{
-    const b=document.createElement("button");b.type="button";
-    b.style.cssText="grid-column:1/-1;width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #dfe5ef;background:white;border-radius:14px;padding:13px 15px;font:inherit;cursor:pointer";
-    const ic=document.createElement("span");ic.textContent=cat.icon;ic.style.fontSize="26px";
-    const tx=document.createElement("span");tx.style.flex="1";tx.innerHTML="<b>"+cat.name+"</b><br><small style='color:#687286'>Gérer la catégorie, ses sous-catégories et ses pictogrammes</small>";
-    const ar=document.createElement("b");ar.textContent="›";ar.style.fontSize="24px";
-    b.append(ic,tx,ar);b.onclick=()=>{parentLazyView={type:"category",name:cat.name};renderParentCategoryLazy(box,cat)};
-    box.appendChild(b);
+  const fav=document.createElement("button");fav.type="button";
+  fav.innerHTML="<span style='font-size:30px'>⭐</span><b>Favoris</b>";
+  fav.style.cssText="min-height:82px;border:3px solid rgba(255,255,255,.8);border-radius:15px;padding:10px;background:#d6a800;color:white;font:inherit;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 8px rgba(0,0,0,.12);cursor:pointer";
+  fav.onclick=()=>{parentLazyView={type:"favorites"};renderParentFavoritesLazy(box)};
+  nav.appendChild(fav);
+
+  normalCategories().forEach((cat,idx)=>{
+    const btn=document.createElement("button");btn.type="button";
+    btn.innerHTML="<span style='font-size:32px'>"+cat.icon+"</span><b>"+cat.name+"</b>";
+    btn.style.cssText="min-height:82px;border:3px solid rgba(255,255,255,.8);border-radius:15px;padding:10px;background:"+colors[idx%colors.length]+";color:white;font:inherit;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 3px 8px rgba(0,0,0,.12);cursor:pointer";
+    btn.onclick=()=>{parentLazyView={type:"category",name:cat.name};renderParentCategoryLazy(box,cat)};
+    nav.appendChild(btn);
   });
-  if(parentLazyView){
-    if(parentLazyView.type==="favorites"){renderParentFavoritesLazy(box);return}
-    if(parentLazyView.type==="category"){
-      const target=normalCategories().find(c=>c.name===parentLazyView.name);
-      if(target){renderParentCategoryLazy(box,target);return}
-    }
-  }
+  box.appendChild(nav);
 }
 function clearParentLazy(box){
   [...box.children].forEach((el,idx)=>{if(idx>2)el.remove()});

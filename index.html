@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 57</title>
+<title>Ma CAA v2.0 bêta 58</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 57</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 58</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -703,22 +703,20 @@ function requireUserPin(profile,done){
 }
 function adminCreateUser(){
   const name=prompt("Prénom ou nom du nouvel utilisateur :");if(!name||!name.trim())return;
-  const pin=prompt("Code PIN de "+name.trim()+" (4 chiffres) :");if(pin===null)return;
-  if(!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres.");return}
+  const pin=prompt("Code PIN facultatif : 4 chiffres, ou laisse vide pour Sans PIN.","");if(pin===null)return;
+  if(pin!==""&&!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres, ou être vide.");return}
   const p=readProfiles(),id="u"+Date.now();p.push({id,name:name.trim(),pin});writeProfiles(p);scheduleProfilesDirectoryPush();adminRefresh();
 }
 function adminEditUser(id){
   const profiles=readProfiles(),p=profiles.find(x=>x.id===id);if(!p)return;
   const name=prompt("Nom de l’utilisateur :",p.name);if(name===null)return;
   const n=name.trim();if(!n){alert("Le nom ne peut pas être vide.");return}
-  const pin=prompt("Code PIN à 4 chiffres :",p.pin||"");if(pin===null)return;
-  if(!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres.");return}
-  p.name=n;p.pin=pin;writeProfiles(profiles);scheduleProfilesDirectoryPush();renderProfileBar();adminRefresh();
+  p.name=n;writeProfiles(profiles);scheduleProfilesDirectoryPush();renderProfileBar();adminRefresh();
 }
 function adminResetUserPin(id){
   const profiles=readProfiles(),p=profiles.find(x=>x.id===id);if(!p)return;
-  const pin=prompt("Nouveau code PIN pour "+p.name+" (4 chiffres) :");if(pin===null)return;
-  if(!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres.");return}
+  const pin=prompt("Code PIN pour "+p.name+" : 4 chiffres, ou laisse vide pour Sans PIN.",p.pin||"");if(pin===null)return;
+  if(pin!==""&&!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres, ou être vide.");return}
   p.pin=pin;writeProfiles(profiles);scheduleProfilesDirectoryPush();adminRefresh();
 }
 function adminDeleteUser(id){
@@ -735,9 +733,9 @@ function adminUsersSection(){
   const h=document.createElement("h3");h.textContent="👤 Utilisateurs et codes PIN";section.appendChild(h);
   const note=document.createElement("div");note.style.cssText="font-size:13px;color:#667085;margin-bottom:14px";note.textContent="La création, la modification, la suppression et les codes PIN sont gérés uniquement ici.";section.appendChild(note);
   const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px";
-  readProfiles().forEach(p=>{
+  [...readProfiles()].sort((a,b)=>a.name.localeCompare(b.name,'fr',{sensitivity:'base'})).forEach(p=>{
     const card=document.createElement("div");card.style.cssText="border:2px solid #e1e6ef;border-radius:20px;background:#fbfcff;padding:16px 12px;min-height:220px;display:flex;flex-direction:column;align-items:center;gap:9px;box-shadow:0 5px 16px rgba(35,55,90,.06)";
-    const avatar=document.createElement("div");avatar.style.cssText="width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:#eef3ff;color:#243b6b;font-size:25px;font-weight:900";avatar.textContent=profileInitials(p.name);
+    const avatar=document.createElement("div");avatar.style.cssText="width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:#eef3ff;color:#243b6b;font-size:25px;font-weight:900";renderProfileAvatar(avatar,p,76);
     const n=document.createElement("div");n.style.cssText="font-size:18px;font-weight:900;text-align:center";n.textContent=(p.id===activeProfile()?"✓ ":"")+p.name;
     const status=document.createElement("div");status.style.cssText="font-size:13px;font-weight:800;color:"+(p.pin?"#176b2c":"#9a6700");status.textContent=p.pin?"🔐 PIN configuré":"⚠️ Sans PIN";
     const actions=document.createElement("div");actions.style.cssText="display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:auto;width:100%";
@@ -1057,6 +1055,33 @@ function openProfiles(){
   panel.append(list,row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 
+function renderProfileAvatar(el,p,size=82){
+  el.innerHTML="";el.style.overflow="hidden";const av=p?.avatar||"";
+  if(av&&av.startsWith("data:image/")){const img=document.createElement("img");img.src=av;img.alt="";img.style.cssText="width:100%;height:100%;object-fit:cover";el.appendChild(img);return}
+  if(av){el.textContent=av;el.style.fontSize=Math.round(size*.48)+"px";return}
+  el.textContent=profileInitials(p?.name);el.style.fontSize=Math.round(size*.34)+"px";
+}
+function saveActiveProfileAvatar(value){
+  const profiles=readProfiles(),p=profiles.find(x=>x.id===activeProfile());if(!p)return;
+  p.avatar=value||"";writeProfiles(profiles);scheduleProfilesDirectoryPush();renderProfileBar();
+}
+function openProfileAvatarSettings(){
+  const profiles=readProfiles(),p=profiles.find(x=>x.id===activeProfile());if(!p)return;
+  const overlay=document.createElement("div");overlay.className="editor-overlay";
+  const panel=document.createElement("div");panel.className="editor";panel.innerHTML="<h2>👤 Image du profil</h2><p>Choisis une photo, un emoji ou les initiales.</p>";
+  const preview=document.createElement("div");preview.style.cssText="width:110px;height:110px;border-radius:50%;display:grid;place-items:center;background:#eef3ff;margin:8px auto 16px;font-weight:900;color:#243b6b";renderProfileAvatar(preview,p,110);panel.appendChild(preview);
+  const photoLabel=document.createElement("label");photoLabel.className="photo-label";photoLabel.textContent="📷 Choisir une photo / image";
+  const file=document.createElement("input");file.type="file";file.accept="image/*";file.style.display="none";photoLabel.appendChild(file);panel.appendChild(photoLabel);
+  file.onchange=()=>{const f=file.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{saveActiveProfileAvatar(String(r.result));p.avatar=String(r.result);renderProfileAvatar(preview,p,110)};r.readAsDataURL(f)};
+  const choose=document.createElement("button");choose.type="button";choose.textContent="😊 Choisir un emoji";choose.style.cssText="margin:10px 6px;padding:10px 14px";panel.appendChild(choose);
+  const palette=document.createElement("div");palette.style.cssText="display:none;max-height:280px;overflow:auto;padding:10px;border:1px solid #ddd;border-radius:12px";
+  const chars="😀 😃 😄 😊 😍 🥰 😎 🤩 🥳 😇 🙂 😉 🤗 🤓 👶 🧒 👦 👧 🧑 👨 👩 👴 👵 🐶 🐱 🐰 🦊 🐻 🐼 🦁 🐯 🦄 🐸 🦋 🌸 🌻 🌈 ☀️ 🌙 ⭐ ❤️ 🧡 💛 💚 💙 💜 ⚽ 🏀 🎾 🎨 🎵 🎮 🧩 🚗 🚲 ✈️ 🍎 🍓 🍕 🍦 🎂 🏠 🏫 📚";
+  chars.split(" ").forEach(ch=>{const b=document.createElement("button");b.type="button";b.textContent=ch;b.style.cssText="font-size:28px;width:44px;height:44px;margin:3px";b.onclick=()=>{saveActiveProfileAvatar(ch);p.avatar=ch;renderProfileAvatar(preview,p,110)};palette.appendChild(b)});
+  choose.onclick=()=>palette.style.display=palette.style.display==="none"?"block":"none";panel.appendChild(palette);
+  const initials=document.createElement("button");initials.textContent="👤 Utiliser les initiales";initials.onclick=()=>{saveActiveProfileAvatar("");p.avatar="";renderProfileAvatar(preview,p,110)};panel.appendChild(initials);
+  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.style.marginLeft="8px";close.onclick=()=>overlay.remove();panel.appendChild(close);
+  overlay.appendChild(panel);document.body.appendChild(overlay);
+}
 function profileInitials(name){
   const parts=String(name||"Utilisateur").trim().split(/\s+/).filter(Boolean);
   return (parts.slice(0,2).map(x=>x[0]?.toUpperCase()||"").join("")||"👤");
@@ -1072,12 +1097,12 @@ function openUserHome(){
 
   const grid=document.createElement("div");
   grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px";
-  readProfiles().forEach(profile=>{
+  [...readProfiles()].sort((a,b)=>a.name.localeCompare(b.name,'fr',{sensitivity:'base'})).forEach(profile=>{
     const card=document.createElement("button");card.type="button";
     card.style.cssText="border:2px solid #dfe5ef;background:white;border-radius:22px;padding:20px 12px;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font:inherit;cursor:pointer;box-shadow:0 6px 20px rgba(35,55,90,.07)";
     const avatar=document.createElement("div");
     avatar.style.cssText="width:82px;height:82px;border-radius:50%;display:grid;place-items:center;background:#eef3ff;font-size:28px;font-weight:900;color:#243b6b";
-    avatar.textContent=profileInitials(profile.name);
+    renderProfileAvatar(avatar,profile,82);
     const name=document.createElement("b");name.textContent=profile.name;name.style.fontSize="18px";
     card.append(avatar,name);
     card.onclick=()=>{
@@ -1094,7 +1119,7 @@ function openUserHome(){
 
   const note=document.createElement("div");
   note.style.cssText="text-align:center;color:#687286;font-size:13px;margin-top:20px";
-  note.textContent="Les codes PIN individuels seront ajoutés à l’étape suivante.";
+  note.textContent="Sélectionne ton profil pour utiliser Ma CAA.";
   wrap.appendChild(note);
   overlay.appendChild(wrap);document.body.appendChild(overlay);
 }
@@ -1301,6 +1326,7 @@ function createNormalCard(x,box){
   b.onclick=()=>add(displayItem(x));box.appendChild(b);
 }
 function renderPersonalize(box){
+  const avatarBtn=document.createElement("button");avatarBtn.className="catmanage";avatarBtn.textContent="👤 Personnaliser l’image du profil";avatarBtn.onclick=openProfileAvatarSettings;box.appendChild(avatarBtn);
   const voiceBtn=document.createElement("button");voiceBtn.className="catmanage";voiceBtn.textContent="🔊 Choisir la voix";voiceBtn.onclick=openVoiceSettings;box.appendChild(voiceBtn);
   const catBtn=document.createElement("button");catBtn.className="catmanage";catBtn.textContent="📁 Créer une catégorie personnalisée";catBtn.onclick=openAddCategory;box.appendChild(catBtn);
   const addBtn=document.createElement("button");addBtn.className="addpicto";addBtn.textContent="➕ Ajouter un pictogramme personnalisé";addBtn.onclick=openAddPicto;box.appendChild(addBtn);

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 68</title>
+<title>Ma CAA v2.0 bêta 69</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 68</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 69</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1737,7 +1737,7 @@ function adminManageSubcategories(cat){
         target.itemIds=cb.checked?[...new Set([...target.itemIds,v.id])]:target.itemIds.filter(id=>id!==v.id);
         // Persist without re-rendering the whole app while the checkbox panel is open.
         localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(now));
-        syncAdminCategories();scheduleAdminBasePush();
+        adminBaseLocalDirty=true;syncAdminCategories();scheduleAdminBasePush();
       };
       row.append(cb,document.createTextNode((v.emoji||"🖼️")+" "+v.label));pick.appendChild(row);
     });
@@ -1759,7 +1759,7 @@ function adminManageSubcategories(cat){
    cp.appendChild(pal);
    const row=document.createElement("div");row.style.cssText="display:flex;gap:8px;margin-top:12px";
    const ok=document.createElement("button");ok.className="saveedit";ok.textContent="✓ Choisir";
-   ok.onclick=()=>{a.subcategories.push({id:"sc"+Date.now(),category:cat.name,name:n.trim(),icon:chosen,itemIds:[],order:adminSubcats(cat.name).length,hidden:false});writeAdminBase(a);chooser.remove();refresh()};
+   ok.onclick=()=>{const now=readAdminBase();now.subcategories=now.subcategories||[];now.subcategories.push({id:"sc"+Date.now(),category:cat.name,name:n.trim(),icon:chosen,itemIds:[],order:adminSubcats(cat.name).length,hidden:false});writeAdminBase(now);chooser.remove();refresh()};
    const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>chooser.remove();
    row.append(ok,cancel);cp.appendChild(row);chooser.appendChild(cp);document.body.appendChild(chooser);
  };
@@ -1850,13 +1850,14 @@ function syncAdminCategories(){
   if(modeIndex>=0)categories.splice(modeIndex,0,...extras);else categories.push(...extras);
 }
 function writeAdminBase(v){
+  adminBaseLocalDirty=true;
   localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(v));
   syncAdminCategories();
   render();
   scheduleAdminBasePush();
 }
 
-let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null;
+let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null,adminBaseLocalDirty=false;
 const ADMIN_LAST_SYNC_KEY="ma-caa-admin-last-sync";
 const ADMIN_BASE_UPDATED_KEY="ma-caa-admin-base-updated";
 function formatFrDateTime(raw){
@@ -1877,7 +1878,7 @@ function adminBaseUpdatedLabel(){
   const updated=localStorage.getItem(ADMIN_BASE_UPDATED_KEY);
   return updated?"Dernière modification de la base : "+formatFrDateTime(updated):"Dernière modification de la base : inconnue";
 }
-function scheduleAdminBasePush(){clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,1200)}
+function scheduleAdminBasePush(){adminBaseLocalDirty=true;clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,250)}
 async function adminBasePush(){
   if(adminBaseCloudBusy||!cloudClient)return false;
   const u=await cloudUser();
@@ -1888,13 +1889,14 @@ async function adminBasePush(){
   adminBaseCloudBusy=true;
   try{
     const r=await cloudClient.from("app_config").upsert({key:"admin_base",data:readAdminBase(),updated_at:new Date().toISOString()},{onConflict:"key"}).select("updated_at").single();
-    if(r.error)throw r.error;adminBaseCloudUpdated=r.data?.updated_at||null;markAdminBaseSynced(adminBaseCloudUpdated);return true;
+    if(r.error)throw r.error;adminBaseCloudUpdated=r.data?.updated_at||null;markAdminBaseSynced(adminBaseCloudUpdated);adminBaseLocalDirty=false;return true;
   }catch(e){console.error("Admin base push",e);return false}finally{adminBaseCloudBusy=false}
 }
 async function adminBasePull(showStatus=false){
   const status=document.getElementById("admin-sync-live");
   const setStatus=(txt,ok=false)=>{if(status){status.textContent=txt;status.style.fontWeight="700";status.style.color=ok?"#176b2c":"#8a3b12"}};
   if(adminBaseCloudBusy){if(showStatus)setStatus("Une synchronisation est déjà en cours…");return false}
+  if(adminBaseLocalDirty){if(showStatus)setStatus("⏳ Enregistrement de vos modifications…");return false}
   if(!cloudClient){if(showStatus)setStatus("❌ Connexion Supabase indisponible sur cet appareil.");return false}
   adminBaseCloudBusy=true;
   try{

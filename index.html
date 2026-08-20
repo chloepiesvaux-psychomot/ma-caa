@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 84</title>
+<title>Ma CAA v2.0 bêta 85</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 84</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 85</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2254,36 +2254,113 @@ function openAdminPanel(initialView="home"){
     }
 
     if(view==="pictos"){
-      const sec=mkSection();sec.innerHTML="<h2>🧩 Pictogrammes permanents</h2><p style='color:#667085'>Les pictogrammes sont regroupés par catégorie. Les flèches modifient l’ordre permanent d’affichage dans la catégorie.</p>";
-      const addPic=document.createElement("button");addPic.className="saveedit";addPic.textContent="➕ Ajouter un pictogramme permanent";addPic.onclick=()=>adminAddPictogram();sec.appendChild(addPic);
-      const search=document.createElement("input");search.placeholder="🔎 Rechercher un pictogramme…";search.style.cssText="width:100%;padding:12px;margin:12px 0;border:1px solid #d9e0ea;border-radius:12px";sec.appendChild(search);
-      const host=document.createElement("div");sec.appendChild(host);
-      const renderPictos=()=>{
-        host.innerHTML="";const q=search.value.trim().toLowerCase();
-        categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
-          const entries=adminPermanentEntries(cat).filter(e=>!q||e.label.toLowerCase().includes(q));
-          if(!entries.length)return;
-          const group=document.createElement("div");group.style.cssText="margin:16px 0 24px;border:1px solid #dfe6ef;border-radius:16px;padding:12px;background:#fbfcff";
-          const gh=document.createElement("div");gh.style.cssText="font-size:19px;font-weight:900;padding:8px 10px;background:#eef4ff;border-radius:11px;margin-bottom:10px";gh.textContent=adminCatIcon(cat)+" "+adminCatName(cat);group.appendChild(gh);
-          const grid=document.createElement("div");grid.className="admin-card-grid";
+      const sec=mkSection();
+      sec.innerHTML="<h2>🧩 Pictogrammes permanents</h2><p style='color:#667085'>Choisis une catégorie pour afficher directement ses pictogrammes. Cela évite de charger toute la base en même temps.</p>";
+
+      const addPic=document.createElement("button");
+      addPic.className="saveedit";
+      addPic.textContent="➕ Ajouter un pictogramme permanent";
+      addPic.onclick=()=>adminAddPictogram();
+      sec.appendChild(addPic);
+
+      const search=document.createElement("input");
+      search.placeholder="🔎 Rechercher dans la catégorie affichée…";
+      search.style.cssText="width:100%;padding:12px;margin:12px 0 10px;border:1px solid #d9e0ea;border-radius:12px";
+      sec.appendChild(search);
+
+      const catsNav=document.createElement("div");
+      catsNav.style.cssText="display:flex;gap:9px;overflow-x:auto;padding:10px 4px 13px;margin-bottom:10px;border-bottom:1px solid #e5eaf1";
+      sec.appendChild(catsNav);
+
+      const host=document.createElement("div");
+      sec.appendChild(host);
+
+      const adminCats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents");
+      let selectedCat=adminCats[0]||null;
+
+      const catColors=["#1976d2","#8b63d9","#20a464","#e67e22","#d64c7f","#179ca5","#c99a11","#5966c4"];
+
+      function drawCatNav(){
+        catsNav.innerHTML="";
+        adminCats.forEach((cat,idx)=>{
+          const b=document.createElement("button");
+          b.type="button";
+          b.innerHTML="<span style='font-size:25px'>"+adminCatIcon(cat)+"</span><span>"+adminCatName(cat)+"</span>";
+          const active=selectedCat&&selectedCat.name===cat.name;
+          b.style.cssText="flex:0 0 auto;display:flex;align-items:center;gap:7px;min-height:55px;padding:9px 13px;border-radius:13px;border:3px solid "+(active?"#1d3557":"transparent")+";background:"+catColors[idx%catColors.length]+";color:white;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.12)";
+          b.onclick=()=>{selectedCat=cat;search.value="";drawCatNav();renderSelectedCategory()};
+          catsNav.appendChild(b);
+        });
+      }
+
+      function renderSelectedCategory(){
+        host.innerHTML="";
+        if(!selectedCat){
+          host.innerHTML="<div style='padding:20px;color:#667085'>Aucune catégorie.</div>";
+          return;
+        }
+
+        const q=search.value.trim().toLowerCase();
+        const entries=adminPermanentEntries(selectedCat).filter(e=>!q||e.label.toLowerCase().includes(q));
+
+        const group=document.createElement("div");
+        group.style.cssText="margin:6px 0 20px;border:1px solid #dfe6ef;border-radius:16px;padding:12px;background:#fbfcff";
+
+        const gh=document.createElement("div");
+        gh.style.cssText="display:flex;align-items:center;gap:10px;font-size:21px;font-weight:900;padding:10px 12px;background:#eef4ff;border-radius:11px;margin-bottom:10px";
+        gh.innerHTML="<span style='font-size:30px'>"+adminCatIcon(selectedCat)+"</span><span>"+adminCatName(selectedCat)+"</span><span style='margin-left:auto;font-size:13px;color:#667085'>"+entries.length+" pictogramme(s)</span>";
+        group.appendChild(gh);
+
+        if(!entries.length){
+          const empty=document.createElement("div");
+          empty.textContent=q?"Aucun pictogramme ne correspond à la recherche.":"Aucun pictogramme dans cette catégorie.";
+          empty.style.cssText="padding:20px;text-align:center;color:#667085";
+          group.appendChild(empty);
+        }else{
+          const grid=document.createElement("div");
+          grid.className="admin-card-grid";
           entries.forEach((e,i)=>{
             const card=document.createElement("div");card.className="admin-picto-card";
             const name=document.createElement("div");name.className="ap-name";name.textContent=e.label;
             const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️");
-            const order=document.createElement("div");order.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:5px";
-            const up=document.createElement("button");up.textContent="↑ Monter";up.disabled=i===0;up.onclick=()=>{adminMovePermanent(cat,e.id,-1);openAdminPanel("pictos")};
-            const down=document.createElement("button");down.textContent="↓ Descendre";down.disabled=i===entries.length-1;down.onclick=()=>{adminMovePermanent(cat,e.id,1);openAdminPanel("pictos")};order.append(up,down);
+
+            const order=document.createElement("div");
+            order.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:5px";
+            const up=document.createElement("button");up.textContent="↑ Monter";up.disabled=i===0;
+            up.onclick=()=>{adminMovePermanent(selectedCat,e.id,-1);renderSelectedCategory()};
+            const down=document.createElement("button");down.textContent="↓ Descendre";down.disabled=i===entries.length-1;
+            down.onclick=()=>{adminMovePermanent(selectedCat,e.id,1);renderSelectedCategory()};
+            order.append(up,down);
+
             const edit=document.createElement("button");edit.textContent="✏️ Modifier";
             const hide=document.createElement("button");hide.textContent=e.hidden?"👁️ Réafficher":"🙈 Masquer";
             const del=document.createElement("button");del.textContent="🗑️ Supprimer";
-            if(e.kind==="base"){edit.onclick=()=>adminEditItem(e.source,e.x);hide.onclick=()=>adminToggleItem(e.source,e.x);del.onclick=()=>adminDeleteItem(e.source,e.x)}
-            else{edit.onclick=()=>adminEditAddedItem(e.item);hide.onclick=()=>adminToggleAddedItem(e.item);del.onclick=()=>adminDeleteAddedItem(e.item)}
-            card.append(name,vis,order,edit,hide,del);grid.appendChild(card);
+
+            if(e.kind==="base"){
+              edit.onclick=()=>adminEditItem(e.source,e.x);
+              hide.onclick=()=>adminToggleItem(e.source,e.x);
+              del.onclick=()=>adminDeleteItem(e.source,e.x);
+            }else{
+              edit.onclick=()=>adminEditAddedItem(e.item);
+              hide.onclick=()=>adminToggleAddedItem(e.item);
+              del.onclick=()=>adminDeleteAddedItem(e.item);
+            }
+
+            card.append(name,vis,order,edit,hide,del);
+            grid.appendChild(card);
           });
-          group.appendChild(grid);host.appendChild(group)
-        });setTimeout(hydrateAllCloudPictures,0)
-      };
-      search.oninput=renderPictos;renderPictos();content.appendChild(sec);return
+          group.appendChild(grid);
+        }
+
+        host.appendChild(group);
+        setTimeout(hydrateAllCloudPictures,0);
+      }
+
+      search.oninput=renderSelectedCategory;
+      drawCatNav();
+      renderSelectedCategory();
+      content.appendChild(sec);
+      return
     }
 
     if(view==="categories"){

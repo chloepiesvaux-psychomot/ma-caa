@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 110</title>
+<title>Ma CAA v2.0 bêta 111</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 110</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 111</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -571,6 +571,10 @@ function editQuickChoices(x){
 }
 
 function adminManageQuickChoices(parentId,parentLabel){
+  // Les catégories restent ouvertes/fermées jusqu'à ce que l'administrateur
+  // clique lui-même sur leur en-tête.
+  const quickOpenCategories=new Set();
+
   const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100660";
   const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="900px";
   panel.innerHTML="<h2>💬 Suite rapide : "+parentLabel+"</h2><div style='color:#667085;margin-bottom:12px'>Choisis 2 à 4 pictogrammes permanents. Ils sont classés par catégories et conservent automatiquement leur image, leur nom et leur phrase prononcée.</div>";
@@ -605,7 +609,9 @@ function adminManageQuickChoices(parentId,parentLabel){
     browser.innerHTML="";
     const groups={};rows.forEach(r=>(groups[r.cat]||(groups[r.cat]=[])).push(r));
     Object.entries(groups).forEach(([cat,items])=>{
-      const details=document.createElement("details");details.open=!!q;
+      const details=document.createElement("details");
+      details.open=quickOpenCategories.has(cat)||!!q;
+details.addEventListener("toggle",()=>{if(details.open)quickOpenCategories.add(cat);else quickOpenCategories.delete(cat)});
       const sum=document.createElement("summary");sum.textContent="📁 "+cat+" ("+items.length+")";sum.style.cssText="cursor:pointer;font-weight:900;padding:11px;background:#f4f6fa;border-radius:10px;margin:6px 0";details.appendChild(sum);
       const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;margin:8px 0 14px";
       items.forEach(r=>{
@@ -3344,21 +3350,21 @@ function adminPermanentPictogramForm(existing){
       });
 
       writeAdminBase(base);
-      const returnY=(typeof ADMIN_PICTO_RETURN_V100!=="undefined"&&ADMIN_PICTO_RETURN_V100&&ADMIN_PICTO_RETURN_V100.scrollY)||window.scrollY||0;
+
+      // Ne jamais quitter/reconstruire la page Pictogrammes après validation.
+      // On ferme uniquement la fenêtre d'édition : la catégorie, le scroll et
+      // l'état visuel sous-jacent restent donc exactement tels quels.
       overlay.remove();
 
-      // Saving is complete at this point. Navigation back to Pictograms must never
-      // invalidate the save or show an "enregistrement" error.
+      // Mettre à jour discrètement le libellé/image visibles si la carte est encore présente.
       try{
-        if(typeof adminReturnToPictogramsStable==="function"){
-          adminReturnToPictogramsStable(returnY);
-        }else{
-          adminRefresh();
+        const cards=[...document.querySelectorAll("[data-admin-item-id]")];
+        const card=cards.find(x=>x.dataset.adminItemId===savedItemId);
+        if(card){
+          const lab=card.querySelector("[data-admin-item-label]");
+          if(lab)lab.textContent=l;
         }
-      }catch(navErr){
-        console.warn("Retour vers Pictogrammes impossible après sauvegarde",navErr);
-        try{adminRefresh()}catch(e){}
-      }
+      }catch(e){}
     }catch(err){
       console.error("Enregistrement pictogramme",err);
       alert("Erreur pendant la sauvegarde : "+(err&&err.message?err.message:"erreur inconnue"));

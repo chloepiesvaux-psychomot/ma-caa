@@ -281,7 +281,7 @@ function showFeedback(label){
 }
 function add(x){
   showFeedback(x[1]);
-  let picto=localPictos[x[1]]||x[3]||null;
+  const picto=x[3]||localPictos[x[1]]||null;
   phrase.push({icon:x[0],label:x[1],speech:x[2],picto});
   renderPhrase();
   speakText(x[2]);
@@ -424,20 +424,9 @@ function displayImage(x){
   if(x[6])return "";
   return customFor(x).image||localPictos[x[1]]||"";
 }
-function activeProfileVisualFor(x){
-  const p=readProfiles().find(v=>v.id===activeProfile());if(!p||!p.avatar)return null;
-  const label=displayLabel(x).trim().toLocaleLowerCase("fr");
-  const pname=(p.name||"").trim().toLocaleLowerCase("fr");
-  if(!pname||label!==pname)return null;
-  return p.avatar;
-}
 function displayItem(x){
-  const pv=activeProfileVisualFor(x);
-  if(pv){
-    if(pv.startsWith("data:image/")||pv.startsWith("http")||pv.startsWith("/"))return [displayEmoji(x),displayLabel(x),spokenText(x),pv];
-    return [pv,displayLabel(x),spokenText(x),null];
-  }
-  return [displayEmoji(x),displayLabel(x),spokenText(x),displayImage(x)||null];
+  const image=displayImage(x)||null;
+  return [displayEmoji(x),displayLabel(x),spokenText(x),image];
 }
 function openEditor(x){
   const old=customFor(x),overlay=document.createElement("div");overlay.className="editor-overlay";
@@ -1385,7 +1374,7 @@ function renderPersonalize(box){
   }else{
     favItems.forEach(x=>{
       const card=document.createElement("div");card.className="manage-card";
-      const visual=document.createElement("div");visual.innerHTML=imageHtml((activeProfileVisualFor(x)&&String(activeProfileVisualFor(x)).startsWith("data:image/"))?activeProfileVisualFor(x):displayImage(x),(activeProfileVisualFor(x)&&!String(activeProfileVisualFor(x)).startsWith("data:image/"))?activeProfileVisualFor(x):displayEmoji(x));
+      const visual=document.createElement("div");visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
       const info=document.createElement("div");
       const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
       const actions=document.createElement("div");actions.className="manage-actions";

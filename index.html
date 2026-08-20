@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 100</title>
+<title>Ma CAA v2.0 bêta 101</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -144,6 +144,17 @@ document.addEventListener("click",function(e){
     b.dataset.adminCatActive="1";
   }
 },true);
+
+function adminReturnToPictogramsV101(scrollY){
+  adminRefresh();
+  requestAnimationFrame(()=>{
+    const pictoBtn=[...document.querySelectorAll("button")].find(b=>/pictogrammes?/i.test((b.textContent||"").trim()));
+    if(pictoBtn){
+      pictoBtn.click();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,Number(scrollY)||0)));
+    }
+  });
+}
 </script>
 </head>
 <body>
@@ -154,7 +165,7 @@ document.addEventListener("click",function(e){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 100</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 101</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2922,7 +2933,7 @@ function adminDeleteItem(cat,x){
   const a=readAdminBase(),id=(x&&x[6])||adminItemId(cat,x);
   if(!a.deletedItems.includes(id))a.deletedItems.push(id);
   if(a.hiddenItems.includes(id))a.hiddenItems=a.hiddenItems.filter(v=>v!==id);
-  writeAdminBase(a);adminRefresh();
+  writeAdminBase(a);adminReturnToPictogramsV101(window.scrollY||0);
 }
 
 async function compressPictogramImage(file,maxSide=360,quality=.66){
@@ -3017,39 +3028,36 @@ function adminPermanentPictogramForm(existing){
   panel.appendChild(cat);
 
   mkLabel("Dossiers / sous-dossiers où afficher ce pictogramme");
-  const subcat=document.createElement("div");
-  subcat.style.cssText="width:100%;max-height:280px;overflow:auto;border:1px solid #ccd5e2;border-radius:12px;padding:8px;background:#fff";
-  panel.appendChild(subcat);
+  const folderPicker=document.createElement("div");
+  folderPicker.style.cssText="width:100%;max-height:280px;overflow:auto;border:1px solid #ccd5e2;border-radius:12px;padding:8px;background:#fff";
+  panel.appendChild(folderPicker);
 
-  function permanentItemId(){
-    if(existing&&existing._baseId)return existing._baseId;
-    if(existing&&existing.id)return existing.id;
-    return "";
-  }
-  function selectedExistingSubcats(){
-    const id=permanentItemId();if(!id)return [];
-    const base=readAdminBase();
-    return (base.subcategories||[]).filter(sc=>Array.isArray(sc.itemIds)&&sc.itemIds.includes(id)).map(sc=>sc.id);
-  }
-  let selectedFolderIds=new Set(selectedExistingSubcats());
-  function refreshSubcategorySelect(){
-    const base=readAdminBase();subcat.innerHTML="";
-    const list=(base.subcategories||[])
-      .filter(sc=>sc.category===cat.value&&!sc.deleted)
-      .sort((x,y)=>adminSubcatPath(x).localeCompare(adminSubcatPath(y),"fr"));
-    if(!list.length){subcat.innerHTML='<div style="padding:10px;color:#667085">Aucun dossier dans cette catégorie.</div>';return}
-    list.forEach(sc=>{
-      const row=document.createElement("label");
-      row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #eef1f5;cursor:pointer";
-      const cb=document.createElement("input");cb.type="checkbox";cb.value=sc.id;cb.checked=selectedFolderIds.has(sc.id);
-      cb.style.cssText="width:20px;height:20px;flex:0 0 auto";
-      cb.addEventListener("change",()=>{if(cb.checked)selectedFolderIds.add(sc.id);else selectedFolderIds.delete(sc.id)});
-      const txt=document.createElement("span");txt.textContent=(sc.icon||"📁")+" "+adminSubcatPath(sc);
-      row.append(cb,txt);subcat.appendChild(row);
+  const editedPermanentId=(existing&&existing._baseId)?existing._baseId:((existing&&existing.id)?existing.id:"");
+  let selectedFolderIds=new Set();
+  if(editedPermanentId){
+    (readAdminBase().subcategories||[]).forEach(sc=>{
+      if(Array.isArray(sc.itemIds)&&sc.itemIds.includes(editedPermanentId))selectedFolderIds.add(sc.id);
     });
   }
-  refreshSubcategorySelect();
-  cat.addEventListener("change",()=>{selectedFolderIds=new Set();refreshSubcategorySelect()});
+  function refreshFolderPicker(){
+    const baseNow=readAdminBase();folderPicker.innerHTML="";
+    const folders=(baseNow.subcategories||[])
+      .filter(sc=>sc.category===cat.value&&!sc.deleted)
+      .sort((x,y)=>adminSubcatPath(x).localeCompare(adminSubcatPath(y),"fr"));
+    if(!folders.length){
+      const empty=document.createElement("div");empty.textContent="Aucun dossier dans cette catégorie.";
+      empty.style.cssText="padding:10px;color:#667085";folderPicker.appendChild(empty);return;
+    }
+    folders.forEach(sc=>{
+      const row=document.createElement("label");row.style.cssText="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid #eef1f5;cursor:pointer";
+      const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedFolderIds.has(sc.id);cb.style.cssText="width:20px;height:20px;flex:0 0 auto";
+      cb.onchange=()=>{if(cb.checked)selectedFolderIds.add(sc.id);else selectedFolderIds.delete(sc.id)};
+      const txt=document.createElement("span");txt.textContent=(sc.icon||"📁")+" "+adminSubcatPath(sc);
+      row.append(cb,txt);folderPicker.appendChild(row);
+    });
+  }
+  refreshFolderPicker();
+  cat.addEventListener("change",()=>{selectedFolderIds=new Set();refreshFolderPicker()});
 
   mkLabel("Nom affiché");
   const label=document.createElement("input");label.type="text";label.autocomplete="off";
@@ -3229,13 +3237,9 @@ function adminPermanentPictogramForm(existing){
 
     try{writeAdminBase(base)}
     catch(err){console.error(err);alert("Impossible d’enregistrer cette image. Réessaie ou choisis une autre image.");return}
+    const returnY=(ADMIN_PICTO_RETURN_V100&&ADMIN_PICTO_RETURN_V100.scrollY)||0;
     overlay.remove();
-    adminRefresh();
-    requestAnimationFrame(()=>{
-      const buttons=[...document.querySelectorAll("button")];
-      const pictoBtn=buttons.find(b=>/pictogrammes?/i.test((b.textContent||"").trim()));
-      if(pictoBtn){pictoBtn.click();restoreAdminPictoReturnV100();}
-    });
+    adminReturnToPictogramsV101(returnY);
   };
   cancel.onclick=()=>overlay.remove();
   row.append(save,cancel);panel.appendChild(row);
@@ -3249,12 +3253,12 @@ function adminEditAddedItem(item){
 }
 function adminToggleAddedItem(item){
   const a=readAdminBase(),cur=(a.addedItems||[]).find(x=>x.id===item.id);if(!cur)return;
-  cur.hidden=!cur.hidden;writeAdminBase(a);adminRefresh();
+  cur.hidden=!cur.hidden;writeAdminBase(a);adminReturnToPictogramsV101(window.scrollY||0);
 }
 function adminDeleteAddedItem(item){
   if(!confirm("Supprimer ce pictogramme permanent ?"))return;
   const a=readAdminBase(),cur=(a.addedItems||[]).find(x=>x.id===item.id);if(!cur)return;
-  cur.deleted=true;writeAdminBase(a);adminRefresh();
+  cur.deleted=true;writeAdminBase(a);adminReturnToPictogramsV101(window.scrollY||0);
 }
 
 function adminAddCategory(){const n=prompt("Nom de la nouvelle catégorie :");if(!n)return;const i=prompt("Emoji :","📁");if(i===null)return;const a=readAdminBase();a.addedCats.push({id:"ac"+Date.now(),name:n.trim(),icon:i.trim()||"📁"});writeAdminBase(a);adminRefresh()}

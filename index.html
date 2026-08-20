@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 111</title>
+<title>Ma CAA v2.0 bêta 112</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 111</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 112</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -996,19 +996,19 @@ function adminCreateUser(){
   const name=prompt("Prénom ou nom du nouvel utilisateur :");if(!name||!name.trim())return;
   const pin=prompt("Code PIN facultatif : 4 chiffres, ou laisse vide pour Sans PIN.","");if(pin===null)return;
   if(pin!==""&&!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres, ou être vide.");return}
-  const p=readProfiles(),id="u"+Date.now();p.push({id,name:name.trim(),pin});writeProfiles(p);scheduleProfilesDirectoryPush();adminRefresh();
+  const p=readProfiles(),id="u"+Date.now();p.push({id,name:name.trim(),pin});writeProfiles(p);scheduleProfilesDirectoryPush();adminRefreshStayV112();
 }
 function adminEditUser(id){
   const profiles=readProfiles(),p=profiles.find(x=>x.id===id);if(!p)return;
   const name=prompt("Nom de l’utilisateur :",p.name);if(name===null)return;
   const n=name.trim();if(!n){alert("Le nom ne peut pas être vide.");return}
-  p.name=n;writeProfiles(profiles);scheduleProfilesDirectoryPush();renderProfileBar();adminRefresh();
+  p.name=n;writeProfiles(profiles);scheduleProfilesDirectoryPush();renderProfileBar();adminRefreshStayV112();
 }
 function adminResetUserPin(id){
   const profiles=readProfiles(),p=profiles.find(x=>x.id===id);if(!p)return;
   const pin=prompt("Code PIN pour "+p.name+" : 4 chiffres, ou laisse vide pour Sans PIN.",p.pin||"");if(pin===null)return;
   if(pin!==""&&!/^\d{4}$/.test(pin)){alert("Le PIN doit contenir exactement 4 chiffres, ou être vide.");return}
-  p.pin=pin;writeProfiles(profiles);scheduleProfilesDirectoryPush();adminRefresh();
+  p.pin=pin;writeProfiles(profiles);scheduleProfilesDirectoryPush();adminRefreshStayV112();
 }
 function adminDeleteUser(id){
   const p=readProfiles();if(p.length<=1){alert("Il faut conserver au moins un utilisateur.");return}
@@ -1017,7 +1017,7 @@ function adminDeleteUser(id){
   PROFILE_DATA_KEYS.forEach(k=>localStorage.removeItem(k+"::"+id));
   const next=p.filter(x=>x.id!==id);writeProfiles(next);
   if(activeProfile()===id)localStorage.setItem(ACTIVE_PROFILE_KEY,next[0].id);
-  scheduleProfilesDirectoryPush();syncCustomCategories();render();renderProfileBar();adminRefresh();
+  scheduleProfilesDirectoryPush();syncCustomCategories();render();renderProfileBar();adminRefreshStayV112();
 }
 function adminUsersSection(){
   const section=document.createElement("section");section.style.cssText="background:white;border-radius:16px;padding:16px";
@@ -2307,7 +2307,7 @@ function adminManageSubmenu(parentId,parentLabel){
     a.items=a.items||{};
     if(a.items[parentId])a.items[parentId].action="phrase";
     (a.addedItems||[]).forEach(v=>{if(v.id===parentId)v.action="phrase"});
-    writeAdminBase(a);overlay.remove();adminRefresh();showFeedback("Sous-menu supprimé");
+    writeAdminBase(a);overlay.remove();adminRefreshStayV112();showFeedback("Sous-menu supprimé");
   });
   clear.style.color="#a12424";
   const close=mini("Fermer",()=>{overlay.remove();adminRefresh()});
@@ -2394,6 +2394,21 @@ function chooseSubcategoryEmoji(title,current,onChoose){
  const ok=document.createElement("button");ok.className="saveedit";ok.textContent="✓ Choisir cet emoji";ok.onclick=()=>{onChoose(chosen);ov.remove()};
  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";cancel.onclick=()=>ov.remove();
  row.append(ok,cancel);p.append(row);ov.append(p);document.body.append(ov);
+}
+
+function updateOneSubcategoryV112(id,patch){
+  const base=readAdminBase();
+  base.subcategories=base.subcategories||[];
+  const i=base.subcategories.findIndex(sc=>sc.id===id);
+  if(i<0)return false;
+  base.subcategories[i]={...base.subcategories[i],...patch};
+  writeAdminBase(base);return true;
+}
+function addSubcategoryV112(sc){
+  const base=readAdminBase();
+  base.subcategories=base.subcategories||[];
+  if(!base.subcategories.some(x=>x.id===sc.id))base.subcategories.push(sc);
+  writeAdminBase(base);return sc;
 }
 function adminManageSubcategories(cat){
  const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
@@ -2498,12 +2513,34 @@ function syncAdminCategories(){
   const modeIndex=categories.findIndex(c=>c.name==="Mode parents");
   if(modeIndex>=0)categories.splice(modeIndex,0,...extras);else categories.push(...extras);
 }
-function writeAdminBase(v){
-  adminBaseLocalDirty=true;
-  localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(v));
-  syncAdminCategories();
-  render();
-  scheduleAdminBasePush();
+function writeAdminBase(next){
+  try{
+    const prev=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||"{}");
+    const merged={
+      ...prev,
+      ...next,
+      items:{...(prev.items||{}),...(next.items||{})},
+      catEdits:{...(prev.catEdits||{}),...(next.catEdits||{})},
+      submenus:{...(prev.submenus||{}),...(next.submenus||{})},
+      quickChoices:{...(prev.quickChoices||{}),...(next.quickChoices||{})},
+      adminOrder:{...(prev.adminOrder||{}),...(next.adminOrder||{})}
+    };
+    merged.addedItems=Array.isArray(next.addedItems)?next.addedItems:(prev.addedItems||[]);
+    merged.addedCats=Array.isArray(next.addedCats)?next.addedCats:(prev.addedCats||[]);
+    merged.subcategories=Array.isArray(next.subcategories)?next.subcategories:(prev.subcategories||[]);
+    merged.hiddenItems=Array.isArray(next.hiddenItems)?next.hiddenItems:(prev.hiddenItems||[]);
+    merged.deletedItems=Array.isArray(next.deletedItems)?next.deletedItems:(prev.deletedItems||[]);
+    merged.hiddenCats=Array.isArray(next.hiddenCats)?next.hiddenCats:(prev.hiddenCats||[]);
+    merged.deletedCats=Array.isArray(next.deletedCats)?next.deletedCats:(prev.deletedCats||[]);
+    localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(merged));
+    localStorage.setItem("ma-caa-last-save",String(Date.now()));
+    scheduleAdminBasePush();
+    scheduleProfileAutoPush();
+    return merged;
+  }catch(err){
+    console.error("writeAdminBase",err);
+    throw err;
+  }
 }
 
 let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null,adminBaseLocalDirty=false;
@@ -2689,6 +2726,15 @@ function addAdminCloudConnection(panel){
   panel.appendChild(box);
 }
 
+
+let ADMIN_VIEW_STATE_V112={view:"home",scrollY:0};
+function rememberAdminViewV112(view){
+  ADMIN_VIEW_STATE_V112.view=view||ADMIN_VIEW_STATE_V112.view||"home";
+  ADMIN_VIEW_STATE_V112.scrollY=window.scrollY||0;
+}
+function restoreAdminViewV112(){
+  requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,ADMIN_VIEW_STATE_V112.scrollY||0)));
+}
 function openAdminPanel(initialView="home"){
   const old=document.getElementById("admin-panel-beta25");
   if(old)old.remove();
@@ -2714,6 +2760,7 @@ function openAdminPanel(initialView="home"){
   };
 
   function showView(view){
+    rememberAdminViewV112(view);
     content.innerHTML="";
     const subtitle=document.getElementById("admin-view-title");
     if(subtitle)subtitle.textContent=view==="home"?"Tableau de bord":view==="profiles"?"Profils / utilisateurs":view==="pictos"?"Pictogrammes permanents":view==="categories"?"Catégories et dossiers":"Paramètres";
@@ -2888,6 +2935,31 @@ function openAdminPanel(initialView="home"){
 
   showView(initialView);
 }
+
+function adminRefreshStayV112(){
+  const state={...ADMIN_VIEW_STATE_V112};
+  try{
+    adminRefresh();
+    requestAnimationFrame(()=>{
+      const panel=document.getElementById("admin-panel-beta25");
+      if(!panel)return;
+      const title=document.getElementById("admin-view-title");
+      const wanted=state.view||"home";
+      const labels={
+        profiles:/Profils|utilisateurs/i,
+        pictos:/Pictogrammes/i,
+        categories:/Catégories|Categories/i,
+        settings:/Paramètres|Parametres/i
+      };
+      if(wanted!=="home"){
+        const btn=[...panel.querySelectorAll("button")].find(b=>labels[wanted]&&labels[wanted].test((b.textContent||"").trim()));
+        if(btn)btn.click();
+      }
+      ADMIN_VIEW_STATE_V112=state;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,state.scrollY||0)));
+    });
+  }catch(e){console.warn("adminRefreshStayV112",e)}
+}
 function adminRefresh(){
   openAdminPanel("home");render();
 }
@@ -2940,14 +3012,14 @@ function adminEditCategory(cat){
     const personals=readAdded();let changed=false;
     personals.forEach(v=>{if(v.category===oldDisplay){v.category=key;changed=true}});
     if(changed)writeAdded(personals);
-    overlay.remove();adminRefresh();
+    overlay.remove();adminRefreshStayV112();
   };
   row.append(save,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 function adminToggleCat(cat){
   const a=readAdminBase(),k=cat.name;
   if(a.hiddenCats.includes(k))a.hiddenCats=a.hiddenCats.filter(x=>x!==k);else a.hiddenCats.push(k);
-  writeAdminBase(a);syncAdminCategories();render();if(adminUnlocked)adminRefresh();
+  writeAdminBase(a);syncAdminCategories();render();if(adminUnlocked)adminRefreshStayV112();
 }
 
 function adminEditItem(cat,x){
@@ -2969,7 +3041,7 @@ function adminDeleteCat(cat){
   const a=readAdminBase(),key=cat.name;
   if(!a.deletedCats.includes(key))a.deletedCats.push(key);
   writeAdminBase(a);
-  adminRefresh();
+  adminRefreshStayV112();
 }
 
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}

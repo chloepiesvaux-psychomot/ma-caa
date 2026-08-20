@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 60</title>
+<title>Ma CAA v2.0 bêta 61</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 60</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 61</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -286,7 +286,18 @@ function add(x){
   renderPhrase();
   speakText(x[2]);
 }
-function renderPhrase(){const box=el("phrase");box.innerHTML="";if(!phrase.length){box.innerHTML='<span class="hint">Touchez un pictogramme pour construire une phrase</span>';return}phrase.forEach((x,i)=>{const b=document.createElement("button");b.className="token";b.innerHTML=(x.picto?'<img src="'+x.picto+'" alt="">':'<span class="emo">'+x.icon+'</span>')+'<b>'+x.label+'</b>';b.onclick=()=>{phrase.splice(i,1);renderPhrase()};box.appendChild(b)});box.scrollLeft=box.scrollWidth}
+function renderPhrase(){
+  const box=el("phrase");box.innerHTML="";
+  if(!phrase.length){box.innerHTML='<span class="hint">Touchez un pictogramme pour construire une phrase</span>';return}
+  phrase.forEach((x,i)=>{
+    const b=document.createElement("button");b.className="token";
+    b.innerHTML=imageHtml(x.picto||"",x.icon||"🖼️")+"<b>"+x.label+"</b>";
+    b.onclick=()=>{phrase.splice(i,1);renderPhrase()};
+    box.appendChild(b);
+  });
+  box.scrollLeft=box.scrollWidth;
+  setTimeout(hydrateAllCloudPictures,0);
+}
 
 const FAV_KEY="ma-caa-favorites-v1";
 const HIDDEN_KEY="ma-caa-hidden-v1";
@@ -1508,7 +1519,17 @@ const SUBMENU_PARENT_KEY="ma-caa-submenu-parent-v1";
 function adminSubmenuEntries(parentId){
   const a=readAdminBase();return (a.submenus?.[parentId]||[]).filter(e=>!e.deleted).sort((a,b)=>(a.order||0)-(b.order||0));
 }
-function submenuFor(x){const ae=adminOverrideFor(x);return ae.action==="submenu"?adminSubmenuEntries(x[6]||ae.id||""):[]}
+function permanentItemId(x){
+  if(x?.[6])return x[6];
+  if(x?.[5]&&x?.[3])return x[3];
+  return "";
+}
+function submenuFor(x){
+  const ae=adminOverrideFor(x),pid=permanentItemId(x);
+  if(!pid)return [];
+  const entries=adminSubmenuEntries(pid);
+  return (ae.action==="submenu"||entries.length)?entries:[];
+}
 let activeSubmenu=null;
 function renderSubmenu(box,parent){
   const entries=submenuFor(parent).filter(e=>!e.hidden),custom=readCustom(),hidden=hiddenIds();
@@ -1523,18 +1544,20 @@ function renderSubmenu(box,parent){
   });
 }
 function allPermanentPictograms(){
-  const out=[],seen=new Set();
-  normalCategories().forEach(c=>(c.items||[]).forEach(x=>{
-    const ae=adminOverrideFor(x);if(ae.deleted)return;
-    const id=x[6]||ae.id||("base:"+x[1]+"|"+x[2]);
-    if(seen.has(id))return;seen.add(id);
-    out.push({id,label:displayLabel(x),speech:spokenText(x),emoji:displayEmoji(x),image:displayImage(x)||"",category:c.name});
-  }));
-  (readAdminBase().addedItems||[]).filter(x=>!x.deleted).forEach(x=>{
-    if(seen.has(x.id))return;seen.add(x.id);
-    out.push({id:x.id,label:x.label,speech:x.speech||x.label,emoji:x.emoji||"🖼️",image:x.image||"",category:x.category||""});
+  syncAdminCategories();
+  const a=readAdminBase(),out=[],seen=new Set();
+  categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!a.deletedCats.includes(c.name)).forEach(c=>{
+    baseItems(c).forEach(x=>{
+      const id=permanentItemId(x);
+      if(!id||seen.has(id)||a.deletedItems.includes(id))return;
+      seen.add(id);
+      out.push({id,label:displayLabel(x),speech:spokenText(x),emoji:displayEmoji(x),image:displayImage(x)||"",category:adminCategoryDisplay(c).name||c.name});
+    });
   });
-  return out.sort((a,b)=>a.label.localeCompare(b.label,"fr",{sensitivity:"base"}));
+  return out.sort((a,b)=>{
+    const c=a.category.localeCompare(b.category,"fr",{sensitivity:"base"});
+    return c||a.label.localeCompare(b.label,"fr",{sensitivity:"base"});
+  });
 }
 function resolvedSubmenuEntries(parentId){
   const a=readAdminBase(),refs=a.submenus?.[parentId]||[],all=allPermanentPictograms(),map=new Map(all.map(x=>[x.id,x]));
@@ -1546,51 +1569,89 @@ function resolvedSubmenuEntries(parentId){
 function adminSubmenuEntries(parentId){return resolvedSubmenuEntries(parentId)}
 function adminManageSubmenu(parentId,parentLabel){
   const a=readAdminBase();a.submenus=a.submenus||{};a.submenus[parentId]=a.submenus[parentId]||[];
+  // Opening the manager confirms that this pictogram is a submenu.
+  a.items=a.items||{};
+  if(a.items[parentId])a.items[parentId].action="submenu";
+  (a.addedItems||[]).forEach(v=>{if(v.id===parentId)v.action="submenu"});
+  writeAdminBase(a);
+
   const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
-  const panel=document.createElement("div");panel.className="editor";panel.innerHTML="<h2>📂 Sous-menu : "+parentLabel+"</h2>";
-  const list=document.createElement("div");panel.appendChild(list);
+  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="760px";
+  panel.innerHTML="<h2 style='margin-bottom:12px'>📂 Sous-menu : "+parentLabel+"</h2>";
+  const list=document.createElement("div");list.style.cssText="display:grid;gap:6px;margin-bottom:12px";panel.appendChild(list);
+
+  const mini=(txt,fn,title="")=>{
+    const b=document.createElement("button");b.type="button";b.textContent=txt;b.title=title;
+    b.style.cssText="min-height:34px;padding:5px 9px;border:1px solid #dfe3ea;border-radius:8px;background:#f7f8fb;font-weight:700";
+    b.onclick=fn;return b;
+  };
+
   const refresh=()=>{
     list.innerHTML="";
     const arr=(a.submenus[parentId]||[]).filter(e=>!e.deleted).sort((x,y)=>(x.order||0)-(y.order||0));
     const resolved=resolvedSubmenuEntries(parentId),byId=new Map(resolved.map(e=>[e.id,e]));
+    if(!arr.length){
+      const empty=document.createElement("div");empty.textContent="Aucun pictogramme dans ce sous-menu.";
+      empty.style.cssText="padding:12px;color:#687286;text-align:center;background:#f8f9fc;border-radius:10px";list.appendChild(empty);
+    }
     arr.forEach((e,i)=>{
-      const v=byId.get(e.id)||e,row=document.createElement("div");row.className="manage-card";
-      const name=document.createElement("b");name.textContent=(e.hidden?"🙈 ":"")+(v.emoji||"🖼️")+" "+(v.label||"Pictogramme");
-      const hide=document.createElement("button");hide.textContent=e.hidden?"👁️":"🙈";hide.onclick=()=>{e.hidden=!e.hidden;writeAdminBase(a);refresh()};
-      const up=document.createElement("button");up.textContent="↑";up.onclick=()=>{if(i<1)return;const prev=arr[i-1];[prev.order,e.order]=[e.order,prev.order];writeAdminBase(a);refresh()};
-      const down=document.createElement("button");down.textContent="↓";down.onclick=()=>{if(i>=arr.length-1)return;const nxt=arr[i+1];[nxt.order,e.order]=[e.order,nxt.order];writeAdminBase(a);refresh()};
-      const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{if(confirm("Retirer ce pictogramme du sous-menu ?")){e.deleted=true;writeAdminBase(a);refresh()}};
-      row.append(name,hide,up,down,del);list.appendChild(row);
+      const v=byId.get(e.id)||e;
+      const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:8px;align-items:center;border:1px solid #e3e6ec;border-radius:11px;padding:7px 9px;background:white";
+      const name=document.createElement("div");name.style.cssText="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+      name.textContent=(e.hidden?"🙈 ":"")+(v.emoji||"🖼️")+" "+(v.label||"Pictogramme");
+      const actions=document.createElement("div");actions.style.cssText="display:flex;gap:4px";
+      actions.append(
+        mini(e.hidden?"👁️":"🙈",()=>{e.hidden=!e.hidden;writeAdminBase(a);refresh()},"Masquer / réafficher"),
+        mini("↑",()=>{if(i<1)return;const prev=arr[i-1];[prev.order,e.order]=[e.order,prev.order];writeAdminBase(a);refresh()},"Monter"),
+        mini("↓",()=>{if(i>=arr.length-1)return;const nxt=arr[i+1];[nxt.order,e.order]=[e.order,nxt.order];writeAdminBase(a);refresh()},"Descendre"),
+        mini("🗑️",()=>{if(confirm("Retirer ce pictogramme du sous-menu ?")){e.deleted=true;writeAdminBase(a);refresh()}},"Retirer")
+      );
+      row.append(name,actions);list.appendChild(row);
     });
   };
-  const choose=document.createElement("button");choose.className="saveedit";choose.textContent="➕ Choisir un pictogramme permanent existant";
+
+  const choose=document.createElement("button");choose.className="saveedit";choose.textContent="➕ Ajouter depuis les pictogrammes permanents";
+  choose.style.cssText+=";width:100%;margin-bottom:8px";
   choose.onclick=()=>{
+    panel.querySelector(".submenu-picker")?.remove();
+    const picker=document.createElement("div");picker.className="submenu-picker";
+    picker.style.cssText="max-height:420px;overflow:auto;border:1px solid #dfe3ea;border-radius:12px;padding:10px;margin:4px 0 12px;background:#fafbfe";
     const all=allPermanentPictograms(),current=new Set((a.submenus[parentId]||[]).filter(e=>!e.deleted).map(e=>e.sourceId));
-    const picker=document.createElement("div");picker.style.cssText="max-height:360px;overflow:auto;border:1px solid #ddd;border-radius:12px;padding:8px;margin:10px 0";
-    all.forEach(v=>{
-      const b=document.createElement("button");b.type="button";b.disabled=current.has(v.id);b.style.cssText="width:100%;padding:10px;margin:3px 0;text-align:left";
-      b.textContent=(v.emoji||"🖼️")+" "+v.label+(v.category?" — "+v.category:"");
-      b.onclick=()=>{
-        const arr=a.submenus[parentId];
-        const old=arr.find(e=>e.sourceId===v.id);
-        if(old){old.deleted=false;old.hidden=false;old.order=arr.filter(e=>!e.deleted).length}
-        else arr.push({id:"smref"+Date.now()+Math.random().toString(36).slice(2,6),sourceId:v.id,order:arr.filter(e=>!e.deleted).length,hidden:false});
-        writeAdminBase(a);picker.remove();refresh();showFeedback("Ajouté au sous-menu");
-      };picker.appendChild(b);
-    });choose.after(picker);
+    const groups=new Map();
+    all.forEach(v=>{if(!groups.has(v.category))groups.set(v.category,[]);groups.get(v.category).push(v)});
+    groups.forEach((items,cat)=>{
+      const h=document.createElement("div");h.textContent=cat;h.style.cssText="font-weight:900;margin:10px 2px 6px;color:#243b6b";picker.appendChild(h);
+      const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:6px";
+      items.forEach(v=>{
+        const b=document.createElement("button");b.type="button";b.disabled=current.has(v.id);
+        b.style.cssText="min-height:54px;padding:7px;border:1px solid #dfe3ea;border-radius:10px;background:white;text-align:left;font-weight:700";
+        b.textContent=(v.emoji||"🖼️")+" "+v.label;
+        b.onclick=()=>{
+          const arr=a.submenus[parentId],old=arr.find(e=>e.sourceId===v.id);
+          if(old){old.deleted=false;old.hidden=false;old.order=arr.filter(e=>!e.deleted).length}
+          else arr.push({id:"smref"+Date.now()+Math.random().toString(36).slice(2,6),sourceId:v.id,order:arr.filter(e=>!e.deleted).length,hidden:false});
+          writeAdminBase(a);picker.remove();refresh();showFeedback("Ajouté au sous-menu");
+        };
+        grid.appendChild(b);
+      });picker.appendChild(grid);
+    });
+    choose.after(picker);
   };
-  const create=document.createElement("button");create.textContent="➕ Créer un nouveau pictogramme permanent";
-  create.onclick=()=>{overlay.remove();adminPermanentPictogramForm(null)};
-  const clear=document.createElement("button");clear.className="resetedit";clear.textContent="🗑️ Supprimer le sous-menu";
-  clear.onclick=()=>{
+
+  const secondary=document.createElement("div");secondary.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px";
+  const create=mini("➕ Nouveau pictogramme permanent",()=>{overlay.remove();adminPermanentPictogramForm(null)});
+  const clear=mini("🗑️ Supprimer le sous-menu",()=>{
     if(!confirm("Supprimer entièrement le sous-menu « "+parentLabel+" » ?"))return;
     delete a.submenus[parentId];
-    const ov=a.itemOverrides?.[parentId];if(ov)ov.action="phrase";
+    a.items=a.items||{};
+    if(a.items[parentId])a.items[parentId].action="phrase";
     (a.addedItems||[]).forEach(v=>{if(v.id===parentId)v.action="phrase"});
     writeAdminBase(a);overlay.remove();adminRefresh();showFeedback("Sous-menu supprimé");
-  };
-  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{overlay.remove();adminRefresh()};
-  panel.append(choose,create,clear,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
+  });
+  clear.style.color="#a12424";
+  const close=mini("Fermer",()=>{overlay.remove();adminRefresh()});
+  secondary.append(create,clear,close);
+  panel.append(choose,secondary);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
 }
 function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
@@ -2008,7 +2069,8 @@ function adminEditItem(cat,x){
     label:e.label||x[1],
     speech:e.speech||x[2],
     emoji:e.emoji||x[0],
-    image:e.image||x[4]||""
+    image:e.image||x[4]||"",
+    action:e.action||((a.submenus?.[id]||[]).some(v=>!v.deleted)?"submenu":"phrase")
   });
 }
 function adminDeleteCat(cat){

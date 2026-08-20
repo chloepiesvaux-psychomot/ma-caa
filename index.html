@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 52</title>
+<title>Ma CAA v2.0 bêta 53</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 52</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 53</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -373,8 +373,13 @@ function adminOverrideFor(x){
   if(x[6]&&items[x[6]])return items[x[6]];
   for(const c of categories){
     if((c.items||[]).includes(x)){
-      return items[adminItemId(c,x)]||{};
+      const hit=items[adminItemId(c,x)];
+      if(hit)return hit;
     }
+  }
+  for(const e of Object.values(items)){
+    if(!e)continue;
+    if((e.label&&e.label===x[1])||(e.speech&&e.speech===x[2]))return e;
   }
   return {};
 }
@@ -1266,7 +1271,7 @@ function renderPersonalize(box){
       const card=document.createElement("div");card.className="manage-card";
       const p=displayImage(x);
       const visual=document.createElement("div");
-      visual.innerHTML=imageHtml(p,x[0]);
+      visual.innerHTML=imageHtml(p,displayEmoji(x));
       const info=document.createElement("div");
       const title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
       const actions=document.createElement("div");actions.className="manage-actions";
@@ -1277,7 +1282,10 @@ function renderPersonalize(box){
       const up=document.createElement("button");up.textContent="↑ Monter";up.onclick=()=>moveItem(cat,x,-1);
       const down=document.createElement("button");down.textContent="↓ Descendre";down.onclick=()=>moveItem(cat,x,1);
       const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
-      actions.append(vis,up,down,edit);
+      const fav=document.createElement("button");
+      fav.textContent=isFav(x)?"⭐ Retirer des favoris":"☆ Ajouter aux favoris";
+      fav.onclick=()=>{toggleFav(x);renderGrid()};
+      actions.append(fav,vis,up,down,edit);
       if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️ Supprimer";del.onclick=()=>deleteAdded(x);actions.appendChild(del);}info.appendChild(actions);
       card.append(visual,info);box.appendChild(card);
     });
@@ -1500,7 +1508,7 @@ function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
 function adminItemData(cat,x){
   const id=adminItemId(cat,x),e=readAdminBase().items?.[id]||{};
-  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||"",false,id];
+  return [x[0],e.label||x[1],e.speech||x[2],x[3],x[4]||"",false,id];
 }
 function adminItemAvailable(cat,x){
   const a=readAdminBase(),id=adminItemId(cat,x),e=a.items?.[id]||{};

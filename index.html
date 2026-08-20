@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 114</title>
+<title>Ma CAA v2.0 bêta 115</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 114</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 115</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2455,10 +2455,48 @@ function adminManageSubcategories(cat){
  panel.innerHTML="<h2>📁 Catégories et dossiers : "+adminCatName(cat)+"</h2><div style='color:#667085;margin-bottom:14px'>Crée autant de niveaux que nécessaire : dossier → sous-dossier → sous-sous-dossier… Chaque niveau apparaîtra progressivement en mode utilisateur.</div>";
  const list=document.createElement("div");panel.appendChild(list);
  const sm=(t,f,title)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.title=title||"";b.style.cssText="padding:7px 9px;min-height:36px;border:1px solid #dfe3ea;border-radius:9px;background:#fff";b.onclick=f;return b};
- function pickItems(sc){panel.querySelector(".subcat-picker")?.remove();const pick=document.createElement("div");pick.className="subcat-picker";pick.style.cssText="max-height:430px;overflow:auto;border:2px solid #d8e0eb;border-radius:14px;padding:12px;margin:10px 0;background:#fbfcff";pick.innerHTML="<b>🧩 Pictogrammes dans : "+adminSubcatPath(sc)+"</b>";allPermanentPictograms().filter(v=>v.category===sc.category).forEach(v=>{const row=document.createElement("label");row.style.cssText="display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #eef1f5";const cb=document.createElement("input");cb.type="checkbox";cb.style.cssText="width:21px;height:21px";const fresh=()=>{const now=readAdminBase();return (now.subcategories||[]).find(x=>x.id===sc.id)};cb.checked=(fresh()?.itemIds||[]).includes(v.id);cb.onchange=()=>{const now=readAdminBase(),target=(now.subcategories||[]).find(x=>x.id===sc.id);if(!target)return;target.itemIds=target.itemIds||[];target.itemIds=cb.checked?[...new Set([...target.itemIds,v.id])]:target.itemIds.filter(id=>id!==v.id);writeAdminBase(now)};row.append(cb,document.createTextNode((v.emoji||"🖼️")+" "+v.label));pick.appendChild(row)});list.after(pick)}
+ function pickItems(sc){
+   panel.querySelector(".subcat-picker")?.remove();
+   const pick=document.createElement("div");
+   pick.className="subcat-picker";
+   pick.style.cssText="max-height:430px;overflow:auto;border:2px solid #d8e0eb;border-radius:14px;padding:12px;margin:10px 0;background:#fbfcff";
+   pick.innerHTML="<b>🧩 Pictogrammes dans : "+adminSubcatPath(sc)+"</b>";
+
+   // V115 : même catalogue que la page Administrateur > Pictogrammes
+   // pour la catégorie en cours, y compris catégories ajoutées et pictogrammes masqués.
+   let entries=[];
+   try{ entries=adminPermanentEntries(cat)||[]; }catch(e){ console.warn(e); }
+   if(!entries.length){
+     const empty=document.createElement("div");
+     empty.textContent="Aucun pictogramme permanent dans cette catégorie.";
+     empty.style.cssText="padding:14px;color:#667085";
+     pick.appendChild(empty);
+   }else{
+     entries.forEach(v=>{
+       const row=document.createElement("label");
+       row.style.cssText="display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #eef1f5";
+       const cb=document.createElement("input");
+       cb.type="checkbox";
+       cb.style.cssText="width:21px;height:21px";
+       const fresh=()=>{const now=readAdminBase();return (now.subcategories||[]).find(x=>x.id===sc.id)};
+       cb.checked=(fresh()?.itemIds||[]).includes(v.id);
+       cb.onchange=()=>{
+         const now=readAdminBase(),target=(now.subcategories||[]).find(x=>x.id===sc.id);
+         if(!target)return;
+         target.itemIds=target.itemIds||[];
+         target.itemIds=cb.checked?[...new Set([...target.itemIds,v.id])]:target.itemIds.filter(id=>id!==v.id);
+         writeAdminBase(now);
+         // Ne pas fermer, recharger ou déplacer la fenêtre.
+       };
+       row.append(cb,document.createTextNode((v.emoji||"🖼️")+" "+v.label));
+       pick.appendChild(row);
+     });
+   }
+   list.after(pick);
+ }
  function addFolder(parent){const n=prompt(parent?"Nom du dossier dans « "+parent.name+" » :":"Nom du dossier :");if(!n)return;const name=n.trim();if(!name)return;chooseSubcategoryEmoji("Dossier : <b>"+name+"</b>","📁",chosen=>{const now=readAdminBase();now.subcategories=now.subcategories||[];const pid=parent?.id||"";let siblings=now.subcategories.filter(x=>x.category===cat.name&&!x.deleted&&(x.parentId||"")===pid); if(!siblings.length) siblings=allPermanentPictogramsV114();now.subcategories.push({id:"sc"+Date.now(),category:cat.name,parentId:pid,name,icon:chosen,itemIds:[],order:siblings.length,hidden:false});writeAdminBase(now);refresh()})}
  function refresh(){list.innerHTML="";const renderLevel=(parentId,depth)=>{adminSubcats(cat.name,parentId).forEach((sc,i,arr)=>{const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:minmax(170px,1fr) auto;gap:8px;align-items:center;padding:9px 10px;margin:7px 0 7px "+Math.min(depth*28,112)+"px;border:1px solid #d8e0eb;border-radius:13px;background:"+(depth?"#f3f8ff":"#fff");const n=document.createElement("b");n.style.cssText="font-size:16px;display:flex;align-items:center;gap:8px";n.innerHTML="<span style='font-size:"+(depth?28:34)+"px'>"+(sc.icon||"📁")+"</span><span>"+(sc.hidden?"🙈 ":"")+sc.name+"<small style='display:block;color:#667085;font-weight:500'>Niveau "+(depth+1)+"</small></span>";const ac=document.createElement("div");ac.style.cssText="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end";ac.append(sm("➕📁",()=>addFolder(sc),"Ajouter un dossier dedans"),sm("🧩",()=>pickItems(sc),"Pictogrammes"),sm("✏️",()=>{const nn=prompt("Nom :",sc.name);if(nn===null)return;const newName=nn.trim()||sc.name;chooseSubcategoryEmoji("Dossier : <b>"+newName+"</b>",sc.icon||"📁",e=>{const now=readAdminBase(),t=now.subcategories.find(x=>x.id===sc.id);t.name=newName;t.icon=e;writeAdminBase(now);refresh()})}),sm(sc.hidden?"👁️":"🙈",()=>{const now=readAdminBase(),t=now.subcategories.find(x=>x.id===sc.id);t.hidden=!t.hidden;writeAdminBase(now);refresh()}),sm("↑",()=>{if(i<1)return;const now=readAdminBase(),x=now.subcategories.find(v=>v.id===sc.id),p=now.subcategories.find(v=>v.id===arr[i-1].id);[p.order,x.order]=[x.order,p.order];writeAdminBase(now);refresh()}),sm("↓",()=>{if(i>=arr.length-1)return;const now=readAdminBase(),x=now.subcategories.find(v=>v.id===sc.id),p=now.subcategories.find(v=>v.id===arr[i+1].id);[p.order,x.order]=[x.order,p.order];writeAdminBase(now);refresh()}),sm("🗑️",()=>{if(!confirm("Supprimer ce dossier et ses sous-dossiers ?"))return;const now=readAdminBase(),ids=new Set([sc.id,...adminSubcatDescendants(sc).map(x=>x.id)]);now.subcategories.forEach(x=>{if(ids.has(x.id))x.deleted=true});writeAdminBase(now);refresh()}));row.append(n,ac);list.appendChild(row);renderLevel(sc.id,depth+1)})};renderLevel("",0)}
- const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un dossier";add.onclick=()=>addFolder(null);const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{scheduleAdminBasePush();overlay.remove();adminRefresh()};panel.append(add,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
+ const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un dossier";add.onclick=()=>addFolder(null);const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{scheduleAdminBasePush();overlay.remove()};panel.append(add,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
 }
 function expandSubmenuEntries(parent){
  const entries=submenuFor(parent),a=readAdminBase(),out=[],map=new Map(allPermanentPictograms().map(v=>[v.id,v]));
@@ -2986,28 +3024,12 @@ function openAdminPanel(initialView="home"){
 
 function adminRefreshStayV112(){
   const state={...ADMIN_VIEW_STATE_V112};
+  const y=window.scrollY||state.scrollY||0;
   try{
-    adminRefresh();
-    requestAnimationFrame(()=>{
-      const panel=document.getElementById("admin-panel-beta25");
-      if(!panel)return;
-      const title=document.getElementById("admin-view-title");
-      const wanted=state.view||"home";
-      const labels={
-        profiles:/Profils|utilisateurs/i,
-        pictos:/Pictogrammes/i,
-        categories:/Catégories|Categories/i,
-        category:/Catégories|Categories/i,
-        cats:/Catégories|Categories/i,
-        settings:/Paramètres|Parametres/i
-      };
-      if(wanted!=="home"){
-        const btn=[...panel.querySelectorAll("button")].find(b=>labels[wanted]&&labels[wanted].test((b.textContent||"").trim()));
-        if(btn)btn.click();
-      }
-      ADMIN_VIEW_STATE_V112=state;
-      requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,state.scrollY||0)));
-    });
+    // openAdminPanel already accepts an initial view: use it directly.
+    openAdminPanel(state.view&&state.view!=="home"?state.view:"home");
+    ADMIN_VIEW_STATE_V112={...state,scrollY:y};
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
   }catch(e){console.warn("adminRefreshStayV112",e)}
 }
 function adminRefresh(){
@@ -3062,7 +3084,12 @@ function adminEditCategory(cat){
     const personals=readAdded();let changed=false;
     personals.forEach(v=>{if(v.category===oldDisplay){v.category=key;changed=true}});
     if(changed)writeAdded(personals);
-    overlay.remove();adminRefreshStayV112();
+    overlay.remove();
+    // Rester exactement dans Catégories. La donnée est déjà enregistrée.
+    try{
+      const cards=[...document.querySelectorAll("#admin-panel-beta25 button")];
+      // Pas de navigation automatique.
+    }catch(e){}
   };
   row.append(save,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
@@ -3563,7 +3590,7 @@ function removeCustomCategoryV113(catRef){
   writeAdminBase(base);
   return true;
 }
-function adminAddCategory(){const n=prompt("Nom de la nouvelle catégorie :");if(!n)return;const i=prompt("Emoji :","📁");if(i===null)return;const a=readAdminBase();a.addedCats.push({id:"ac"+Date.now(),name:n.trim(),icon:i.trim()||"📁"});writeAdminBase(a);adminRefresh()}
+function adminAddCategory(){const n=prompt("Nom de la nouvelle catégorie :");if(!n)return;const i=prompt("Emoji :","📁");if(i===null)return;const a=readAdminBase();a.addedCats.push({id:"ac"+Date.now(),name:n.trim(),icon:i.trim()||"📁"});writeAdminBase(a);adminRefreshStayV112()}
 function adminAddPictogram(){adminPermanentPictogramForm(null)}
 function installAdminButton(){
   if(document.getElementById("admin-access-beta25"))return;

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 54</title>
+<title>Ma CAA v2.0 bêta 55</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 54</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 55</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -185,7 +185,15 @@ ordered.forEach(({c,i})=>{
   b.className="cat"+(i===current?" active":"");
   const cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};
   b.textContent=cd.icon+" "+cd.name;
-  b.onclick=()=>{current=i;el("search").value="";render();el("drawer").classList.remove("open")};
+  b.onclick=()=>{
+    el("drawer").classList.remove("open");
+    el("search").value="";
+    if(c.name==="Mode parents"&&!adultUnlocked){
+      openAdultGate();
+      return;
+    }
+    current=i;render();
+  };
   target.appendChild(b);
 
   if(c.name==="Mode parents"){
@@ -405,6 +413,10 @@ function displayImage(x){
   // Sinon, une image choisie par l'Administrateur est prioritaire.
   if(ae.image)return normalizeCloudImageRef(ae.image);
   if(x[4])return normalizeCloudImageRef(x[4]);
+  // x[6] = identifiant canonique Administrateur. Si ce pictogramme a été
+  // résolu par la base commune et n'a pas d'image, l'emoji Administrateur
+  // doit rester affiché : ne jamais reprendre l'ancien pictogramme local.
+  if(x[6])return "";
   return customFor(x).image||localPictos[x[1]]||"";
 }
 function displayItem(x){return [displayEmoji(x),displayLabel(x),spokenText(x)]}
@@ -1131,7 +1143,8 @@ function baseItems(cat){
     for(const x of (source.items||[])){
       const id=adminItemId(source,x),e=a.items?.[id]||{};
       if(e.category===cat.name&&!a.hiddenItems.includes(id)&&!a.deletedItems.includes(id)){
-        moved.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||"",false,id]);
+        const hasAdminEmoji=!!(e.emoji&&e.emoji!=="🖼️");
+        moved.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],hasAdminEmoji?"":(e.image||x[4]||""),false,id]);
       }
     }
   }
@@ -1289,10 +1302,12 @@ function renderPersonalize(box){
 
 let adultUnlocked=false;
 function openAdultGate(){
-  // Une seule fenêtre de verrouillage à la fois.
-  document.querySelectorAll(".adult-overlay").forEach(x=>x.remove());
+  // Ne jamais recréer la fenêtre pendant un maintien en cours :
+  // des synchronisations/rendus peuvent se produire en arrière-plan.
+  const already=document.getElementById("adult-gate");
+  if(already)return;
 
-  const overlay=document.createElement("div");overlay.className="adult-overlay";
+  const overlay=document.createElement("div");overlay.className="adult-overlay";overlay.id="adult-gate";
   const box=document.createElement("div");box.className="adult-box";
   box.innerHTML="<h2>🔒 Mode parents</h2><p>Maintiens le bouton pendant 3 secondes pour accéder aux réglages.</p><div class='holdbar'><div class='holdfill'></div></div>";
   const btn=document.createElement("button");btn.className="holdbtn";btn.textContent="Maintenir 3 secondes";
@@ -1362,7 +1377,13 @@ function ensureAdultBadge(){
 function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
-  if(c.name==="Mode parents"){if(!adultUnlocked){openAdultGate();return}renderPersonalize(box);return}
+  if(c.name==="Mode parents"){
+    if(!adultUnlocked){
+      if(!document.getElementById("adult-gate"))openAdultGate();
+      return;
+    }
+    renderPersonalize(box);return;
+  }
   let items=c.name==="Favoris"?favoriteItems():visibleItems(c);
   items=items.filter(x=>displayLabel(x).toLowerCase().includes(q));
   if(c.name==="Favoris" && items.length===0){
@@ -1514,7 +1535,9 @@ function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
 function adminItemData(cat,x){
   const id=adminItemId(cat,x),e=readAdminBase().items?.[id]||{};
-  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||x[4]||"",false,id];
+  const hasAdminEmoji=!!(e.emoji&&e.emoji!=="🖼️");
+  const resolvedImage=hasAdminEmoji?"":(e.image||x[4]||"");
+  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],resolvedImage,false,id];
 }
 function adminItemAvailable(cat,x){
   const a=readAdminBase(),id=adminItemId(cat,x),e=a.items?.[id]||{};

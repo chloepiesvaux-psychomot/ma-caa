@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 113</title>
+<title>Ma CAA v2.0 bêta 114</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 113</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 114</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2411,44 +2411,44 @@ function addSubcategoryV112(sc){
   writeAdminBase(base);return sc;
 }
 
-function allPermanentPictogramsV113(){
-  const base=readAdminBase();
-  const out=[], seen=new Set();
-  const push=x=>{
-    if(!x)return;
-    const id=String(x.id||x.key||x.uid||x.label||x.name||"");
-    if(!id||seen.has(id))return;
-    seen.add(id); out.push(x);
+
+function allPermanentPictogramsV114(){
+  const base=readAdminBase(), out=[], seen=new Set();
+  const push=(x, fallbackCat)=>{
+    if(!x||typeof x!=="object")return;
+    const label=String(x.label||x.name||x.text||x.title||"").trim();
+    const id=String(x.id||x.key||x.uid||((fallbackCat||"")+"::"+label));
+    if(!label||seen.has(id))return;
+    seen.add(id);
+    out.push({...x,id,label,category:x.category||x.cat||fallbackCat||""});
   };
-  // Base/original permanent pictograms.
-  try{
-    const sources=[
-      (typeof PERMANENT_PICTOGRAMS!=="undefined"&&PERMANENT_PICTOGRAMS),
-      (typeof PICTOGRAMS!=="undefined"&&PICTOGRAMS),
-      (typeof permanentPictograms!=="undefined"&&permanentPictograms)
-    ];
-    sources.forEach(src=>{
-      if(Array.isArray(src)) src.forEach(push);
-      else if(src&&typeof src==="object") Object.values(src).flat().forEach(push);
-    });
-  }catch(e){}
-  // Persisted/admin pictograms.
-  if(Array.isArray(base.addedItems)) base.addedItems.forEach(push);
-  if(base.items&&typeof base.items==="object") Object.values(base.items).forEach(push);
+  const absorb=(src)=>{
+    if(!src)return;
+    if(Array.isArray(src)){src.forEach(x=>push(x,""));return}
+    if(typeof src==="object"){
+      Object.entries(src).forEach(([cat,v])=>{
+        if(Array.isArray(v))v.forEach(x=>push(x,cat));
+        else if(v&&typeof v==="object")push(v,cat);
+      });
+    }
+  };
+  try{ if(typeof DEFAULT_PICTOGRAMS!=="undefined")absorb(DEFAULT_PICTOGRAMS) }catch(e){}
+  try{ if(typeof PERMANENT_PICTOGRAMS!=="undefined")absorb(PERMANENT_PICTOGRAMS) }catch(e){}
+  try{ if(typeof PICTOGRAMS!=="undefined")absorb(PICTOGRAMS) }catch(e){}
+  try{ if(typeof permanentPictograms!=="undefined")absorb(permanentPictograms) }catch(e){}
+  try{ if(typeof DATA!=="undefined")absorb(DATA) }catch(e){}
+  absorb(base.items);
+  absorb(base.addedItems);
+  // Last fallback: permanent cards currently rendered in admin.
+  document.querySelectorAll("[data-admin-item-id]").forEach(el=>{
+    const label=(el.querySelector("[data-admin-item-label]")?.textContent||el.textContent||"").trim();
+    if(label)push({id:el.dataset.adminItemId,label},"");
+  });
   return out;
 }
+
 function adminManageSubcategories(cat){
-  const pictosForTreeV113=(catRef)=>{
-    const all=allPermanentPictogramsV113();
-    const cid=adminCatIdentityV113(catRef), lab=adminCatLabelV113(catRef);
-    const scoped=all.filter(p=>{
-      const cats=[p.category,p.cat,p.categoryId,p.catId,...(Array.isArray(p.categories)?p.categories:[])].filter(Boolean).map(String);
-      return cats.includes(cid)||cats.includes(lab);
-    });
-    // For a newly-created category there may be no assignment yet:
-    // show the whole permanent catalogue so the admin can tick pictograms into it.
-    return scoped.length?scoped:all;
-  };
+  const pictosForTreeV113=(catRef)=>allPermanentPictogramsV114();
 
  const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="980px";
@@ -2456,7 +2456,7 @@ function adminManageSubcategories(cat){
  const list=document.createElement("div");panel.appendChild(list);
  const sm=(t,f,title)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.title=title||"";b.style.cssText="padding:7px 9px;min-height:36px;border:1px solid #dfe3ea;border-radius:9px;background:#fff";b.onclick=f;return b};
  function pickItems(sc){panel.querySelector(".subcat-picker")?.remove();const pick=document.createElement("div");pick.className="subcat-picker";pick.style.cssText="max-height:430px;overflow:auto;border:2px solid #d8e0eb;border-radius:14px;padding:12px;margin:10px 0;background:#fbfcff";pick.innerHTML="<b>🧩 Pictogrammes dans : "+adminSubcatPath(sc)+"</b>";allPermanentPictograms().filter(v=>v.category===sc.category).forEach(v=>{const row=document.createElement("label");row.style.cssText="display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #eef1f5";const cb=document.createElement("input");cb.type="checkbox";cb.style.cssText="width:21px;height:21px";const fresh=()=>{const now=readAdminBase();return (now.subcategories||[]).find(x=>x.id===sc.id)};cb.checked=(fresh()?.itemIds||[]).includes(v.id);cb.onchange=()=>{const now=readAdminBase(),target=(now.subcategories||[]).find(x=>x.id===sc.id);if(!target)return;target.itemIds=target.itemIds||[];target.itemIds=cb.checked?[...new Set([...target.itemIds,v.id])]:target.itemIds.filter(id=>id!==v.id);writeAdminBase(now)};row.append(cb,document.createTextNode((v.emoji||"🖼️")+" "+v.label));pick.appendChild(row)});list.after(pick)}
- function addFolder(parent){const n=prompt(parent?"Nom du dossier dans « "+parent.name+" » :":"Nom du dossier :");if(!n)return;const name=n.trim();if(!name)return;chooseSubcategoryEmoji("Dossier : <b>"+name+"</b>","📁",chosen=>{const now=readAdminBase();now.subcategories=now.subcategories||[];const pid=parent?.id||"";let siblings=now.subcategories.filter(x=>x.category===cat.name&&!x.deleted&&(x.parentId||"")===pid); if(!siblings.length) siblings=pictosForTreeV113(cat);now.subcategories.push({id:"sc"+Date.now(),category:cat.name,parentId:pid,name,icon:chosen,itemIds:[],order:siblings.length,hidden:false});writeAdminBase(now);refresh()})}
+ function addFolder(parent){const n=prompt(parent?"Nom du dossier dans « "+parent.name+" » :":"Nom du dossier :");if(!n)return;const name=n.trim();if(!name)return;chooseSubcategoryEmoji("Dossier : <b>"+name+"</b>","📁",chosen=>{const now=readAdminBase();now.subcategories=now.subcategories||[];const pid=parent?.id||"";let siblings=now.subcategories.filter(x=>x.category===cat.name&&!x.deleted&&(x.parentId||"")===pid); if(!siblings.length) siblings=allPermanentPictogramsV114();now.subcategories.push({id:"sc"+Date.now(),category:cat.name,parentId:pid,name,icon:chosen,itemIds:[],order:siblings.length,hidden:false});writeAdminBase(now);refresh()})}
  function refresh(){list.innerHTML="";const renderLevel=(parentId,depth)=>{adminSubcats(cat.name,parentId).forEach((sc,i,arr)=>{const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:minmax(170px,1fr) auto;gap:8px;align-items:center;padding:9px 10px;margin:7px 0 7px "+Math.min(depth*28,112)+"px;border:1px solid #d8e0eb;border-radius:13px;background:"+(depth?"#f3f8ff":"#fff");const n=document.createElement("b");n.style.cssText="font-size:16px;display:flex;align-items:center;gap:8px";n.innerHTML="<span style='font-size:"+(depth?28:34)+"px'>"+(sc.icon||"📁")+"</span><span>"+(sc.hidden?"🙈 ":"")+sc.name+"<small style='display:block;color:#667085;font-weight:500'>Niveau "+(depth+1)+"</small></span>";const ac=document.createElement("div");ac.style.cssText="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end";ac.append(sm("➕📁",()=>addFolder(sc),"Ajouter un dossier dedans"),sm("🧩",()=>pickItems(sc),"Pictogrammes"),sm("✏️",()=>{const nn=prompt("Nom :",sc.name);if(nn===null)return;const newName=nn.trim()||sc.name;chooseSubcategoryEmoji("Dossier : <b>"+newName+"</b>",sc.icon||"📁",e=>{const now=readAdminBase(),t=now.subcategories.find(x=>x.id===sc.id);t.name=newName;t.icon=e;writeAdminBase(now);refresh()})}),sm(sc.hidden?"👁️":"🙈",()=>{const now=readAdminBase(),t=now.subcategories.find(x=>x.id===sc.id);t.hidden=!t.hidden;writeAdminBase(now);refresh()}),sm("↑",()=>{if(i<1)return;const now=readAdminBase(),x=now.subcategories.find(v=>v.id===sc.id),p=now.subcategories.find(v=>v.id===arr[i-1].id);[p.order,x.order]=[x.order,p.order];writeAdminBase(now);refresh()}),sm("↓",()=>{if(i>=arr.length-1)return;const now=readAdminBase(),x=now.subcategories.find(v=>v.id===sc.id),p=now.subcategories.find(v=>v.id===arr[i+1].id);[p.order,x.order]=[x.order,p.order];writeAdminBase(now);refresh()}),sm("🗑️",()=>{if(!confirm("Supprimer ce dossier et ses sous-dossiers ?"))return;const now=readAdminBase(),ids=new Set([sc.id,...adminSubcatDescendants(sc).map(x=>x.id)]);now.subcategories.forEach(x=>{if(ids.has(x.id))x.deleted=true});writeAdminBase(now);refresh()}));row.append(n,ac);list.appendChild(row);renderLevel(sc.id,depth+1)})};renderLevel("",0)}
  const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un dossier";add.onclick=()=>addFolder(null);const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{scheduleAdminBasePush();overlay.remove();adminRefresh()};panel.append(add,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
 }
@@ -2997,6 +2997,8 @@ function adminRefreshStayV112(){
         profiles:/Profils|utilisateurs/i,
         pictos:/Pictogrammes/i,
         categories:/Catégories|Categories/i,
+        category:/Catégories|Categories/i,
+        cats:/Catégories|Categories/i,
         settings:/Paramètres|Parametres/i
       };
       if(wanted!=="home"){
@@ -3085,15 +3087,34 @@ function adminEditItem(cat,x){
   });
 }
 function adminDeleteCat(cat){
-  if(!confirm("Supprimer cette catégorie de la base commune ?"))return;
-  const a=readAdminBase(),key=cat.name;
-  if(!a.deletedCats.includes(key))a.deletedCats.push(key);
-  writeAdminBase(a);
-  adminRefreshStayV112();
-
-  // V113 : une catégorie créée par l'utilisateur peut avoir le même libellé
-  // qu'une autre. La suppression se fait alors par identifiant unique.
-  try{ removeCustomCategoryV113(cat); }catch(e){console.warn("delete custom category",e)}
+  const ref=cat;
+  const base=readAdminBase();
+  const rid=adminCatIdentityV113(ref), rlabel=adminCatLabelV113(ref);
+  const added=base.addedCats||[];
+  let idx=added.findIndex(c=>rid && adminCatIdentityV113(c)===rid);
+  if(idx<0 && rlabel){
+    // Prefer a user-created category with this label. This allows deleting the
+    // duplicate "École" without touching a built-in category of the same name.
+    idx=added.findIndex(c=>adminCatLabelV113(c)===rlabel);
+  }
+  if(idx>=0){
+    const victim=added[idx], vid=adminCatIdentityV113(victim), vl=adminCatLabelV113(victim);
+    if(!confirm("Supprimer la catégorie « "+vl+" » ?"))return;
+    base.addedCats=added.filter((_,i)=>i!==idx);
+    base.subcategories=(base.subcategories||[]).filter(sc=>{
+      const owner=String(sc.categoryId||sc.catId||sc.category||sc.cat||"");
+      return owner!==vid && !(vid===vl && owner===vl);
+    });
+    writeAdminBase(base);
+    // Stay on Categories; remove/re-render only the category view, never home.
+    try{adminRefreshStayV112()}catch(e){}
+    return;
+  }
+  // Built-in category: preserve previous soft-delete behavior.
+  if(!confirm("Supprimer cette catégorie ?"))return;
+  base.deletedCats=Array.from(new Set([...(base.deletedCats||[]),rid||rlabel]));
+  writeAdminBase(base);
+  try{adminRefreshStayV112()}catch(e){}
 }
 
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
@@ -3565,5 +3586,16 @@ function installAdminButton(){
 }
 
 </script>
+
+
+document.addEventListener("change",(ev)=>{
+  const cb=ev.target;
+  if(!(cb instanceof HTMLInputElement)||cb.type!=="checkbox")return;
+  const modal=cb.closest(".admin-modal,.modal,[role='dialog']");
+  if(!modal||!/Pictogrammes dans\s*:/i.test(modal.textContent||""))return;
+  // Existing handler remains authoritative; this listener only prevents accidental
+  // page navigation by remembering exact position.
+  ADMIN_VIEW_STATE_V112.scrollY=window.scrollY||0;
+},true);
 
 </body></html>

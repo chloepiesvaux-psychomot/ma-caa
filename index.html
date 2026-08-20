@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 86</title>
+<title>Ma CAA v2.0 bêta 88</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 86</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 88</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1475,7 +1475,7 @@ function openParentPictoQuickActions(x,cat){
   const p=document.createElement("div");p.className="editor";p.style.maxWidth="430px";
   const h=document.createElement("h2");h.textContent=(displayEmoji(x)||"🖼️")+" "+displayLabel(x);p.appendChild(h);
   const actions=document.createElement("div");actions.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:8px";
-  const add=(txt,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=txt;b.style.cssText="padding:11px 8px;border:1px solid #d8dee8;border-radius:10px;background:#f8faff;font-weight:800";b.onclick=()=>{ov.remove();fn()};actions.appendChild(b)};
+  const add=(txt,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=txt;b.style.cssText="padding:11px 8px;border:1px solid #d8dee8;border-radius:10px;background:#f8faff;font-weight:800";b.onclick=()=>{b.disabled=true;b.textContent="✓ "+txt;requestAnimationFrame(()=>{ov.remove();fn()})};actions.appendChild(b)};
   add(isFav(x)?"⭐ Retirer favori":"☆ Ajouter favori",()=>toggleFav(x));
   add(isHidden(x)?"👁️ Réafficher":"🙈 Masquer",()=>setHidden(x,!isHidden(x)));
   add("↑ Monter",()=>moveItem(cat,x,-1));add("↓ Descendre",()=>moveItem(cat,x,1));
@@ -1485,71 +1485,144 @@ function openParentPictoQuickActions(x,cat){
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
   p.append(actions,close);ov.appendChild(p);document.body.appendChild(ov);
 }
+
+function adminItemSubcatIds(x){
+  const vals=[];
+  const push=v=>{
+    if(v==null)return;
+    if(Array.isArray(v)){v.forEach(push);return}
+    if(typeof v==="string"){
+      if(v.startsWith("[")||v.startsWith("{")){try{push(JSON.parse(v));return}catch(e){}}
+      v.split(",").map(z=>z.trim()).filter(Boolean).forEach(z=>vals.push(z));return;
+    }
+    if(typeof v==="object"){
+      ["subcatId","subcategoryId","folderId","subcatIds","subcategoryIds","folderIds"].forEach(k=>{if(v[k]!=null)push(v[k])});
+    }
+  };
+  push(x);
+  return [...new Set(vals.map(String))];
+}
 function renderParentCategoryLazy(box,cat){
-  box.innerHTML="";box.appendChild(parentBackButton(box));
-  const h=document.createElement("div");h.className="personal-group";h.style.cssText="grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap";
-  const label=document.createElement("b");label.textContent=cat.icon+" "+cat.name;label.style.cssText="font-size:18px;margin-right:auto";h.appendChild(label);
+  // Bêta 88 : navigation progressive dans l'arborescence.
+  // Un seul niveau de dossiers est affiché à la fois pour rester clair et rapide.
+  const allSubs=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted);
+  let currentFolderId=(parentLazyView&&parentLazyView.folderId)||null;
+  let currentFolder=currentFolderId?allSubs.find(sc=>sc.id===currentFolderId):null;
+  if(currentFolderId&&!currentFolder){currentFolderId=null;currentFolder=null}
+
+  box.innerHTML="";
+
+  // Retour aux rubriques en haut.
+  const back=parentBackButton(box);
+  box.appendChild(back);
+
+  // Fil d'Ariane / retour d'un niveau.
+  if(currentFolder){
+    const parentFolder=currentFolder.parentId?allSubs.find(sc=>sc.id===currentFolder.parentId):null;
+    const up=document.createElement("button");up.type="button";
+    up.textContent="← "+(parentFolder?parentFolder.name:cat.name);
+    up.style.cssText="grid-column:1/-1;padding:10px;border:1px solid #d7deea;border-radius:11px;background:#f7f9fc;font-weight:900;margin-bottom:4px";
+    up.onclick=()=>{
+      parentLazyView={type:"category",name:cat.name,folderId:parentFolder?parentFolder.id:null};
+      renderParentCategoryLazy(box,cat);
+    };
+    box.appendChild(up);
+  }
+
+  const h=document.createElement("div");h.className="personal-group";
+  h.style.cssText="grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap";
+  const label=document.createElement("b");
+  label.textContent=(currentFolder?(currentFolder.icon||"📁")+" "+currentFolder.name:cat.icon+" "+cat.name);
+  label.style.cssText="font-size:18px;margin-right:auto";h.appendChild(label);
+
   const mk=(txt,fn,cls="")=>{const b=document.createElement("button");b.type="button";b.textContent=txt;if(cls)b.className=cls;b.style.cssText+="font-size:12px;padding:5px 8px";b.onclick=fn;return b};
-  const starred=readFavCats().includes(cat.name);
-  h.appendChild(mk(starred?"★ Favori":"☆ Favori",()=>toggleFavCat(cat.name)));
-  h.appendChild(mk(readHiddenCats().includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>toggleHiddenCat(cat.name)));
-  h.appendChild(mk("↑",()=>moveCategory(cat.name,-1)));h.appendChild(mk("↓",()=>moveCategory(cat.name,1)));
-  if(cat.customId)h.appendChild(mk("🗑️",()=>deleteCustomCategory(cat),"resetedit"));
+
+  if(!currentFolder){
+    const starred=readFavCats().includes(cat.name);
+    h.appendChild(mk(starred?"★ Favori":"☆ Favori",()=>{toggleFavCat(cat.name);renderParentCategoryLazy(box,cat)}));
+    h.appendChild(mk(readHiddenCats().includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>{toggleHiddenCat(cat.name);renderParentCategoryLazy(box,cat)}));
+    h.appendChild(mk("↑",()=>moveCategory(cat.name,-1)));h.appendChild(mk("↓",()=>moveCategory(cat.name,1)));
+    if(cat.customId)h.appendChild(mk("🗑️",()=>deleteCustomCategory(cat),"resetedit"));
+  }else{
+    const hidden=readHiddenSubcats().includes(currentFolder.id);
+    h.appendChild(mk(hidden?"👁️ Réafficher":"🙈 Masquer",()=>{parentToggleSubcat(currentFolder.id);renderParentCategoryLazy(box,cat)}));
+  }
   box.appendChild(h);
 
-  const subs=adminSubcats(cat.name);
-  if(subs.length){
+  // Seulement les enfants directs du niveau courant.
+  const children=allSubs.filter(sc=>(sc.parentId||null)===(currentFolderId||null));
+  if(children.length){
     const sh=document.createElement("div");sh.className="personal-note";
-    sh.textContent="📁 Dossiers / sous-dossiers — touche un dossier pour masquer ou réafficher ce niveau pour cet utilisateur.";
+    sh.textContent=currentFolder?"📁 Sous-dossiers de « "+currentFolder.name+" »":"📁 Sous-catégories";
     box.appendChild(sh);
+
     const colors=["#1976d2","#b84fc4","#ff7a18","#65b81d","#13a8a8","#f2a900","#ec6689","#26a6d1","#8b62d9","#e8563f"];
     const folderWrap=document.createElement("div");
     folderWrap.style.cssText="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px";
-    const allSubs=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted);
-    const depthOf=sc=>{let d=0,p=sc.parentId;while(p){const par=allSubs.find(x=>x.id===p);if(!par)break;d++;p=par.parentId}return d};
-    allSubs.sort((a,b)=>adminSubcatPath(a).localeCompare(adminSubcatPath(b),"fr")).forEach((sc,idx)=>{
+
+    children.forEach((sc,idx)=>{
       const hidden=readHiddenSubcats().includes(sc.id);
-      const tile=document.createElement("button");tile.type="button";
-      tile.innerHTML="<div style='font-size:34px'>"+(sc.icon||"📁")+"</div><b>"+sc.name+"</b><small style='display:block;margin-top:3px'>"+(depthOf(sc)?"↳ "+adminSubcatPath(sc):"Dossier principal")+"</small><div style='margin-top:7px;font-weight:900'>"+(hidden?"👁️ Réafficher":"🙈 Masquer")+"</div>";
-      tile.style.cssText="border:3px solid "+(hidden?"#9ca3af":"rgba(255,255,255,.8)")+";border-radius:15px;padding:11px;background:"+(hidden?"#e5e7eb":colors[idx%colors.length])+";color:"+(hidden?"#4b5563":"white")+";min-height:110px;text-align:center;font:inherit;box-shadow:0 3px 8px rgba(0,0,0,.12);cursor:pointer";
-      tile.onclick=()=>{parentToggleSubcat(sc.id);renderParentCategoryLazy(box,cat)};
-      folderWrap.appendChild(tile);
+      const hasChildren=allSubs.some(x=>x.parentId===sc.id);
+      const tile=document.createElement("div");
+      tile.style.cssText="border:3px solid "+(hidden?"#9ca3af":"rgba(255,255,255,.8)")+";border-radius:15px;padding:10px;background:"+(hidden?"#e5e7eb":colors[idx%colors.length])+";color:"+(hidden?"#4b5563":"white")+";min-height:120px;text-align:center;font:inherit;box-shadow:0 3px 8px rgba(0,0,0,.12);display:flex;flex-direction:column;justify-content:center";
+
+      const open=document.createElement("button");open.type="button";
+      open.innerHTML="<div style='font-size:36px'>"+(sc.icon||"📁")+"</div><b style='font-size:16px'>"+sc.name+"</b>"+(hasChildren?"<small style='display:block;margin-top:4px'>📂 Ouvrir</small>":"");
+      open.style.cssText="border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:2px";
+      open.onclick=()=>{
+        parentLazyView={type:"category",name:cat.name,folderId:sc.id};
+        renderParentCategoryLazy(box,cat);
+      };
+
+      const actions=document.createElement("div");actions.style.cssText="display:flex;gap:5px;justify-content:center;margin-top:8px";
+      const hide=document.createElement("button");hide.type="button";hide.textContent=hidden?"👁️ Réafficher":"🙈 Masquer";
+      hide.style.cssText="padding:6px 8px;border:1px solid rgba(0,0,0,.12);border-radius:8px;background:rgba(255,255,255,.88);color:#263238;font-weight:800";
+      hide.onclick=e=>{e.stopPropagation();parentToggleSubcat(sc.id);renderParentCategoryLazy(box,cat)};
+      actions.appendChild(hide);
+      tile.append(open,actions);folderWrap.appendChild(tile);
     });
     box.appendChild(folderWrap);
   }
 
-  const parentItems=orderedItems(cat);
+  // Pictogrammes : à la racine = catégorie entière ; dans un dossier = pictos affectés à ce dossier.
+  let parentItems=orderedItems(cat);
+  if(currentFolder){
+    parentItems=parentItems.filter(x=>{
+      const ids=adminItemSubcatIds(x);
+      return ids.includes(currentFolder.id);
+    });
+  }
+
   const parentMobile=window.innerWidth<=700;
   const batchSize=parentMobile?20:30;
   let parentShown=0;
   const listHost=document.createElement("div");listHost.style.cssText="grid-column:1/-1;display:contents";box.appendChild(listHost);
   const more=document.createElement("button");more.type="button";more.textContent="Afficher plus de pictogrammes";more.style.cssText="grid-column:1/-1;padding:11px;border:1px solid #ccd5e3;border-radius:11px;background:#f7f9fc;font-weight:800";
+
   function renderParentBatch(){
     const slice=parentItems.slice(parentShown,parentShown+batchSize);parentShown+=slice.length;
     slice.forEach(x=>{
-    const card=document.createElement("div");card.className="manage-card";
-    if(parentMobile)card.style.cssText+="min-height:54px;padding:7px 9px";
-    const visual=document.createElement("div");
-    if(parentMobile){
-      visual.textContent=displayEmoji(x)||"🖼️";
-      visual.style.cssText="font-size:27px;width:38px;text-align:center";
-    }else visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
-    const info=document.createElement("div"),title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
-    const actions=document.createElement("div");actions.className="manage-actions";
-    if(parentMobile){
-      const manage=document.createElement("button");manage.textContent="⚙️ Gérer";manage.style.cssText="padding:6px 9px;border-radius:8px";
-      manage.onclick=()=>openParentPictoQuickActions(x,cat);
-      actions.appendChild(manage);info.appendChild(actions);card.append(visual,info);listHost.appendChild(card);return;
-    }
-    const vis=document.createElement("button");vis.className=isHidden(x)?"showbtn":"hidebtn";vis.textContent=isHidden(x)?"👁️ Réafficher":"🙈 Masquer";vis.onclick=()=>setHidden(x,!isHidden(x));
-    const up=document.createElement("button");up.textContent="↑";up.onclick=()=>moveItem(cat,x,-1);
-    const down=document.createElement("button");down.textContent="↓";down.onclick=()=>moveItem(cat,x,1);
-    const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
-    const fav=document.createElement("button");fav.textContent=isFav(x)?"⭐":"☆";fav.onclick=()=>{toggleFav(x);renderParentCategoryLazy(box,cat)};
-    actions.append(fav,vis,up,down,edit);
-    if(submenuFor(x).length){const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=()=>{activeSubmenu=x;current=categories.findIndex(c=>c.name==="Mode parents");renderGrid()};actions.appendChild(sub)}
-    if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️";del.onclick=()=>deleteAdded(x);actions.appendChild(del)}
-    info.appendChild(actions);card.append(visual,info);listHost.appendChild(card);
+      const card=document.createElement("div");card.className="manage-card";
+      if(parentMobile)card.style.cssText+="min-height:54px;padding:7px 9px";
+      const visual=document.createElement("div");
+      if(parentMobile){visual.textContent=displayEmoji(x)||"🖼️";visual.style.cssText="font-size:27px;width:38px;text-align:center"}
+      else visual.innerHTML=imageHtml(displayImage(x),displayEmoji(x));
+      const info=document.createElement("div"),title=document.createElement("b");title.textContent=displayLabel(x);info.appendChild(title);
+      const actions=document.createElement("div");actions.className="manage-actions";
+      if(parentMobile){
+        const manage=document.createElement("button");manage.textContent="⚙️ Gérer";manage.style.cssText="padding:6px 9px;border-radius:8px";
+        manage.onclick=()=>openParentPictoQuickActions(x,cat);
+        actions.appendChild(manage);info.appendChild(actions);card.append(visual,info);listHost.appendChild(card);return;
+      }
+      const vis=document.createElement("button");vis.className=isHidden(x)?"showbtn":"hidebtn";vis.textContent=isHidden(x)?"👁️ Réafficher":"🙈 Masquer";vis.onclick=()=>setHidden(x,!isHidden(x));
+      const up=document.createElement("button");up.textContent="↑";up.onclick=()=>moveItem(cat,x,-1);
+      const down=document.createElement("button");down.textContent="↓";down.onclick=()=>moveItem(cat,x,1);
+      const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
+      const fav=document.createElement("button");fav.textContent=isFav(x)?"⭐":"☆";fav.onclick=()=>{fav.disabled=true;toggleFav(x);fav.textContent=isFav(x)?"⭐":"☆";fav.disabled=false};
+      actions.append(fav,vis,up,down,edit);
+      if(submenuFor(x).length){const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=()=>{activeSubmenu=x;current=categories.findIndex(c=>c.name==="Mode parents");renderGrid()};actions.appendChild(sub)}
+      if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️";del.onclick=()=>deleteAdded(x);actions.appendChild(del)}
+      info.appendChild(actions);card.append(visual,info);listHost.appendChild(card);
     });
     more.style.display=parentShown<parentItems.length?"block":"none";
   }

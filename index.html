@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 53</title>
+<title>Ma CAA v2.0 bêta 54</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 53</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 54</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -373,13 +373,8 @@ function adminOverrideFor(x){
   if(x[6]&&items[x[6]])return items[x[6]];
   for(const c of categories){
     if((c.items||[]).includes(x)){
-      const hit=items[adminItemId(c,x)];
-      if(hit)return hit;
+      return items[adminItemId(c,x)]||{};
     }
-  }
-  for(const e of Object.values(items)){
-    if(!e)continue;
-    if((e.label&&e.label===x[1])||(e.speech&&e.speech===x[2]))return e;
   }
   return {};
 }
@@ -404,11 +399,11 @@ function displayImage(x){
     return "";
   }
   const ae=adminOverrideFor(x);
-  // L'Administrateur est la source commune prioritaire.
-  if(ae.image)return normalizeCloudImageRef(ae.image);
-  // Si l'Administrateur a choisi explicitement un emoji, ne pas réafficher
-  // l'ancienne image ARASAAC / locale à sa place.
+  // Si l'Administrateur a explicitement choisi un emoji, il est prioritaire
+  // sur toute ancienne image enregistrée ou image ARASAAC d'origine.
   if(ae.emoji)return "";
+  // Sinon, une image choisie par l'Administrateur est prioritaire.
+  if(ae.image)return normalizeCloudImageRef(ae.image);
   if(x[4])return normalizeCloudImageRef(x[4]);
   return customFor(x).image||localPictos[x[1]]||"";
 }
@@ -1294,54 +1289,65 @@ function renderPersonalize(box){
 
 let adultUnlocked=false;
 function openAdultGate(){
+  // Une seule fenêtre de verrouillage à la fois.
+  document.querySelectorAll(".adult-overlay").forEach(x=>x.remove());
+
   const overlay=document.createElement("div");overlay.className="adult-overlay";
   const box=document.createElement("div");box.className="adult-box";
   box.innerHTML="<h2>🔒 Mode parents</h2><p>Maintiens le bouton pendant 3 secondes pour accéder aux réglages.</p><div class='holdbar'><div class='holdfill'></div></div>";
   const btn=document.createElement("button");btn.className="holdbtn";btn.textContent="Maintenir 3 secondes";
-  btn.style.webkitUserSelect="none";btn.style.userSelect="none";btn.style.webkitTouchCallout="none";btn.style.touchAction="none";
   const close=document.createElement("button");close.className="closeadult";close.textContent="Annuler";
   box.append(btn,close);overlay.appendChild(box);document.body.appendChild(overlay);
 
   const fill=box.querySelector(".holdfill");
-  let timer=null,raf=null,startAt=0,holding=false,opened=false;
+  let timer=null,raf=null,startAt=0,holding=false,done=false;
 
-  function reset(){
+  function clearHold(){
     holding=false;
-    if(timer)clearTimeout(timer);
-    if(raf)cancelAnimationFrame(raf);
-    timer=null;raf=null;startAt=0;
-    fill.style.width="0%";
+    if(timer){clearTimeout(timer);timer=null}
+    if(raf){cancelAnimationFrame(raf);raf=null}
+    if(!done)fill.style.width="0%";
   }
   function animate(){
-    if(!holding)return;
+    if(!holding||done)return;
     fill.style.width=Math.min(100,((performance.now()-startAt)/3000)*100)+"%";
     raf=requestAnimationFrame(animate);
   }
-  function success(){
-    if(opened)return;
-    opened=true;reset();adultUnlocked=true;overlay.remove();render();renderProfileBar();showFeedback("Mode parents");
+  function unlock(){
+    if(done)return;
+    done=true;holding=false;
+    if(timer){clearTimeout(timer);timer=null}
+    if(raf){cancelAnimationFrame(raf);raf=null}
+    fill.style.width="100%";
+    adultUnlocked=true;
+    overlay.remove();
+    // Basculer explicitement sur Mode parents avant le rendu.
+    const idx=categories.findIndex(c=>c.name==="Mode parents");
+    if(idx>=0)current=idx;
+    render();
+    renderProfileBar();
+    showFeedback("Mode parents");
   }
   function begin(e){
-    if(opened||holding)return;
-    if(e.cancelable)e.preventDefault();
-    holding=true;startAt=performance.now();animate();
-    timer=setTimeout(success,3000);
+    if(done||holding)return;
+    if(e&&e.cancelable)e.preventDefault();
+    holding=true;startAt=performance.now();
+    animate();
+    timer=setTimeout(unlock,3000);
   }
   function stop(e){
     if(e&&e.cancelable)e.preventDefault();
-    if(!opened)reset();
+    if(!done)clearHold();
   }
 
-  // iPhone/iPad first.
-  btn.addEventListener("touchstart",begin,{passive:false});
-  btn.addEventListener("touchend",stop,{passive:false});
-  btn.addEventListener("touchcancel",stop,{passive:false});
-  // Desktop / mouse fallback.
-  btn.addEventListener("mousedown",begin);
-  btn.addEventListener("mouseup",stop);
-  btn.addEventListener("mouseleave",stop);
+  // Pointer events évitent le double déclenchement touch + mouse sur iPhone/iPad.
+  btn.style.touchAction="none";
+  btn.addEventListener("pointerdown",begin);
+  btn.addEventListener("pointerup",stop);
+  btn.addEventListener("pointercancel",stop);
+  btn.addEventListener("pointerleave",e=>{if(e.pointerType==="mouse")stop(e)});
   btn.addEventListener("contextmenu",e=>e.preventDefault());
-  close.onclick=()=>{reset();overlay.remove()};
+  close.onclick=()=>{clearHold();overlay.remove()};
 }
 function lockAdult(){
   adultUnlocked=false;current=0;render();showFeedback("Mode enfant");
@@ -1508,7 +1514,7 @@ function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
 function adminItemData(cat,x){
   const id=adminItemId(cat,x),e=readAdminBase().items?.[id]||{};
-  return [x[0],e.label||x[1],e.speech||x[2],x[3],x[4]||"",false,id];
+  return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||x[4]||"",false,id];
 }
 function adminItemAvailable(cat,x){
   const a=readAdminBase(),id=adminItemId(cat,x),e=a.items?.[id]||{};

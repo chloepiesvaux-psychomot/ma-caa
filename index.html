@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 95</title>
+<title>Ma CAA v2.0 bêta 96</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 95</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 96</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -380,10 +380,26 @@ function toggleFav(x){
 
 const QUICK_CHOICES_KEY="ma-caa-quick-choices-v1";
 function readQuickChoicesMap(){try{return JSON.parse(localStorage.getItem(QUICK_CHOICES_KEY)||"{}")}catch(e){return {}}}
+function findPermanentItemById(id){
+  if(!id)return null;
+  for(const c of normalCategories()){
+    for(const x of (c.items||[])){if(permanentItemId(x)===id)return x}
+  }
+  const ai=(readAdminBase().addedItems||[]).find(v=>v.id===id&&!v.deleted);
+  if(ai)return [ai.emoji||"🖼️",ai.label||"Pictogramme",ai.speech||ai.label||"Pictogramme",ai.id,ai.image||null,null,ai.id];
+  return null;
+}
 function quickChoicesFor(x){
   try{
-    const pid=permanentItemId(x),a=readAdminBase();
-    if(pid&&Array.isArray(a.quickChoices?.[pid]))return a.quickChoices[pid].filter(c=>!c.deleted);
+    const pid=permanentItemId(x),a=readAdminBase(),saved=(pid&&Array.isArray(a.quickChoices?.[pid]))?a.quickChoices[pid]:null;
+    if(saved){
+      return saved.filter(c=>!c.deleted).sort((u,v)=>(u.order||0)-(v.order||0)).map(c=>{
+        const sid=c.sourceId||String(c.id||"").replace(/^qref:/,"");
+        const live=findPermanentItemById(sid);
+        if(live)return {id:c.id,sourceId:sid,emoji:displayEmoji(live),label:displayLabel(live),speech:spokenText(live),image:displayImage(live)||"",order:c.order||0};
+        return c;
+      });
+    }
   }catch(e){}
   const m=readQuickChoicesMap();return Array.isArray(m[itemId2(x)])?m[itemId2(x)]:[]
 }
@@ -435,70 +451,83 @@ function editQuickChoices(x){
 
 function adminManageQuickChoices(parentId,parentLabel){
   const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100660";
-  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="720px";
-  panel.innerHTML="<h2>💬 Suite rapide : "+parentLabel+"</h2><div style='color:#667085;margin-bottom:12px'>Pour quelques choix seulement (maximum 4). Ils apparaîtront dans une petite bulle sans quitter la catégorie.</div>";
-  const list=document.createElement("div");panel.appendChild(list);
+  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="900px";
+  panel.innerHTML="<h2>💬 Suite rapide : "+parentLabel+"</h2><div style='color:#667085;margin-bottom:12px'>Choisis 2 à 4 pictogrammes permanents. Ils sont classés par catégories et conservent automatiquement leur image, leur nom et leur phrase prononcée.</div>";
 
-  const get=()=>{const a=readAdminBase();a.quickChoices=a.quickChoices||{};return (a.quickChoices[parentId]||[]).filter(c=>!c.deleted).sort((x,y)=>(x.order||0)-(y.order||0))};
-  const saveAll=arr=>{const a=readAdminBase();a.quickChoices=a.quickChoices||{};a.quickChoices[parentId]=arr;writeAdminBase(a)};
+  const search=document.createElement("input");search.type="text";search.placeholder="🔎 Rechercher un pictogramme permanent…";search.style.cssText="width:100%;padding:12px;border:2px solid #d9dee8;border-radius:12px;margin-bottom:12px";panel.appendChild(search);
+  const selectedBox=document.createElement("div");selectedBox.style.cssText="padding:10px;border-radius:12px;background:#f6f8fb;margin-bottom:12px;font-weight:800";panel.appendChild(selectedBox);
+  const browser=document.createElement("div");panel.appendChild(browser);
 
-  function refresh(){
-    list.innerHTML="";
-    const arr=get();
-    if(!arr.length){
-      const e=document.createElement("div");e.textContent="Aucun choix pour le moment.";e.style.cssText="padding:12px;background:#f7f9fc;border-radius:10px;color:#667085;margin-bottom:8px";list.appendChild(e)
-    }
-    arr.forEach((c,i)=>{
-      const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:64px minmax(110px,1fr) minmax(140px,1.3fr) auto;gap:7px;align-items:center;margin:7px 0";
-      const em=document.createElement("input");em.value=c.emoji||"💬";em.style.cssText="padding:9px;min-width:0";
-      const la=document.createElement("input");la.value=c.label||"";la.placeholder="Nom";la.style.cssText="padding:9px;min-width:0";
-      const sp=document.createElement("input");sp.value=c.speech||c.label||"";sp.placeholder="Phrase prononcée";sp.style.cssText="padding:9px;min-width:0";
-      const buttons=document.createElement("div");buttons.style.cssText="display:flex;gap:4px";
-      const mk=(t,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.onclick=fn;return b};
-      const persist=()=>{
-        const now=get(),target=now.find(x=>x.id===c.id);if(!target)return;
-        target.emoji=em.value.trim()||"💬";target.label=la.value.trim()||"Choix";target.speech=sp.value.trim()||target.label;saveAll(now)
-      };
-      em.onchange=persist;la.onchange=persist;sp.onchange=persist;
-      buttons.append(
-        mk("↑",()=>{const now=get(),k=now.findIndex(x=>x.id===c.id);if(k<=0)return;[now[k-1].order,now[k].order]=[now[k].order,now[k-1].order];saveAll(now);refresh()}),
-        mk("↓",()=>{const now=get(),k=now.findIndex(x=>x.id===c.id);if(k<0||k>=now.length-1)return;[now[k+1].order,now[k].order]=[now[k].order,now[k+1].order];saveAll(now);refresh()}),
-        mk("🗑️",()=>{const now=get().filter(x=>x.id!==c.id);now.forEach((x,k)=>x.order=k);saveAll(now);refresh()})
-      );
-      row.append(em,la,sp,buttons);list.appendChild(row);
+  const base=readAdminBase();base.quickChoices=base.quickChoices||{};
+  let selected=(base.quickChoices[parentId]||[]).map(c=>c.sourceId||c.id).filter(Boolean);
+
+  function permanentRows(){
+    const a=readAdminBase(),out=[];
+    const hidden=new Set(a.hiddenItems||[]),deleted=new Set(a.deletedItems||[]);
+    normalCategories().forEach(cat=>{
+      (cat.items||[]).forEach(x=>{
+        const id=permanentItemId(x); if(!id||id===parentId||hidden.has(id)||deleted.has(id))return;
+        out.push({id,cat:adminCategoryDisplay(cat).name,item:x,label:displayLabel(x),speech:spokenText(x),emoji:displayEmoji(x),image:displayImage(x)||""});
+      });
+    });
+    (a.addedItems||[]).filter(x=>!x.deleted&&!x.hidden).forEach(ai=>{
+      if(ai.id===parentId)return;
+      out.push({id:ai.id,cat:ai.category||"Autres",item:[ai.emoji||"🖼️",ai.label||"Pictogramme",ai.speech||ai.label||"Pictogramme",ai.id,ai.image||null,null,ai.id],label:ai.label||"Pictogramme",speech:ai.speech||ai.label||"Pictogramme",emoji:ai.emoji||"🖼️",image:ai.image||""});
+    });
+    const seen=new Set();return out.filter(r=>!seen.has(r.id)&&(seen.add(r.id),true));
+  }
+  function updateSelected(){
+    selectedBox.textContent="Sélection : "+selected.length+"/4"+(selected.length?" — "+selected.map(id=>permanentRows().find(r=>r.id===id)?.label||"").filter(Boolean).join(" · "):"");
+  }
+  function renderBrowser(){
+    const q=search.value.trim().toLowerCase(),rows=permanentRows().filter(r=>!q||r.label.toLowerCase().includes(q)||r.cat.toLowerCase().includes(q));
+    browser.innerHTML="";
+    const groups={};rows.forEach(r=>(groups[r.cat]||(groups[r.cat]=[])).push(r));
+    Object.entries(groups).forEach(([cat,items])=>{
+      const details=document.createElement("details");details.open=!!q;
+      const sum=document.createElement("summary");sum.textContent="📁 "+cat+" ("+items.length+")";sum.style.cssText="cursor:pointer;font-weight:900;padding:11px;background:#f4f6fa;border-radius:10px;margin:6px 0";details.appendChild(sum);
+      const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;margin:8px 0 14px";
+      items.forEach(r=>{
+        const card=document.createElement("button");card.type="button";card.style.cssText="min-height:125px;border:2px solid "+(selected.includes(r.id)?"#2eaf58":"#e1e5ed")+";border-radius:14px;background:"+(selected.includes(r.id)?"#effaf2":"white")+";padding:8px;display:grid;place-items:center;gap:5px;font-weight:800";
+        const vis=document.createElement("div");vis.style.cssText="height:70px;display:grid;place-items:center;font-size:42px";
+        if(r.image){const im=document.createElement("img");im.src=normalizeCloudImageRef(r.image);im.style.cssText="max-width:70px;max-height:70px;object-fit:contain";vis.appendChild(im)}else vis.textContent=r.emoji||"🖼️";
+        const lab=document.createElement("div");lab.textContent=r.label;card.append(vis,lab);
+        card.onclick=()=>{
+          if(selected.includes(r.id))selected=selected.filter(x=>x!==r.id);
+          else {if(selected.length>=4){alert("Maximum 4 pictogrammes dans une suite rapide. Pour davantage, utilise un dossier / sous-dossier.");return}selected.push(r.id)}
+          updateSelected();renderBrowser();
+        };
+        grid.appendChild(card);
+      });
+      details.appendChild(grid);browser.appendChild(details);
     });
   }
+  search.oninput=renderBrowser;updateSelected();renderBrowser();
 
-  const add=document.createElement("button");add.className="saveedit";add.textContent="＋ Ajouter un choix";
-  add.onclick=()=>{
-    const arr=get();if(arr.length>=4){alert("La suite rapide est limitée à 4 choix. Pour davantage, utilise un dossier / sous-dossier.");return}
-    arr.push({id:"qc"+Date.now()+Math.random().toString(36).slice(2,5),emoji:"💬",label:"Nouveau choix",speech:"Nouveau choix",order:arr.length});
-    saveAll(arr);refresh()
+  const row=document.createElement("div");row.className="editor-row";
+  const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Enregistrer";
+  save.onclick=()=>{
+    if(selected.length<1){alert("Choisis au moins un pictogramme.");return}
+    const rows=permanentRows(),a=readAdminBase();a.quickChoices=a.quickChoices||{};
+    a.quickChoices[parentId]=selected.map((id,order)=>{
+      const r=rows.find(x=>x.id===id);return r?{id:"qref:"+id,sourceId:id,emoji:r.emoji,label:r.label,speech:r.speech,image:r.image||"",order}:null
+    }).filter(Boolean);
+    writeAdminBase(a);overlay.remove();showFeedback("Suite rapide enregistrée");
   };
-  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>overlay.remove();
-  const row=document.createElement("div");row.className="editor-row";row.append(add,close);panel.appendChild(row);
-  overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
+  const close=document.createElement("button");close.className="canceledit";close.textContent="Annuler";close.onclick=()=>overlay.remove();
+  row.append(save,close);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 function parentSetFavoriteFast(x,on){
-  const id=itemId2(x);
-  let ids=getFavIds();
-  const has=ids.includes(id);
-  if(on&&!has)ids.push(id);
-  if(!on&&has)ids=ids.filter(v=>v!==id);
+  let ids=getFavIds(),id=itemId2(x);ids=on?[...new Set([...ids,id])]:ids.filter(v=>v!==id);
   localStorage.setItem(profiledKey(FAV_KEY),JSON.stringify(ids));
-  let ord=readFavOrder().filter(v=>v!==id);
-  if(on)ord.push(id);
+  let ord=readFavOrder().filter(v=>v!==id);if(on)ord.push(id);
   localStorage.setItem(profiledKey(FAV_ORDER_KEY),JSON.stringify(ord));
-  localStorage.setItem("ma-caa-last-save",String(Date.now()));
-  scheduleProfileAutoPush();
+  localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush();
 }
-function parentSetHiddenFast(x,hidden){
-  const id=itemId2(x);let ids=hiddenIds();
-  if(hidden&&!ids.includes(id))ids.push(id);
-  if(!hidden)ids=ids.filter(v=>v!==id);
+function parentSetHiddenFast(x,on){
+  let ids=readList(HIDDEN_KEY),id=itemId2(x);ids=on?[...new Set([...ids,id])]:ids.filter(v=>v!==id);
   localStorage.setItem(profiledKey(HIDDEN_KEY),JSON.stringify(ids));
-  localStorage.setItem("ma-caa-last-save",String(Date.now()));
-  scheduleProfileAutoPush();
+  localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush();
 }
 function parentToggleSubcatFast(id){
   let h=readHiddenSubcats();
@@ -1628,38 +1657,70 @@ function openParentPictoQuickActions(x,cat){
   p.append(actions,close);ov.appendChild(p);document.body.appendChild(ov);
 }
 
-function openParentSubmenuMobile(x){
-  const items=expandSubmenuEntries(x);
-  if(!items.length){alert("Ce sous-menu ne contient actuellement aucun pictogramme.");return}
-  const ov=document.createElement("div");ov.className="editor-overlay";ov.style.zIndex="100720";
-  const p=document.createElement("div");p.className="editor";p.style.maxWidth="620px";
-  const h=document.createElement("h2");h.textContent="📂 "+displayLabel(x);p.appendChild(h);
+function openParentSubmenuMobile(parent){
+  closeParentSubmenuMobile();
+  const overlay=document.createElement("div");overlay.id="parent-submenu-mobile";overlay.className="editor-overlay";overlay.style.zIndex="100500";
+  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="860px";
+  overlay.appendChild(panel);document.body.appendChild(overlay);
 
-  // Parent can hide/re-show the whole submenu, without changing permanent base.
-  const folderId=(x&&x._subcatId)||("submenu:"+itemId2(x));
-  const folderCtl=document.createElement("button");
-  folderCtl.type="button";
-  const folderHidden=()=>readHiddenSubcats().includes(folderId);
-  folderCtl.textContent=folderHidden()?"👁️ Réafficher ce sous-dossier":"🙈 Masquer ce sous-dossier";
-  folderCtl.style.cssText="width:100%;margin:0 0 10px;padding:11px;border:1px solid #d8dee8;border-radius:10px;background:#f8faff;font-weight:800";
-  folderCtl.onclick=()=>{const hidden=parentToggleSubcatFast(folderId);folderCtl.textContent=hidden?"👁️ Réafficher ce sous-dossier":"🙈 Masquer ce sous-dossier"};
-  p.appendChild(folderCtl);
+  const rootId=permanentItemId(parent);
+  const rootLabel=displayLabel(parent);
+  let stack=[{id:rootId,label:rootLabel,item:parent}];
 
-  const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;max-height:58vh;overflow:auto";
-  items.forEach(y=>{
-    const label=y.label||"Pictogramme", emoji=y.emoji||"🖼️", image=y.image||"";
-    const pseudo=[emoji,label,y.speech||label,null,image||null,false,y.sourceId||y.id];
-    const card=document.createElement("div");card.style.cssText="border:1px solid #dce2eb;border-radius:13px;background:#fff;padding:8px;text-align:center";
-    const face=document.createElement("div");face.style.cssText="min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center";
-    face.innerHTML=imageHtml(image,emoji)+"<b style='margin-top:4px'>"+label+"</b>";
-    const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px";
-    const fav=document.createElement("button");fav.type="button";fav.textContent=isFav(pseudo)?"⭐":"☆";fav.onclick=()=>{const n=!isFav(pseudo);parentSetFavoriteFast(pseudo,n);fav.textContent=n?"⭐":"☆"};
-    const vis=document.createElement("button");vis.type="button";vis.textContent=isHidden(pseudo)?"👁️":"🙈";vis.onclick=()=>{const n=!isHidden(pseudo);parentSetHiddenFast(pseudo,n);vis.textContent=n?"👁️":"🙈";card.style.opacity=n?".48":"1"};
-    [fav,vis].forEach(b=>b.style.cssText="padding:8px;border:1px solid #d8dee8;border-radius:9px;background:#f8faff;font-size:20px");
-    row.append(fav,vis);card.append(face,row);if(isHidden(pseudo))card.style.opacity=".48";grid.appendChild(card);
-  });
-  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
-  p.append(grid,close);ov.appendChild(p);document.body.appendChild(ov);
+  function childrenFor(nodeId){
+    const a=readAdminBase(),subs=(a.subcategories||[]).filter(sc=>!sc.deleted&&sc.parentId===nodeId).sort((x,y)=>(x.order||0)-(y.order||0));
+    return subs;
+  }
+  function itemsAt(nodeId){
+    const all=allItems();
+    return all.filter(x=>{
+      const ae=adminOverrideFor(x);
+      const folder=ae.subcategoryId||ae.folderId||ae.parentFolderId||"";
+      return folder===nodeId;
+    });
+  }
+  function renderLevel(){
+    const node=stack[stack.length-1];panel.innerHTML="";
+    const title=document.createElement("h2");title.textContent="📂 "+node.label;panel.appendChild(title);
+    if(stack.length>1){
+      const back=document.createElement("button");back.type="button";back.textContent="← Retour";back.style.cssText="margin-bottom:10px;border:0;border-radius:10px;padding:10px 13px;font-weight:800";back.onclick=()=>{stack.pop();renderLevel()};panel.appendChild(back);
+    }
+    const hideFolder=document.createElement("button");hideFolder.type="button";hideFolder.style.cssText="width:100%;margin-bottom:12px;border:1px solid #dbe1ea;border-radius:12px;padding:12px;font-weight:900";
+    const hidden=readHiddenSubcategories().includes(node.id);hideFolder.textContent=hidden?"👁️ Réafficher ce dossier":"🙈 Masquer ce dossier";
+    hideFolder.onclick=()=>{toggleHiddenSubcategory(node.id);renderLevel()};panel.appendChild(hideFolder);
+
+    const folders=childrenFor(node.id);
+    if(folders.length){
+      const h=document.createElement("div");h.textContent="Dossiers / sous-dossiers";h.style.cssText="font-weight:900;margin:10px 0";panel.appendChild(h);
+      const fg=document.createElement("div");fg.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px;margin-bottom:14px";
+      folders.forEach(sc=>{
+        const btn=document.createElement("button");btn.type="button";btn.style.cssText="min-height:110px;border:2px solid #dfe4ec;border-radius:15px;background:#f5f8ff;padding:10px;font-weight:900;font-size:16px";
+        btn.innerHTML="<div style='font-size:38px'>"+(sc.emoji||"📂")+"</div><div>"+(sc.name||"Dossier")+"</div>";
+        btn.onclick=()=>{stack.push({id:sc.id,label:sc.name||"Dossier"});renderLevel()};fg.appendChild(btn);
+      });panel.appendChild(fg);
+    }
+
+    let pics=itemsAt(node.id);
+    // Compatibility with old flat submenu links on the root level.
+    if(stack.length===1 && !pics.length)pics=expandSubmenuEntries(parent);
+    if(pics.length){
+      const h=document.createElement("div");h.textContent="Pictogrammes";h.style.cssText="font-weight:900;margin:10px 0";panel.appendChild(h);
+      const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:9px";
+      pics.forEach(x=>{
+        const card=document.createElement("div");card.style.cssText="border:2px solid #dfe4ec;border-radius:15px;background:white;padding:10px;display:grid;place-items:center;gap:7px";
+        const vis=document.createElement("div");vis.style.cssText="height:75px;display:grid;place-items:center;font-size:46px";
+        const img=displayImage(x);if(img){const im=document.createElement("img");im.src=normalizeCloudImageRef(img);im.style.cssText="max-width:75px;max-height:75px;object-fit:contain";vis.appendChild(im)}else vis.textContent=displayEmoji(x);
+        const name=document.createElement("b");name.textContent=displayLabel(x);
+        const acts=document.createElement("div");acts.style.cssText="display:flex;gap:6px;width:100%";
+        const fav=document.createElement("button");fav.type="button";fav.textContent=isFav(x)?"★":"☆";fav.style.flex="1";fav.onclick=()=>{parentSetFavoriteFast(x,!isFav(x));fav.textContent=isFav(x)?"★":"☆"};
+        const hide=document.createElement("button");hide.type="button";hide.textContent=isHidden(x)?"👁️":"🙈";hide.style.flex="1";hide.onclick=()=>{parentSetHiddenFast(x,!isHidden(x));hide.textContent=isHidden(x)?"👁️":"🙈"};
+        acts.append(fav,hide);card.append(vis,name,acts);grid.appendChild(card);
+      });panel.appendChild(grid);
+    }
+    if(!folders.length&&!pics.length){const empty=document.createElement("div");empty.textContent="Aucun élément dans ce dossier.";empty.style.cssText="padding:18px;color:#667085;text-align:center";panel.appendChild(empty)}
+    const close=document.createElement("button");close.type="button";close.className="canceledit";close.textContent="Fermer";close.style.marginTop="14px";close.onclick=closeParentSubmenuMobile;panel.appendChild(close);
+  }
+  renderLevel();
 }
 
 // Desktop safety net: some legacy Parent Mode cards are rebuilt dynamically.

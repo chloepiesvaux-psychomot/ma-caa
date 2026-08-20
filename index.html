@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 76</title>
+<title>Ma CAA v2.0 bêta 77</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 76</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 77</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1692,7 +1692,12 @@ function adminManageSubmenu(parentId,parentLabel){
       const v=byId.get(e.id)||e;
       const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:minmax(120px,1fr) auto;gap:8px;align-items:center;border:1px solid #e3e6ec;border-radius:11px;padding:7px 9px;background:white";
       const name=document.createElement("div");name.style.cssText="font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
-      name.textContent=(e.hidden?"🙈 ":"")+(v.emoji||"🖼️")+" "+(v.label||"Pictogramme");
+      if(e.kind==="subcategory"){
+        const sc=(readAdminBase().subcategories||[]).find(x=>x.id===e.subcategoryId);
+        name.textContent=(e.hidden?"🙈 ":"")+"📁 "+(sc?.icon||e.emoji||"📁")+" "+(sc?.name||v.label||"Sous-catégorie")+" — contenu automatique";
+      }else{
+        name.textContent=(e.hidden?"🙈 ":"")+(v.emoji||"🖼️")+" "+(v.label||"Pictogramme");
+      }
       const actions=document.createElement("div");actions.style.cssText="display:flex;gap:4px";
       actions.append(
         mini(e.hidden?"👁️":"🙈",()=>{e.hidden=!e.hidden;writeAdminBase(a);refresh()},"Masquer / réafficher"),
@@ -1732,8 +1737,46 @@ function adminManageSubmenu(parentId,parentLabel){
     choose.after(picker);
   };
 
-  const chooseSubcat=document.createElement("button");chooseSubcat.textContent="📁 Ajouter une sous-catégorie permanente";chooseSubcat.style.cssText="width:100%;margin-bottom:8px";
-  chooseSubcat.onclick=()=>{panel.querySelector(".submenu-cat-picker")?.remove();const picker=document.createElement("div");picker.className="submenu-cat-picker";picker.style.cssText="border:1px solid #ddd;border-radius:12px;padding:10px;margin-bottom:10px";const subs=(readAdminBase().subcategories||[]).filter(x=>!x.deleted);if(!subs.length)picker.textContent="Aucune sous-catégorie permanente n’a encore été créée.";subs.forEach(sc=>{const b=document.createElement("button");b.type="button";b.style.cssText="display:block;width:100%;padding:9px;margin:4px 0;text-align:left";b.textContent=(sc.icon||"📁")+" "+sc.name+" — "+sc.category;b.onclick=()=>{const arr=a.submenus[parentId];arr.push({id:"smsc"+Date.now()+Math.random().toString(36).slice(2,5),kind:"subcategory",subcategoryId:sc.id,label:sc.name,emoji:sc.icon||"📁",order:arr.filter(e=>!e.deleted).length,hidden:false});writeAdminBase(a);picker.remove();refresh();showFeedback("Sous-catégorie ajoutée")};picker.appendChild(b)});chooseSubcat.after(picker)};
+  const chooseSubcat=document.createElement("button");
+  chooseSubcat.textContent="📁 Ajouter une sous-catégorie permanente";
+  chooseSubcat.style.cssText="width:100%;margin-bottom:8px";
+  chooseSubcat.onclick=()=>{
+    panel.querySelector(".submenu-cat-picker")?.remove();
+    const picker=document.createElement("div");picker.className="submenu-cat-picker";
+    picker.style.cssText="max-height:420px;overflow:auto;border:1px solid #dfe3ea;border-radius:12px;padding:10px;margin:4px 0 12px;background:#fafbfe";
+    const base=readAdminBase(),subs=(base.subcategories||[]).filter(x=>!x.deleted);
+    const current=new Set((base.submenus?.[parentId]||[]).filter(e=>!e.deleted&&e.kind==="subcategory").map(e=>e.subcategoryId));
+    if(!subs.length){
+      picker.textContent="Aucune sous-catégorie permanente n’a encore été créée.";
+    }else{
+      const groups=new Map();
+      subs.forEach(sc=>{if(!groups.has(sc.category))groups.set(sc.category,[]);groups.get(sc.category).push(sc)});
+      groups.forEach((items,catName)=>{
+        const h=document.createElement("div");h.textContent=catName;h.style.cssText="font-weight:900;margin:10px 2px 6px;color:#243b6b";picker.appendChild(h);
+        const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:6px";
+        items.forEach(sc=>{
+          const b=document.createElement("button");b.type="button";b.disabled=current.has(sc.id);
+          b.style.cssText="min-height:58px;padding:8px;border:1px solid #dfe3ea;border-radius:10px;background:white;text-align:left;font-weight:800";
+          b.textContent=(sc.icon||"📁")+" "+sc.name;
+          b.onclick=()=>{
+            const now=readAdminBase();now.submenus=now.submenus||{};now.submenus[parentId]=now.submenus[parentId]||[];
+            const arr=now.submenus[parentId];
+            const old=arr.find(e=>e.kind==="subcategory"&&e.subcategoryId===sc.id);
+            if(old){old.deleted=false;old.hidden=false;old.order=arr.filter(e=>!e.deleted).length}
+            else arr.push({
+              id:"smsc"+Date.now()+Math.random().toString(36).slice(2,5),
+              kind:"subcategory",subcategoryId:sc.id,label:sc.name,emoji:sc.icon||"📁",
+              order:arr.filter(e=>!e.deleted).length,hidden:false
+            });
+            writeAdminBase(now);picker.remove();refresh();showFeedback("Sous-catégorie ajoutée");
+          };
+          grid.appendChild(b);
+        });
+        picker.appendChild(grid);
+      });
+    }
+    chooseSubcat.after(picker);
+  };
   panel.appendChild(chooseSubcat);
   const secondary=document.createElement("div");secondary.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px";
   const create=mini("➕ Nouveau pictogramme permanent",()=>{overlay.remove();adminPermanentPictogramForm(null)});
@@ -1825,7 +1868,15 @@ function adminManageSubcategories(cat){
 }
 function expandSubmenuEntries(parent){
  const entries=submenuFor(parent),a=readAdminBase(),out=[],map=new Map(allPermanentPictograms().map(v=>[v.id,v]));
- entries.forEach(e=>{if(e.kind==="subcategory"&&e.subcategoryId){const sc=(a.subcategories||[]).find(x=>x.id===e.subcategoryId&&!x.deleted);if(sc)(sc.itemIds||[]).forEach(id=>{const v=map.get(id);if(v)out.push({...v,id:"dyn:"+e.id+":"+id})})}else out.push(e)});return out
+ entries.forEach(e=>{
+   if(e.kind==="subcategory"&&e.subcategoryId){
+     const sc=(a.subcategories||[]).find(x=>x.id===e.subcategoryId&&!x.deleted);
+     if(sc&&!sc.hidden){
+       (sc.itemIds||[]).forEach(id=>{const v=map.get(id);if(v)out.push({...v,id:"dyn:"+e.id+":"+id})});
+     }
+   }else out.push(e);
+ });
+ return out
 }
 function renderGrid(){closeSubmenuBubble();ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";

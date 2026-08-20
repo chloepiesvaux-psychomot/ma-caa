@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 64</title>
+<title>Ma CAA v2.0 bêta 65</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 64</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 65</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1417,6 +1417,12 @@ function renderPersonalize(box){
     h.appendChild(mk("↓ Descendre",()=>moveCategory(cat.name,1)));
     if(cat.customId)h.appendChild(mk("🗑️ Supprimer",()=>deleteCustomCategory(cat),"resetedit"));
     box.appendChild(h);
+    adminSubcats(cat.name).forEach(sc=>{
+      const sr=document.createElement("div");sr.className="manage-card";sr.style.gridColumn="1/-1";
+      const sn=document.createElement("b");sn.textContent=(sc.icon||"📁")+" "+sc.name+" (sous-catégorie)";
+      const sb=document.createElement("button");const sh=readHiddenSubcats().includes(sc.id);sb.textContent=sh?"👁️ Réafficher":"🙈 Masquer";sb.onclick=()=>parentToggleSubcat(sc.id);
+      sr.append(sn,sb);box.appendChild(sr);
+    });
 
     orderedItems(cat).forEach(x=>{
       const card=document.createElement("div");card.className="manage-card";
@@ -1546,7 +1552,7 @@ function submenuOutsideClose(e){
 }
 function openSubmenuBubble(parent,anchor){
   closeSubmenuBubble();
-  const entries=submenuFor(parent).filter(e=>!e.hidden),hidden=hiddenIds();
+  const entries=expandSubmenuEntries(parent).filter(e=>!e.hidden),hidden=hiddenIds();
   const pid=permanentItemId(parent),custom=readCustom(),order=custom["submenu-order:"+pid]||[];
   let list=entries.filter(e=>!hidden.includes("sub:"+e.id));
   if(order.length){
@@ -1667,6 +1673,9 @@ function adminManageSubmenu(parentId,parentLabel){
     choose.after(picker);
   };
 
+  const chooseSubcat=document.createElement("button");chooseSubcat.textContent="📁 Ajouter une sous-catégorie permanente";chooseSubcat.style.cssText="width:100%;margin-bottom:8px";
+  chooseSubcat.onclick=()=>{panel.querySelector(".submenu-cat-picker")?.remove();const picker=document.createElement("div");picker.className="submenu-cat-picker";picker.style.cssText="border:1px solid #ddd;border-radius:12px;padding:10px;margin-bottom:10px";const subs=(readAdminBase().subcategories||[]).filter(x=>!x.deleted);if(!subs.length)picker.textContent="Aucune sous-catégorie permanente n’a encore été créée.";subs.forEach(sc=>{const b=document.createElement("button");b.type="button";b.style.cssText="display:block;width:100%;padding:9px;margin:4px 0;text-align:left";b.textContent=(sc.icon||"📁")+" "+sc.name+" — "+sc.category;b.onclick=()=>{const arr=a.submenus[parentId];arr.push({id:"smsc"+Date.now()+Math.random().toString(36).slice(2,5),kind:"subcategory",subcategoryId:sc.id,label:sc.name,emoji:sc.icon||"📁",order:arr.filter(e=>!e.deleted).length,hidden:false});writeAdminBase(a);picker.remove();refresh();showFeedback("Sous-catégorie ajoutée")};picker.appendChild(b)});chooseSubcat.after(picker)};
+  panel.appendChild(chooseSubcat);
   const secondary=document.createElement("div");secondary.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px";
   const create=mini("➕ Nouveau pictogramme permanent",()=>{overlay.remove();adminPermanentPictogramForm(null)});
   const clear=mini("🗑️ Supprimer le sous-menu",()=>{
@@ -1682,6 +1691,40 @@ function adminManageSubmenu(parentId,parentLabel){
   secondary.append(create,clear,close);
   panel.append(choose,secondary);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
 }
+const SUBCAT_HIDDEN_KEY="ma-caa-hidden-subcategories-v1";
+let activeSubcategoryByCategory={};
+function readHiddenSubcats(){return readList(SUBCAT_HIDDEN_KEY)}
+function writeHiddenSubcats(v){writeList(SUBCAT_HIDDEN_KEY,v)}
+function adminSubcats(catName){return (readAdminBase().subcategories||[]).filter(x=>x.category===catName&&!x.deleted).sort((a,b)=>(a.order||0)-(b.order||0))}
+function subcatVisible(sc){return !sc.hidden&&!readHiddenSubcats().includes(sc.id)}
+function itemInSubcat(x,sc){return (sc.itemIds||[]).includes(permanentItemId(x)||itemId2(x))}
+function renderSubcategoryFilters(box,cat,items){
+ const subs=adminSubcats(cat.name).filter(subcatVisible);if(!subs.length)return items;
+ const wrap=document.createElement("div");wrap.style.cssText="grid-column:1/-1;display:flex;gap:7px;overflow-x:auto;padding:2px 1px 9px";
+ const selected=activeSubcategoryByCategory[cat.name]||"all";
+ const mk=(id,txt)=>{const b=document.createElement("button");b.type="button";b.textContent=txt;b.style.cssText="flex:0 0 auto;border:1px solid #dce2ec;border-radius:12px;padding:8px 12px;background:"+(selected===id?"#e8eefb":"white")+";font-weight:800";b.onclick=()=>{activeSubcategoryByCategory[cat.name]=id;renderGrid()};wrap.appendChild(b)};
+ mk("all","📁 Tout");subs.forEach(sc=>mk(sc.id,(sc.icon||"📁")+" "+sc.name));box.appendChild(wrap);
+ if(selected==="all")return items;const sc=subs.find(x=>x.id===selected);return sc?items.filter(x=>itemInSubcat(x,sc)):items;
+}
+function parentToggleSubcat(id){let h=readHiddenSubcats();h=h.includes(id)?h.filter(x=>x!==id):[...h,id];writeHiddenSubcats(h);renderGrid()}
+function adminManageSubcategories(cat){
+ const a=readAdminBase(),overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
+ const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="760px";panel.innerHTML="<h2>📁 Sous-catégories : "+adminCatName(cat)+"</h2>";
+ const list=document.createElement("div");panel.appendChild(list);
+ const sm=(t,f)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.style.cssText="padding:5px 8px;min-height:34px;border:1px solid #dfe3ea;border-radius:8px;background:#f8f9fc";b.onclick=f;return b};
+ function pickItems(sc){
+  panel.querySelector(".subcat-picker")?.remove();const pick=document.createElement("div");pick.className="subcat-picker";pick.style.cssText="max-height:420px;overflow:auto;border:1px solid #ddd;border-radius:12px;padding:10px;margin:8px 0";
+  const groups=new Map();allPermanentPictograms().forEach(v=>{if(!groups.has(v.category))groups.set(v.category,[]);groups.get(v.category).push(v)});
+  groups.forEach((vals,name)=>{const h=document.createElement("b");h.textContent=name;h.style.cssText="display:block;margin:9px 0 4px";pick.appendChild(h);vals.forEach(v=>{const row=document.createElement("label");row.style.cssText="display:flex;gap:8px;align-items:center;padding:5px";const cb=document.createElement("input");cb.type="checkbox";cb.checked=(sc.itemIds||[]).includes(v.id);cb.onchange=()=>{sc.itemIds=sc.itemIds||[];sc.itemIds=cb.checked?[...new Set([...sc.itemIds,v.id])]:sc.itemIds.filter(id=>id!==v.id);writeAdminBase(a)};row.append(cb,document.createTextNode((v.emoji||"🖼️")+" "+v.label));pick.appendChild(row)})});list.after(pick);
+ }
+ function refresh(){list.innerHTML="";const arr=adminSubcats(cat.name);arr.forEach((sc,i)=>{const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #eee";const n=document.createElement("b");n.textContent=(sc.hidden?"🙈 ":"")+(sc.icon||"📁")+" "+sc.name;const ac=document.createElement("div");ac.style.cssText="display:flex;gap:4px";ac.append(sm("✏️",()=>{const n=prompt("Nom :",sc.name);if(n===null)return;sc.name=n.trim()||sc.name;const e=prompt("Emoji :",sc.icon||"📁");if(e!==null)sc.icon=e.trim()||"📁";writeAdminBase(a);refresh()}),sm("🧩",()=>pickItems(sc)),sm(sc.hidden?"👁️":"🙈",()=>{sc.hidden=!sc.hidden;writeAdminBase(a);refresh()}),sm("↑",()=>{if(i<1)return;const p=arr[i-1];[p.order,sc.order]=[sc.order,p.order];writeAdminBase(a);refresh()}),sm("↓",()=>{if(i>=arr.length-1)return;const n=arr[i+1];[n.order,sc.order]=[sc.order,n.order];writeAdminBase(a);refresh()}),sm("🗑️",()=>{if(confirm("Supprimer cette sous-catégorie ?")){sc.deleted=true;writeAdminBase(a);refresh()}}));row.append(n,ac);list.appendChild(row)})}
+ const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter une sous-catégorie";add.onclick=()=>{const n=prompt("Nom de la sous-catégorie :");if(!n)return;const e=prompt("Emoji :","📁")||"📁";a.subcategories.push({id:"sc"+Date.now(),category:cat.name,name:n.trim(),icon:e,itemIds:[],order:adminSubcats(cat.name).length,hidden:false});writeAdminBase(a);refresh()};
+ const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{overlay.remove();adminRefresh()};panel.append(add,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
+}
+function expandSubmenuEntries(parent){
+ const entries=submenuFor(parent),a=readAdminBase(),out=[],map=new Map(allPermanentPictograms().map(v=>[v.id,v]));
+ entries.forEach(e=>{if(e.kind==="subcategory"&&e.subcategoryId){const sc=(a.subcategories||[]).find(x=>x.id===e.subcategoryId&&!x.deleted);if(sc)(sc.itemIds||[]).forEach(id=>{const v=map.get(id);if(v)out.push({...v,id:"dyn:"+e.id+":"+id})})}else out.push(e)});return out
+}
 function renderGrid(){closeSubmenuBubble();ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
@@ -1693,6 +1736,7 @@ function renderGrid(){closeSubmenuBubble();ensureAdultBadge();renderProfileBar()
     renderPersonalize(box);return;
   }
   let items=c.name==="Favoris"?favoriteItems():visibleItems(c);
+  if(c.name!=="Favoris")items=renderSubcategoryFilters(box,c,items);
   items=items.filter(x=>displayLabel(x).toLowerCase().includes(q));
   if(c.name==="Favoris" && items.length===0){
     const msg=document.createElement("div");
@@ -1753,7 +1797,7 @@ const ADMIN_PIN_KEY="ma-caa-admin-pin-v1";
 const DEFAULT_ADMIN_PIN="2580";
 
 const ADMIN_BASE_KEY="ma-caa-admin-base-v1";
-function readAdminBase(){try{return JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}')}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[]}}}
+function readAdminBase(){try{const a=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}');a.subcategories=a.subcategories||[];a.submenus=a.submenus||{};return a}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[],subcategories:[],submenus:{}}}}
 function syncAdminCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].adminAdded)categories.splice(i,1)}
   const a=readAdminBase();
@@ -1993,7 +2037,7 @@ function openAdminPanel(){
     const head=document.createElement("div");head.style.cssText="display:flex;gap:6px;align-items:center;flex-wrap:wrap";
     const title=document.createElement("b");title.textContent=adminCatIcon(cat)+" "+adminCatName(cat);head.appendChild(title);
     const btn=(t,f)=>{const b=document.createElement("button");b.textContent=t;b.onclick=f;return b};
-    head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
+    head.append(btn("✏️ Modifier",()=>adminEditCategory(cat)),btn("📁 Sous-catégories",()=>adminManageSubcategories(cat)),btn(a.hiddenCats.includes(cat.name)?"👁️ Réafficher":"🙈 Masquer",()=>adminToggleCat(cat)),btn("🗑️ Supprimer",()=>adminDeleteCat(cat)));
     row.appendChild(head);
     const cardGrid=document.createElement("div");cardGrid.className="admin-card-grid";
     function adminCard(label,emoji,image,edit,toggle,toggleLabel,del){

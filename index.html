@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 63</title>
+<title>Ma CAA v2.0 bêta 64</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 63</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 64</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -281,7 +281,8 @@ function showFeedback(label){
 }
 function add(x){
   showFeedback(x[1]);
-  const picto=x[4]||localPictos[x[1]]||null;
+  const hasExplicitVisual=x.length>=5;
+  const picto=hasExplicitVisual?(x[4]||null):(localPictos[x[1]]||null);
   phrase.push({icon:x[0],label:x[1],speech:x[2],picto});
   renderPhrase();
   speakText(x[2]);
@@ -2117,7 +2118,7 @@ function adminDeleteItem(cat,x){
   writeAdminBase(a);adminRefresh();
 }
 
-async function compressPictogramImage(file,maxSide=900,quality=.82){
+async function compressPictogramImage(file,maxSide=520,quality=.76){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onerror=()=>reject(new Error("Lecture impossible"));
@@ -2126,18 +2127,16 @@ async function compressPictogramImage(file,maxSide=900,quality=.82){
       img.onerror=()=>reject(new Error("Image invalide"));
       img.onload=()=>{
         let w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
-        const scale=Math.min(1,maxSide/Math.max(w,h));w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale));
-        const c=document.createElement("canvas");c.width=w;c.height=h;
-        const ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
-        // JPEG is compact; PNG is retained for transparency-oriented source images.
-        const transparent=/png|webp/i.test(file.type||"");
-        let data=c.toDataURL(transparent?"image/webp":"image/jpeg",quality);
-        // If still large, progressively reduce dimensions/quality.
-        let tries=0;
-        while(data.length>900000&&tries<4){
-          tries++;w=Math.max(1,Math.round(w*.78));h=Math.max(1,Math.round(h*.78));
-          c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
-          data=c.toDataURL("image/jpeg",Math.max(.62,quality-tries*.06));
+        const scale=Math.min(1,maxSide/Math.max(w,h));
+        w=Math.max(1,Math.round(w*scale));h=Math.max(1,Math.round(h*scale));
+        const c=document.createElement("canvas");
+        let data="",tries=0;
+        while(tries<6){
+          c.width=w;c.height=h;
+          const ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
+          data=c.toDataURL("image/jpeg",Math.max(.48,quality-tries*.07));
+          if(data.length<=180000)break;
+          w=Math.max(1,Math.round(w*.78));h=Math.max(1,Math.round(h*.78));tries++;
         }
         resolve(data);
       };
@@ -2145,6 +2144,22 @@ async function compressPictogramImage(file,maxSide=900,quality=.82){
     };
     reader.readAsDataURL(file);
   });
+}
+async function storeAdminPictogramImage(dataUrl){
+  if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
+  try{
+    if(cloudClient){
+      const u=await cloudUser();
+      if(u){
+        const blob=dataUrlToBlob(dataUrl);
+        const path="admin/"+u.id+"/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+".jpg";
+        const up=await cloudClient.storage.from("pictograms").upload(path,blob,{upsert:true,contentType:blob.type});
+        if(!up.error)return {__cloud_image:true,path:path};
+        console.error("Admin image upload",up.error);
+      }
+    }
+  }catch(e){console.error("Admin image storage",e)}
+  return dataUrl;
 }
 function adminPermanentPictogramForm(existing){
   const a=readAdminBase();
@@ -2203,7 +2218,8 @@ function adminPermanentPictogramForm(existing){
   const photo=document.createElement("input");photo.type="file";photo.accept="image/*";photo.style.display="none";
   photoLabel.appendChild(photo);panel.appendChild(photoLabel);
 
-  const photoValue=document.createElement("input");photoValue.type="hidden";photoValue.value=existing?.image||"";
+  let chosenAdminImage=existing?.image||"";
+  const photoValue=document.createElement("input");photoValue.type="hidden";photoValue.value=typeof chosenAdminImage==="string"?chosenAdminImage:"";
   panel.appendChild(photoValue);
 
   const clearPhoto=document.createElement("button");clearPhoto.type="button";clearPhoto.textContent="Retirer la photo";
@@ -2247,28 +2263,40 @@ function adminPermanentPictogramForm(existing){
   panel.appendChild(emojiPalette);
 
   function refreshPreview(){
-    if(photoValue.value){
-      preview.src=photoValue.value;preview.style.display="block";emojiPreview.style.display="none";
+    preview.removeAttribute("data-cloud-path");
+    if(chosenAdminImage){
+      preview.style.display="block";emojiPreview.style.display="none";
+      if(typeof chosenAdminImage==="object"&&chosenAdminImage.__cloud_image){
+        preview.removeAttribute("src");
+        preview.setAttribute("data-cloud-path",chosenAdminImage.path);
+        setTimeout(hydrateAllCloudPictures,0);
+      }else{
+        preview.src=String(chosenAdminImage);
+      }
     }else{
       preview.removeAttribute("src");preview.style.display="none";
       emojiPreview.style.display="grid";emojiPreview.textContent=emoji.value.trim()||"🖼️";
     }
   }
   emoji.oninput=refreshPreview;
-  clearPhoto.onclick=()=>{photoValue.value="";photo.value="";refreshPreview()};
+  clearPhoto.onclick=()=>{chosenAdminImage="";photoValue.value="";photo.value="";refreshPreview()};
 
   photo.onchange=async()=>{
     const f=photo.files&&photo.files[0];if(!f)return;
     if(!String(f.type||"").startsWith("image/")){alert("Choisis un fichier image.");photo.value="";return}
     photoLabel.style.opacity=".6";photoLabel.textContent="⏳ Préparation de l’image…";
     try{
-      photoValue.value=await compressPictogramImage(f,900,.82);
+      chosenAdminImage=await compressPictogramImage(f);
+      photoValue.value=typeof chosenAdminImage==="string"?chosenAdminImage:"";
       refreshPreview();
     }catch(err){
-      console.error(err);alert("Impossible de préparer cette image. Essaie avec une autre photo.");photo.value="";
-    }finally{
-      photoLabel.style.opacity="1";photoLabel.textContent="🖼️ Choisir une photo / image";photoLabel.appendChild(photo);
+      console.error(err);
+      alert("Impossible de préparer cette image. Essaie avec une autre photo.");
+      photo.value="";
     }
+    photoLabel.style.opacity="1";
+    photoLabel.textContent="🖼️ Choisir une photo / image";
+    photoLabel.appendChild(photo);
   };
   refreshPreview();
 
@@ -2281,7 +2309,7 @@ function adminPermanentPictogramForm(existing){
   const save=document.createElement("button");save.className="saveedit";save.textContent=existing?"✓ Enregistrer":"✓ Ajouter";
   const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";
 
-  save.onclick=()=>{
+  save.onclick=async()=>{
     const l=label.value.trim();
     if(!l){alert("Indique le nom du pictogramme.");label.focus();return}
     const s=speech.value.trim()||l;
@@ -2290,16 +2318,18 @@ function adminPermanentPictogramForm(existing){
     if(existing&&existing._baseItem){
       const cur=base.items[existing._baseId]||{};
       cur.label=l;cur.speech=s;cur.emoji=e;cur.category=cat.value;cur.action=action.value;
-      if(photoValue.value)cur.image=photoValue.value;else delete cur.image;
+      const finalImage=await storeAdminPictogramImage(chosenAdminImage);
+      if(finalImage)cur.image=finalImage;else delete cur.image;
       base.items[existing._baseId]=cur;
     }else if(existing){
       const cur=(base.addedItems||[]).find(x=>x.id===existing.id);if(!cur)return;
       cur.category=cat.value;cur.label=l;cur.speech=s;cur.emoji=e;cur.action=action.value;
-      if(photoValue.value)cur.image=photoValue.value;else delete cur.image;
+      const finalImage=await storeAdminPictogramImage(chosenAdminImage);
+      if(finalImage)cur.image=finalImage;else delete cur.image;
     }else{
       base.addedItems.push({
         id:"ai"+Date.now(),category:cat.value,label:l,speech:s,emoji:e,action:action.value,
-        image:photoValue.value||undefined
+        image:(await storeAdminPictogramImage(chosenAdminImage))||undefined
       });
     }
     try{writeAdminBase(base)}

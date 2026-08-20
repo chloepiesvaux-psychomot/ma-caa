@@ -795,6 +795,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error)obj[k]={__cloud_image:true,path:filePath};
+          else console.error("Envoi photo pictogramme",up.error);
         }else if(v&&typeof v==="object")await walk(v,path.concat(k));
       }
     }
@@ -1178,7 +1179,7 @@ function imageHtml(p,emoji){
   const fallback='<span class="emo image-fallback" style="display:none">'+safeEmoji+'</span>';
   const onerr="this.style.display='none';if(this.nextElementSibling)this.nextElementSibling.style.display='inline-grid'";
   if(p && typeof p==="object" && p.__cloud_image===true && p.path){
-    return '<span class="pic-media"><img src="" data-cloud-path="'+p.path.replace(/"/g,"&quot;")+'" alt="" onerror="'+onerr+'">'+fallback+'</span>';
+    return '<span class="pic-media"><img data-cloud-path="'+p.path.replace(/"/g,"&quot;")+'" alt="">'+fallback+'</span>';
   }
   if(typeof p==="string" && p){
     return '<span class="pic-media"><img src="'+p+'" alt="" onerror="'+onerr+'">'+fallback+'</span>';
@@ -1666,23 +1667,56 @@ function adminRefresh(){
 }
 function adminEditCategory(cat){
   const a=readAdminBase(),key=cat.name,e=a.catEdits[key]||{};
-  const oldDisplay=e.name||cat.name;
-  const n=prompt("Nom de la catégorie :",oldDisplay);if(n===null)return;
-  const i=prompt("Emoji :",e.icon||cat.icon);if(i===null)return;
-  const newName=n.trim()||oldDisplay;
-  a.catEdits[key]={name:newName,icon:i.trim()||cat.icon};
+  const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100600";
+  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="680px";
+  panel.innerHTML="<h2>✏️ Modifier la catégorie</h2>";
 
-  // Les pictogrammes administrateur déplacés/ajoutés peuvent référencer l'ancien nom affiché.
-  Object.values(a.items||{}).forEach(v=>{if(v&&v.category===oldDisplay)v.category=key});
-  (a.addedItems||[]).forEach(v=>{if(v.category===oldDisplay)v.category=key});
-  writeAdminBase(a);
+  const lab1=document.createElement("label");lab1.textContent="Nom de la catégorie";panel.appendChild(lab1);
+  const name=document.createElement("input");name.type="text";name.value=e.name||cat.name;panel.appendChild(name);
 
-  // Migrer aussi les pictogrammes personnels qui auraient enregistré le nom affiché.
-  const personals=readAdded();
-  let changed=false;
-  personals.forEach(v=>{if(v.category===oldDisplay){v.category=key;changed=true}});
-  if(changed)writeAdded(personals);
-  adminRefresh();
+  const lab2=document.createElement("label");lab2.textContent="Emoji";panel.appendChild(lab2);
+  const emoji=document.createElement("input");emoji.type="text";emoji.value=e.icon||cat.icon;panel.appendChild(emoji);
+
+  const choose=document.createElement("button");choose.type="button";choose.textContent="😊 Choisir un emoji";
+  choose.style.cssText="margin-top:8px;padding:10px 14px;border-radius:10px;border:1px solid #d8dce5;background:#fff;font-weight:700";
+  panel.appendChild(choose);
+
+  const palette=document.createElement("div");
+  palette.style.cssText="display:none;margin-top:10px;padding:12px;border:1px solid #d8dce5;border-radius:14px;background:#f8f9fc;max-height:300px;overflow:auto";
+  const groups=[
+   ["😀 Émotions","😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😋 😛 😜 🤪 🤨 🧐 🤓 😎 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 ☹️ 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🤭 🤫 😶 😐 😑 😬 🙄 😯 😮 😲 🥱 😴 🤤 😪 😵 🥴 🤢 🤮 🤧 😷 🤒 🤕"],
+   ["👋 Personnes & corps","👋 🤚 🖐️ ✋ 👌 🤌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ 👍 👎 ✊ 👊 👏 🙌 🫶 👐 🤲 🤝 🙏 ✍️ 💪 🦵 🦶 👂 👃 🧠 🫀 🫁 🦷 👀 👁️ 👅 👄 👶 🧒 👦 👧 🧑 👨 👩 🧓 👴 👵 🙋 🙅 🙆 💁 🤷 🤦"],
+   ["🍎 Aliments & boissons","🍎 🍏 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭 🍍 🥝 🍅 🥑 🥦 🥕 🌽 🥔 🍞 🥐 🥖 🧀 🥚 🍳 🥞 🍔 🍟 🍕 🥪 🌭 🍝 🍚 🍦 🍨 🍩 🍪 🎂 🍰 🍫 🍬 🍼 🥛 ☕ 🧃 🥤 💧"],
+   ["🏠 Lieux & quotidien","🏠 🏡 🏫 🏥 🏪 🏬 🏞️ 🏖️ 🛏️ 🛋️ 🚪 🪟 🚿 🛁 🚽 🧻 🪥 🧼 🧴 🧹 🧺 👕 👖 👗 👟 🎒 📚 ✏️ 🖍️ ✂️ 📱 💻 📺"],
+   ["🚗 Transport & activités","🚗 🚕 🚌 🚎 🏎️ 🚓 🚑 🚒 🚲 🛴 🚂 ✈️ 🚀 ⛵ ⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🏸 🥅 🎨 🎭 🎮 🧩 🎲 🎵 🎤 📖"],
+   ["🐶 Animaux & nature","🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦋 🐝 🌸 🌻 🌳 🌲 ☀️ 🌤️ ☁️ 🌧️ ❄️ 🌈 🌙 ⭐"],
+   ["❤️ Symboles","❤️ 🧡 💛 💚 💙 💜 🤍 🖤 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 ⭐ 🌟 ✨ ⚡ 🔥 💧 ✅ ❌ ❓ ❗ ⭕ 🟢 🔴 🟡 🔵 🟣 ⚪ ⚫"]
+  ];
+  groups.forEach(([title,chars])=>{
+    const h=document.createElement("div");h.textContent=title;h.style.cssText="font-weight:800;margin:8px 0 5px";palette.appendChild(h);
+    const row=document.createElement("div");row.style.cssText="display:flex;flex-wrap:wrap;gap:5px";
+    chars.split(" ").filter(Boolean).forEach(ch=>{const b=document.createElement("button");b.type="button";b.textContent=ch;b.style.cssText="font-size:26px;width:42px;height:42px;border:1px solid #ddd;border-radius:9px;background:white";b.onclick=()=>{emoji.value=ch;palette.style.display="none"};row.appendChild(b)});
+    palette.appendChild(row);
+  });
+  panel.appendChild(palette);
+  choose.onclick=()=>palette.style.display=palette.style.display==="none"?"block":"none";
+
+  const row=document.createElement("div");row.className="editor-row";
+  const save=document.createElement("button");save.className="saveedit";save.textContent="✓ Enregistrer";
+  const cancel=document.createElement("button");cancel.className="canceledit";cancel.textContent="Annuler";
+  cancel.onclick=()=>overlay.remove();
+  save.onclick=()=>{
+    const oldDisplay=e.name||cat.name,newName=name.value.trim()||oldDisplay;
+    a.catEdits[key]={name:newName,icon:emoji.value.trim()||cat.icon};
+    Object.values(a.items||{}).forEach(v=>{if(v&&v.category===oldDisplay)v.category=key});
+    (a.addedItems||[]).forEach(v=>{if(v.category===oldDisplay)v.category=key});
+    writeAdminBase(a);
+    const personals=readAdded();let changed=false;
+    personals.forEach(v=>{if(v.category===oldDisplay){v.category=key;changed=true}});
+    if(changed)writeAdded(personals);
+    overlay.remove();adminRefresh();
+  };
+  row.append(save,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 function adminToggleCat(cat){
   const a=readAdminBase(),k=cat.name;

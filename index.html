@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 94</title>
+<title>Ma CAA v2.0 bêta 95</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 94</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 95</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -380,7 +380,13 @@ function toggleFav(x){
 
 const QUICK_CHOICES_KEY="ma-caa-quick-choices-v1";
 function readQuickChoicesMap(){try{return JSON.parse(localStorage.getItem(QUICK_CHOICES_KEY)||"{}")}catch(e){return {}}}
-function quickChoicesFor(x){const m=readQuickChoicesMap();return Array.isArray(m[itemId2(x)])?m[itemId2(x)]:[]}
+function quickChoicesFor(x){
+  try{
+    const pid=permanentItemId(x),a=readAdminBase();
+    if(pid&&Array.isArray(a.quickChoices?.[pid]))return a.quickChoices[pid].filter(c=>!c.deleted);
+  }catch(e){}
+  const m=readQuickChoicesMap();return Array.isArray(m[itemId2(x)])?m[itemId2(x)]:[]
+}
 function saveQuickChoices(x,list){const m=readQuickChoicesMap();m[itemId2(x)]=list;localStorage.setItem(QUICK_CHOICES_KEY,JSON.stringify(m));localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush()}
 function openQuickChoicesBubble(x){
   const choices=quickChoicesFor(x); if(!choices.length)return;
@@ -393,7 +399,7 @@ function openQuickChoicesBubble(x){
     const b=document.createElement("button");b.type="button";
     b.style.cssText="min-height:105px;border:2px solid #dce4ef;border-radius:18px;background:#fff;padding:12px;font:inherit;font-weight:800;font-size:18px";
     b.innerHTML="<div style='font-size:34px'>"+(c.emoji||"💬")+"</div><div>"+(c.label||"Choix")+"</div>";
-    b.onclick=()=>{ if(c.speech&&typeof speak==="function")speak(c.speech); ov.remove(); };
+    b.onclick=()=>{add([c.emoji||"💬",c.label||"Choix",c.speech||c.label||"Choix",null,c.image||null]);ov.remove();};
     grid.appendChild(b);
   });
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
@@ -425,6 +431,53 @@ function editQuickChoices(x){
   add.onclick=()=>{const a=quickChoicesFor(x);if(a.length>=4){alert("La suite rapide est prévue pour 4 choix maximum. Pour davantage de choix, utilise un sous-dossier.");return}a.push({emoji:"💬",label:"Nouveau choix",speech:"Nouveau choix"});saveQuickChoices(x,a);draw()};
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
   p.append(list,add,close);ov.appendChild(p);document.body.appendChild(ov);draw();
+}
+
+function adminManageQuickChoices(parentId,parentLabel){
+  const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100660";
+  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="720px";
+  panel.innerHTML="<h2>💬 Suite rapide : "+parentLabel+"</h2><div style='color:#667085;margin-bottom:12px'>Pour quelques choix seulement (maximum 4). Ils apparaîtront dans une petite bulle sans quitter la catégorie.</div>";
+  const list=document.createElement("div");panel.appendChild(list);
+
+  const get=()=>{const a=readAdminBase();a.quickChoices=a.quickChoices||{};return (a.quickChoices[parentId]||[]).filter(c=>!c.deleted).sort((x,y)=>(x.order||0)-(y.order||0))};
+  const saveAll=arr=>{const a=readAdminBase();a.quickChoices=a.quickChoices||{};a.quickChoices[parentId]=arr;writeAdminBase(a)};
+
+  function refresh(){
+    list.innerHTML="";
+    const arr=get();
+    if(!arr.length){
+      const e=document.createElement("div");e.textContent="Aucun choix pour le moment.";e.style.cssText="padding:12px;background:#f7f9fc;border-radius:10px;color:#667085;margin-bottom:8px";list.appendChild(e)
+    }
+    arr.forEach((c,i)=>{
+      const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:64px minmax(110px,1fr) minmax(140px,1.3fr) auto;gap:7px;align-items:center;margin:7px 0";
+      const em=document.createElement("input");em.value=c.emoji||"💬";em.style.cssText="padding:9px;min-width:0";
+      const la=document.createElement("input");la.value=c.label||"";la.placeholder="Nom";la.style.cssText="padding:9px;min-width:0";
+      const sp=document.createElement("input");sp.value=c.speech||c.label||"";sp.placeholder="Phrase prononcée";sp.style.cssText="padding:9px;min-width:0";
+      const buttons=document.createElement("div");buttons.style.cssText="display:flex;gap:4px";
+      const mk=(t,fn)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.onclick=fn;return b};
+      const persist=()=>{
+        const now=get(),target=now.find(x=>x.id===c.id);if(!target)return;
+        target.emoji=em.value.trim()||"💬";target.label=la.value.trim()||"Choix";target.speech=sp.value.trim()||target.label;saveAll(now)
+      };
+      em.onchange=persist;la.onchange=persist;sp.onchange=persist;
+      buttons.append(
+        mk("↑",()=>{const now=get(),k=now.findIndex(x=>x.id===c.id);if(k<=0)return;[now[k-1].order,now[k].order]=[now[k].order,now[k-1].order];saveAll(now);refresh()}),
+        mk("↓",()=>{const now=get(),k=now.findIndex(x=>x.id===c.id);if(k<0||k>=now.length-1)return;[now[k+1].order,now[k].order]=[now[k].order,now[k+1].order];saveAll(now);refresh()}),
+        mk("🗑️",()=>{const now=get().filter(x=>x.id!==c.id);now.forEach((x,k)=>x.order=k);saveAll(now);refresh()})
+      );
+      row.append(em,la,sp,buttons);list.appendChild(row);
+    });
+  }
+
+  const add=document.createElement("button");add.className="saveedit";add.textContent="＋ Ajouter un choix";
+  add.onclick=()=>{
+    const arr=get();if(arr.length>=4){alert("La suite rapide est limitée à 4 choix. Pour davantage, utilise un dossier / sous-dossier.");return}
+    arr.push({id:"qc"+Date.now()+Math.random().toString(36).slice(2,5),emoji:"💬",label:"Nouveau choix",speech:"Nouveau choix",order:arr.length});
+    saveAll(arr);refresh()
+  };
+  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>overlay.remove();
+  const row=document.createElement("div");row.className="editor-row";row.append(add,close);panel.appendChild(row);
+  overlay.appendChild(panel);document.body.appendChild(overlay);refresh()
 }
 function parentSetFavoriteFast(x,on){
   const id=itemId2(x);
@@ -1466,7 +1519,9 @@ function createNormalCard(x,box){
   }
   b.onclick=(ev)=>{
     add(displayItem(x));
-    if(submenuFor(x).length){ev.stopPropagation();openParentSubmenuMobile(x)}
+    const ae=adminOverrideFor(x);
+    if(ae.action==="quick"&&quickChoicesFor(x).length){ev.stopPropagation();openQuickChoicesBubble(x)}
+    else if(submenuFor(x).length||expandSubmenuEntries(x).length){ev.stopPropagation();openSubmenuBubble(x,b)}
     else closeSubmenuBubble();
   };box.appendChild(b);
   if(b.querySelector("img[data-cloud-path],img[data-local-image-key]"))setTimeout(hydrateAllCloudPictures,0);
@@ -1616,7 +1671,7 @@ document.addEventListener("click",function(e){
   const t=(b.textContent||"").trim().toLowerCase();
   if(!t.includes("sous-menu")&&!t.includes("sous-dossier"))return;
   const found=parentResolvePictoFromButton(b);
-  if(found){e.preventDefault();e.stopImmediatePropagation();openParentSubmenuMobile(found)}
+  if(found){e.preventDefault();e.stopPropagation();openParentSubmenuMobile(found)}
 },true);
 
 function parentResolvePictoFromButton(btn){
@@ -1764,7 +1819,8 @@ function renderParentCategoryLazy(box,cat){
       const edit=document.createElement("button");edit.className="editbtn";edit.textContent="✏️ Modifier";edit.onclick=()=>openEditor(x);
       const fav=document.createElement("button");fav.textContent=isFav(x)?"⭐":"☆";fav.onclick=()=>{const next=!isFav(x);parentSetFavoriteFast(x,next);fav.textContent=next?"⭐":"☆"};
       actions.append(fav,vis,up,down,edit);
-      if(submenuFor(x).length){const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=()=>{activeSubmenu=x;current=categories.findIndex(c=>c.name==="Mode parents");renderGrid()};actions.appendChild(sub)}
+      if(submenuFor(x).length||expandSubmenuEntries(x).length){const sub=document.createElement("button");sub.textContent="📂 Sous-menu";sub.onclick=(e)=>{e.preventDefault();e.stopPropagation();openParentSubmenuMobile(x)};actions.appendChild(sub)}
+      if(quickChoicesFor(x).length){const qb=document.createElement("button");qb.textContent="💬 Suite rapide";qb.onclick=(e)=>{e.preventDefault();e.stopPropagation();editQuickChoices(x)};actions.appendChild(qb)}
       if(isAdded(x)&&!x[5]){const del=document.createElement("button");del.className="resetedit";del.textContent="🗑️";del.onclick=()=>deleteAdded(x);actions.appendChild(del)}
       info.appendChild(actions);card.append(visual,info);listHost.appendChild(card);
     });
@@ -2231,7 +2287,7 @@ const ADMIN_PIN_KEY="ma-caa-admin-pin-v1";
 const DEFAULT_ADMIN_PIN="2580";
 
 const ADMIN_BASE_KEY="ma-caa-admin-base-v1";
-function readAdminBase(){try{const a=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}');a.subcategories=a.subcategories||[];a.submenus=a.submenus||{};a.adminOrder=a.adminOrder||{};return a}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[],subcategories:[],submenus:{},adminOrder:{}}}}
+function readAdminBase(){try{const a=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}');a.subcategories=a.subcategories||[];a.submenus=a.submenus||{};a.quickChoices=a.quickChoices||{};a.adminOrder=a.adminOrder||{};return a}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[],subcategories:[],submenus:{},quickChoices:{},adminOrder:{}}}}
 function syncAdminCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].adminAdded)categories.splice(i,1)}
   const a=readAdminBase();
@@ -2853,11 +2909,25 @@ function adminPermanentPictogramForm(existing){
 
     mkLabel("Action au clic");
   const action=document.createElement("select");action.style.cssText="width:100%;padding:12px;border-radius:10px";
-  [["phrase","Ajouter à la phrase"],["submenu","Ouvrir un sous-menu"]].forEach(v=>{const o=document.createElement("option");o.value=v[0];o.textContent=v[1];action.appendChild(o)});
+  [["phrase","Ajouter à la phrase"],["quick","💬 Ouvrir une suite rapide (2 à 4 choix)"],["submenu","📂 Ouvrir un sous-menu / dossier"]].forEach(v=>{const o=document.createElement("option");o.value=v[0];o.textContent=v[1];action.appendChild(o)});
   action.value=existing?.action||"phrase";panel.appendChild(action);
-  if(existing&&existing._baseId){
-    const manageSub=document.createElement("button");manageSub.type="button";manageSub.textContent="📂 Gérer le sous-menu";manageSub.style.marginTop="8px";manageSub.onclick=()=>adminManageSubmenu(existing._baseId,existing.label||"Pictogramme");panel.appendChild(manageSub);
+
+  const manageWrap=document.createElement("div");manageWrap.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px";panel.appendChild(manageWrap);
+  const permanentIdForManage=()=>existing?((existing._baseId)||existing.id||""):"";
+  const manageSub=document.createElement("button");manageSub.type="button";manageSub.textContent="📂 Gérer le sous-menu / dossier";
+  const manageQuick=document.createElement("button");manageQuick.type="button";manageQuick.textContent="💬 Gérer la suite rapide";
+  const firstSaveNote=document.createElement("div");firstSaveNote.style.cssText="font-size:12px;color:#667085;display:none;width:100%";firstSaveNote.textContent="Enregistre d’abord ce nouveau pictogramme, puis rouvre-le pour ajouter les choix.";
+  manageSub.onclick=()=>{const id=permanentIdForManage();if(!id)return;adminManageSubmenu(id,label.value.trim()||existing?.label||"Pictogramme")};
+  manageQuick.onclick=()=>{const id=permanentIdForManage();if(!id)return;adminManageQuickChoices(id,label.value.trim()||existing?.label||"Pictogramme")};
+  manageWrap.append(manageQuick,manageSub,firstSaveNote);
+  function refreshActionManager(){
+    manageQuick.style.display=action.value==="quick"?"inline-block":"none";
+    manageSub.style.display=action.value==="submenu"?"inline-block":"none";
+    const needsSave=!permanentIdForManage()&&(action.value==="quick"||action.value==="submenu");
+    firstSaveNote.style.display=needsSave?"block":"none";
+    manageQuick.disabled=!permanentIdForManage();manageSub.disabled=!permanentIdForManage();
   }
+  action.addEventListener("change",refreshActionManager);refreshActionManager();
 
   mkLabel("Image / photo ou emoji");
   const previewWrap=document.createElement("div");

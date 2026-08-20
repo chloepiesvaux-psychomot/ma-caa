@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 96</title>
+<title>Ma CAA v2.0 bêta 97</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 96</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 97</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -404,22 +404,40 @@ function quickChoicesFor(x){
   const m=readQuickChoicesMap();return Array.isArray(m[itemId2(x)])?m[itemId2(x)]:[]
 }
 function saveQuickChoices(x,list){const m=readQuickChoicesMap();m[itemId2(x)]=list;localStorage.setItem(QUICK_CHOICES_KEY,JSON.stringify(m));localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush()}
-function openQuickChoicesBubble(x){
-  const choices=quickChoicesFor(x); if(!choices.length)return;
-  const ov=document.createElement("div");ov.className="editor-overlay";ov.style.zIndex="100730";
-  const p=document.createElement("div");p.className="editor";p.style.maxWidth="520px";
-  const h=document.createElement("h2");h.textContent="💬 "+displayLabel(x);p.appendChild(h);
-  const note=document.createElement("div");note.textContent="Choisis une réponse";note.style.cssText="margin:-4px 0 12px;color:#667085;font-weight:700";p.appendChild(note);
-  const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px";
+function openQuickChoicesBubble(x,anchor){
+  closeQuickChoicesBubble();
+  const choices=quickChoicesFor(x);if(!choices.length)return;
+  const pop=document.createElement("div");pop.id="quick-choices-pop";pop.className="submenu-bubble";
+  pop.style.cssText="position:fixed;z-index:100300;background:white;border:2px solid #dfe4ec;border-radius:20px;box-shadow:0 12px 34px rgba(20,35,65,.22);padding:10px;display:grid;grid-template-columns:repeat("+Math.min(4,choices.length)+",minmax(92px,120px));gap:9px;max-width:calc(100vw - 24px)";
   choices.forEach(c=>{
     const b=document.createElement("button");b.type="button";
-    b.style.cssText="min-height:105px;border:2px solid #dce4ef;border-radius:18px;background:#fff;padding:12px;font:inherit;font-weight:800;font-size:18px";
-    b.innerHTML="<div style='font-size:34px'>"+(c.emoji||"💬")+"</div><div>"+(c.label||"Choix")+"</div>";
-    b.onclick=()=>{add([c.emoji||"💬",c.label||"Choix",c.speech||c.label||"Choix",null,c.image||null]);ov.remove();};
-    grid.appendChild(b);
+    b.style.cssText="border:1px solid #e2e6ee;border-radius:15px;background:#fff;padding:9px 7px;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:800";
+    b.innerHTML="<div style='font-size:34px'>"+(c.emoji||"💬")+"</div><div style='font-size:14px;text-align:center'>"+(c.label||"Choix")+"</div>";
+    b.onclick=ev=>{ev.stopPropagation();add([c.emoji||"💬",c.label||"Choix",c.speech||c.label||"Choix",null,c.image||null]);closeQuickChoicesBubble()};
+    pop.appendChild(b);
   });
-  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
-  p.append(grid,close);ov.appendChild(p);document.body.appendChild(ov);
+  document.body.appendChild(pop);
+
+  const target=anchor&&anchor.getBoundingClientRect?anchor.getBoundingClientRect():null;
+  const pr=pop.getBoundingClientRect();
+  let left=Math.max(12,(window.innerWidth-pr.width)/2),top=Math.max(12,(window.innerHeight-pr.height)/2);
+  if(target){
+    left=Math.min(window.innerWidth-pr.width-12,Math.max(12,target.left+target.width/2-pr.width/2));
+    top=target.bottom+8;
+    if(top+pr.height>window.innerHeight-12)top=Math.max(12,target.top-pr.height-8);
+  }else if(window.innerWidth<=700){
+    top=Math.max(12,window.innerHeight-pr.height-88);
+  }
+  pop.style.left=left+"px";pop.style.top=top+"px";
+  setTimeout(()=>document.addEventListener("pointerdown",quickChoicesOutsideClose,true),0);
+}
+function closeQuickChoicesBubble(){
+  document.getElementById("quick-choices-pop")?.remove();
+  document.removeEventListener("pointerdown",quickChoicesOutsideClose,true);
+}
+function quickChoicesOutsideClose(e){
+  const pop=document.getElementById("quick-choices-pop");
+  if(pop&&!pop.contains(e.target))closeQuickChoicesBubble();
 }
 function editQuickChoices(x){
   const existing=quickChoicesFor(x);
@@ -1549,7 +1567,7 @@ function createNormalCard(x,box){
   b.onclick=(ev)=>{
     add(displayItem(x));
     const ae=adminOverrideFor(x);
-    if(ae.action==="quick"&&quickChoicesFor(x).length){ev.stopPropagation();openQuickChoicesBubble(x)}
+    if(ae.action==="quick"&&quickChoicesFor(x).length){ev.stopPropagation();openQuickChoicesBubble(x,b)}
     else if(submenuFor(x).length||expandSubmenuEntries(x).length){ev.stopPropagation();openSubmenuBubble(x,b)}
     else closeSubmenuBubble();
   };box.appendChild(b);
@@ -2276,7 +2294,7 @@ function expandSubmenuEntries(parent){
  });
  return out
 }
-function renderGrid(){closeSubmenuBubble();ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
+function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
   if(c.name==="Mode parents"){

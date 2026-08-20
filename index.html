@@ -281,7 +281,7 @@ function showFeedback(label){
 }
 function add(x){
   showFeedback(x[1]);
-  const picto=x[3]||localPictos[x[1]]||null;
+  const picto=x[4]||localPictos[x[1]]||null;
   phrase.push({icon:x[0],label:x[1],speech:x[2],picto});
   renderPhrase();
   speakText(x[2]);
@@ -425,8 +425,7 @@ function displayImage(x){
   return customFor(x).image||localPictos[x[1]]||"";
 }
 function displayItem(x){
-  const image=displayImage(x)||null;
-  return [displayEmoji(x),displayLabel(x),spokenText(x),image];
+  return [displayEmoji(x),displayLabel(x),spokenText(x),null,displayImage(x)||null];
 }
 function openEditor(x){
   const old=customFor(x),overlay=document.createElement("div");overlay.className="editor-overlay";
@@ -1512,7 +1511,7 @@ function adminSubmenuEntries(parentId){
 function submenuFor(x){const ae=adminOverrideFor(x);return ae.action==="submenu"?adminSubmenuEntries(x[6]||ae.id||""):[]}
 let activeSubmenu=null;
 function renderSubmenu(box,parent){
-  const entries=submenuFor(parent),custom=readCustom(),hidden=hiddenIds();
+  const entries=submenuFor(parent).filter(e=>!e.hidden),custom=readCustom(),hidden=hiddenIds();
   const back=document.createElement("button");back.className="catmanage";back.textContent="← Retour";back.style.gridColumn="1/-1";back.onclick=()=>{activeSubmenu=null;renderGrid()};box.appendChild(back);
   const pid=parent[6]||"";
   const order=custom["submenu-order:"+pid]||[];
@@ -1523,22 +1522,75 @@ function renderSubmenu(box,parent){
     const b=document.createElement("button");b.className="pic";b.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️")+"<b>"+e.label+"</b>";b.onclick=()=>add([e.emoji||"🖼️",e.label,e.speech||e.label]);box.appendChild(b);
   });
 }
+function allPermanentPictograms(){
+  const out=[],seen=new Set();
+  normalCategories().forEach(c=>(c.items||[]).forEach(x=>{
+    const ae=adminOverrideFor(x);if(ae.deleted)return;
+    const id=x[6]||ae.id||("base:"+x[1]+"|"+x[2]);
+    if(seen.has(id))return;seen.add(id);
+    out.push({id,label:displayLabel(x),speech:spokenText(x),emoji:displayEmoji(x),image:displayImage(x)||"",category:c.name});
+  }));
+  (readAdminBase().addedItems||[]).filter(x=>!x.deleted).forEach(x=>{
+    if(seen.has(x.id))return;seen.add(x.id);
+    out.push({id:x.id,label:x.label,speech:x.speech||x.label,emoji:x.emoji||"🖼️",image:x.image||"",category:x.category||""});
+  });
+  return out.sort((a,b)=>a.label.localeCompare(b.label,"fr",{sensitivity:"base"}));
+}
+function resolvedSubmenuEntries(parentId){
+  const a=readAdminBase(),refs=a.submenus?.[parentId]||[],all=allPermanentPictograms(),map=new Map(all.map(x=>[x.id,x]));
+  return refs.filter(r=>!r.deleted).sort((a,b)=>(a.order||0)-(b.order||0)).map(r=>{
+    const src=r.sourceId?map.get(r.sourceId):null;
+    return {...(src||{}),...r,label:src?.label||r.label||"Pictogramme",speech:src?.speech||r.speech||r.label,emoji:src?.emoji||r.emoji||"🖼️",image:src?.image||r.image||""};
+  });
+}
+function adminSubmenuEntries(parentId){return resolvedSubmenuEntries(parentId)}
 function adminManageSubmenu(parentId,parentLabel){
   const a=readAdminBase();a.submenus=a.submenus||{};a.submenus[parentId]=a.submenus[parentId]||[];
   const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
   const panel=document.createElement("div");panel.className="editor";panel.innerHTML="<h2>📂 Sous-menu : "+parentLabel+"</h2>";
-  const list=document.createElement("div");
-  const refresh=()=>{list.innerHTML="";const arr=(a.submenus[parentId]||[]).filter(e=>!e.deleted).sort((x,y)=>(x.order||0)-(y.order||0));arr.forEach((e,i)=>{
-    const row=document.createElement("div");row.className="manage-card";const name=document.createElement("b");name.textContent=(e.hidden?"🙈 ":"")+e.emoji+" "+e.label;
-    const edit=document.createElement("button");edit.textContent="✏️";edit.onclick=()=>{const n=prompt("Nom :",e.label);if(n===null)return;e.label=n.trim()||e.label;const sp=prompt("Phrase prononcée :",e.speech||e.label);if(sp!==null)e.speech=sp.trim()||e.label;const em=prompt("Emoji :",e.emoji||"🖼️");if(em!==null)e.emoji=em.trim()||"🖼️";writeAdminBase(a);refresh()};
-    const hide=document.createElement("button");hide.textContent=e.hidden?"👁️":"🙈";hide.onclick=()=>{e.hidden=!e.hidden;writeAdminBase(a);refresh()};
-    const up=document.createElement("button");up.textContent="↑";up.onclick=()=>{if(i<1)return;[arr[i-1].order,arr[i].order]=[arr[i].order,arr[i-1].order];writeAdminBase(a);refresh()};
-    const down=document.createElement("button");down.textContent="↓";down.onclick=()=>{if(i>=arr.length-1)return;[arr[i+1].order,arr[i].order]=[arr[i].order,arr[i+1].order];writeAdminBase(a);refresh()};
-    const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{if(confirm("Supprimer ce pictogramme du sous-menu ?")){e.deleted=true;writeAdminBase(a);refresh()}};
-    row.append(name,edit,hide,up,down,del);list.appendChild(row);
-  })};panel.appendChild(list);
-  const addb=document.createElement("button");addb.className="saveedit";addb.textContent="➕ Ajouter un pictogramme permanent";addb.onclick=()=>{const n=prompt("Nom du pictogramme :");if(!n)return;const em=prompt("Emoji :","🖼️")||"🖼️";const arr=a.submenus[parentId];arr.push({id:"sm"+Date.now(),label:n.trim(),speech:n.trim(),emoji:em,order:arr.length});writeAdminBase(a);refresh()};
-  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{overlay.remove();adminRefresh()};panel.append(addb,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
+  const list=document.createElement("div");panel.appendChild(list);
+  const refresh=()=>{
+    list.innerHTML="";
+    const arr=(a.submenus[parentId]||[]).filter(e=>!e.deleted).sort((x,y)=>(x.order||0)-(y.order||0));
+    const resolved=resolvedSubmenuEntries(parentId),byId=new Map(resolved.map(e=>[e.id,e]));
+    arr.forEach((e,i)=>{
+      const v=byId.get(e.id)||e,row=document.createElement("div");row.className="manage-card";
+      const name=document.createElement("b");name.textContent=(e.hidden?"🙈 ":"")+(v.emoji||"🖼️")+" "+(v.label||"Pictogramme");
+      const hide=document.createElement("button");hide.textContent=e.hidden?"👁️":"🙈";hide.onclick=()=>{e.hidden=!e.hidden;writeAdminBase(a);refresh()};
+      const up=document.createElement("button");up.textContent="↑";up.onclick=()=>{if(i<1)return;const prev=arr[i-1];[prev.order,e.order]=[e.order,prev.order];writeAdminBase(a);refresh()};
+      const down=document.createElement("button");down.textContent="↓";down.onclick=()=>{if(i>=arr.length-1)return;const nxt=arr[i+1];[nxt.order,e.order]=[e.order,nxt.order];writeAdminBase(a);refresh()};
+      const del=document.createElement("button");del.textContent="🗑️";del.onclick=()=>{if(confirm("Retirer ce pictogramme du sous-menu ?")){e.deleted=true;writeAdminBase(a);refresh()}};
+      row.append(name,hide,up,down,del);list.appendChild(row);
+    });
+  };
+  const choose=document.createElement("button");choose.className="saveedit";choose.textContent="➕ Choisir un pictogramme permanent existant";
+  choose.onclick=()=>{
+    const all=allPermanentPictograms(),current=new Set((a.submenus[parentId]||[]).filter(e=>!e.deleted).map(e=>e.sourceId));
+    const picker=document.createElement("div");picker.style.cssText="max-height:360px;overflow:auto;border:1px solid #ddd;border-radius:12px;padding:8px;margin:10px 0";
+    all.forEach(v=>{
+      const b=document.createElement("button");b.type="button";b.disabled=current.has(v.id);b.style.cssText="width:100%;padding:10px;margin:3px 0;text-align:left";
+      b.textContent=(v.emoji||"🖼️")+" "+v.label+(v.category?" — "+v.category:"");
+      b.onclick=()=>{
+        const arr=a.submenus[parentId];
+        const old=arr.find(e=>e.sourceId===v.id);
+        if(old){old.deleted=false;old.hidden=false;old.order=arr.filter(e=>!e.deleted).length}
+        else arr.push({id:"smref"+Date.now()+Math.random().toString(36).slice(2,6),sourceId:v.id,order:arr.filter(e=>!e.deleted).length,hidden:false});
+        writeAdminBase(a);picker.remove();refresh();showFeedback("Ajouté au sous-menu");
+      };picker.appendChild(b);
+    });choose.after(picker);
+  };
+  const create=document.createElement("button");create.textContent="➕ Créer un nouveau pictogramme permanent";
+  create.onclick=()=>{overlay.remove();adminPermanentPictogramForm(null)};
+  const clear=document.createElement("button");clear.className="resetedit";clear.textContent="🗑️ Supprimer le sous-menu";
+  clear.onclick=()=>{
+    if(!confirm("Supprimer entièrement le sous-menu « "+parentLabel+" » ?"))return;
+    delete a.submenus[parentId];
+    const ov=a.itemOverrides?.[parentId];if(ov)ov.action="phrase";
+    (a.addedItems||[]).forEach(v=>{if(v.id===parentId)v.action="phrase"});
+    writeAdminBase(a);overlay.remove();adminRefresh();showFeedback("Sous-menu supprimé");
+  };
+  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>{overlay.remove();adminRefresh()};
+  panel.append(choose,create,clear,close);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
 }
 function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";

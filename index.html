@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 82</title>
+<title>Ma CAA v2.0 bêta 84</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 82</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 84</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1299,7 +1299,13 @@ function baseItems(cat){
     }
   }
   const extra=(a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted&&!x.hidden).map(x=>[x.emoji||"🖼️",x.label,x.speech||x.label,x.id,x.image||"",true]);
-  return built.concat(moved,extra);
+  const items=built.concat(moved,extra);
+  const order=(a.adminOrder||{})[cat.name]||[];
+  if(!order.length)return items;
+  const byId=new Map(items.map(x=>[permanentItemId(x),x])),out=[];
+  order.forEach(id=>{if(byId.has(id)){out.push(byId.get(id));byId.delete(id)}});
+  byId.forEach(x=>out.push(x));
+  return out;
 }
 function orderedItems(cat){
   const items=baseItems(cat).concat(addedForCategory(cat.name));
@@ -1486,13 +1492,23 @@ function renderParentCategoryLazy(box,cat){
 
   const subs=adminSubcats(cat.name);
   if(subs.length){
-    const sh=document.createElement("div");sh.className="personal-note";sh.textContent="📁 Sous-catégories";box.appendChild(sh);
-    subs.forEach(sc=>{
-      const sr=document.createElement("div");sr.className="manage-card";sr.style.gridColumn="1/-1";
-      const sn=document.createElement("b");sn.textContent=(sc.icon||"📁")+" "+sc.name;
-      const sb=document.createElement("button");const hidden=readHiddenSubcats().includes(sc.id);sb.textContent=hidden?"👁️ Réafficher":"🙈 Masquer";sb.onclick=()=>parentToggleSubcat(sc.id);
-      sr.append(sn,sb);box.appendChild(sr);
+    const sh=document.createElement("div");sh.className="personal-note";
+    sh.textContent="📁 Dossiers / sous-dossiers — touche un dossier pour masquer ou réafficher ce niveau pour cet utilisateur.";
+    box.appendChild(sh);
+    const colors=["#1976d2","#b84fc4","#ff7a18","#65b81d","#13a8a8","#f2a900","#ec6689","#26a6d1","#8b62d9","#e8563f"];
+    const folderWrap=document.createElement("div");
+    folderWrap.style.cssText="grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px";
+    const allSubs=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted);
+    const depthOf=sc=>{let d=0,p=sc.parentId;while(p){const par=allSubs.find(x=>x.id===p);if(!par)break;d++;p=par.parentId}return d};
+    allSubs.sort((a,b)=>adminSubcatPath(a).localeCompare(adminSubcatPath(b),"fr")).forEach((sc,idx)=>{
+      const hidden=readHiddenSubcats().includes(sc.id);
+      const tile=document.createElement("button");tile.type="button";
+      tile.innerHTML="<div style='font-size:34px'>"+(sc.icon||"📁")+"</div><b>"+sc.name+"</b><small style='display:block;margin-top:3px'>"+(depthOf(sc)?"↳ "+adminSubcatPath(sc):"Dossier principal")+"</small><div style='margin-top:7px;font-weight:900'>"+(hidden?"👁️ Réafficher":"🙈 Masquer")+"</div>";
+      tile.style.cssText="border:3px solid "+(hidden?"#9ca3af":"rgba(255,255,255,.8)")+";border-radius:15px;padding:11px;background:"+(hidden?"#e5e7eb":colors[idx%colors.length])+";color:"+(hidden?"#4b5563":"white")+";min-height:110px;text-align:center;font:inherit;box-shadow:0 3px 8px rgba(0,0,0,.12);cursor:pointer";
+      tile.onclick=()=>{parentToggleSubcat(sc.id);renderParentCategoryLazy(box,cat)};
+      folderWrap.appendChild(tile);
     });
+    box.appendChild(folderWrap);
   }
 
   const parentItems=orderedItems(cat);
@@ -1827,21 +1843,57 @@ function adminSubcatItemsDeep(sc){const ids=new Set(sc.itemIds||[]);adminSubcatD
 function subcatVisible(sc){return !sc.hidden&&!readHiddenSubcats().includes(sc.id)}
 function itemInSubcat(x,sc){return adminSubcatItemsDeep(sc).includes(permanentItemId(x)||itemId2(x))}
 function renderSubcategoryFilters(box,cat,items){
- const subs=adminSubcats(cat.name,"").filter(subcatVisible);if(!subs.length)return items;
- const wrap=document.createElement("div");wrap.style.cssText="grid-column:1/-1;display:flex;gap:12px;overflow-x:auto;padding:13px 12px 14px;margin:0 0 14px;background:#f7f9fc;border:3px solid #1f5fbf;border-radius:18px;box-shadow:0 3px 10px rgba(45,75,125,.10)";
- const selected=activeSubcategoryByCategory[cat.name]||"all";
- const subColors=["#1976d2","#b84fc4","#ff7a18","#65b81d","#13a8a8","#f2a900","#ec6689","#26a6d1","#8b62d9","#e8563f"];
- subs.forEach((sc,idx)=>{
-   const b=document.createElement("button");b.type="button";b.innerHTML="<span style='font-size:34px;line-height:1'>"+(sc.icon||"📁")+"</span><span>"+sc.name+"</span>";
-   const col=subColors[idx%subColors.length];
-   b.style.cssText="flex:0 0 auto;min-width:155px;min-height:76px;display:flex;align-items:center;justify-content:center;gap:10px;border:3px solid "+(selected===sc.id?"#153d72":"rgba(255,255,255,.7)")+";border-radius:16px;padding:12px 18px;background:"+col+";color:white;font-weight:900;font-size:19px;line-height:1.15;box-shadow:0 4px 9px rgba(0,0,0,.16);text-shadow:0 1px 2px rgba(0,0,0,.25)";
-   b.onclick=()=>{activeSubcategoryByCategory[cat.name]=(selected===sc.id?"all":sc.id);renderGrid()};
-   wrap.appendChild(b);
- });
- box.appendChild(wrap);
- if(selected==="all")return items;
- const sc=subs.find(x=>x.id===selected);
- return sc?items.filter(x=>itemInSubcat(x,sc)):items;
+ const all=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted&&subcatVisible(sc));
+ if(!all.length)return items;
+
+ let selectedId=activeSubcategoryByCategory[cat.name]||"all";
+ let selected=selectedId==="all"?null:all.find(x=>x.id===selectedId);
+ if(selectedId!=="all"&&!selected){selectedId="all";activeSubcategoryByCategory[cat.name]="all";selected=null}
+
+ // On n'affiche que les dossiers du niveau courant :
+ // catégorie -> dossiers niveau 1 ; dossier sélectionné -> ses enfants directs.
+ const visibleFolders=selected
+   ? all.filter(sc=>(sc.parentId||"")===selected.id)
+   : all.filter(sc=>!(sc.parentId||""));
+
+ const area=document.createElement("div");
+ area.style.cssText="grid-column:1/-1;margin:0 0 14px";
+
+ // Fil d'Ariane permettant de remonter dans l'arborescence.
+ if(selected){
+   const crumb=document.createElement("div");
+   crumb.style.cssText="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:0 0 9px;padding:8px 10px;background:#eef5ff;border-radius:12px;color:#244b7a;font-weight:800";
+   const allBtn=document.createElement("button");allBtn.type="button";allBtn.textContent="← "+adminCatName(cat);
+   allBtn.style.cssText="border:0;background:white;border-radius:9px;padding:7px 10px;font-weight:800;cursor:pointer";
+   allBtn.onclick=()=>{activeSubcategoryByCategory[cat.name]="all";renderGrid()};
+   crumb.appendChild(allBtn);
+   const chain=[];let cur=selected;
+   while(cur){chain.unshift(cur);cur=cur.parentId?all.find(x=>x.id===cur.parentId):null}
+   chain.forEach((sc,i)=>{
+     const span=document.createElement("span");span.textContent=(i?"› ":"")+(sc.icon||"📁")+" "+sc.name;crumb.appendChild(span)
+   });
+   area.appendChild(crumb);
+ }
+
+ if(visibleFolders.length){
+   const wrap=document.createElement("div");
+   wrap.style.cssText="display:flex;gap:12px;overflow-x:auto;padding:13px 12px 14px;background:#f7f9fc;border:3px solid #1f5fbf;border-radius:18px;box-shadow:0 3px 10px rgba(45,75,125,.10)";
+   const subColors=["#1976d2","#b84fc4","#ff7a18","#65b81d","#13a8a8","#f2a900","#ec6689","#26a6d1","#8b62d9","#e8563f"];
+   visibleFolders.forEach((sc,idx)=>{
+     const b=document.createElement("button");b.type="button";
+     b.innerHTML="<span style='font-size:38px;line-height:1'>"+(sc.icon||"📁")+"</span><span>"+sc.name+"</span>";
+     const col=subColors[idx%subColors.length];
+     b.style.cssText="flex:0 0 auto;min-width:160px;min-height:82px;display:flex;align-items:center;justify-content:center;gap:10px;border:3px solid rgba(255,255,255,.75);border-radius:16px;padding:12px 18px;background:"+col+";color:white;font-weight:900;font-size:19px;line-height:1.15;box-shadow:0 4px 9px rgba(0,0,0,.16);text-shadow:0 1px 2px rgba(0,0,0,.25);cursor:pointer";
+     b.onclick=()=>{activeSubcategoryByCategory[cat.name]=sc.id;renderGrid()};
+     wrap.appendChild(b)
+   });
+   area.appendChild(wrap);
+ }
+ box.appendChild(area);
+
+ // Dans une catégorie : tous les pictogrammes.
+ // Dans un dossier : pictogrammes de ce dossier + de tous ses descendants.
+ return selected?items.filter(x=>itemInSubcat(x,selected)):items;
 }
 function parentToggleSubcat(id){let h=readHiddenSubcats();h=h.includes(id)?h.filter(x=>x!==id):[...h,id];writeHiddenSubcats(h);renderGrid()}
 const SUBCAT_EMOJIS=("😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 🤨 🧐 🤓 😎 🥸 🤩 🥳 😏 😒 😞 😔 😟 😕 🙁 ☹️ 😣 😖 😫 😩 🥺 😢 😭 😤 😠 😡 🤬 🤯 😳 🥵 🥶 😱 😨 😰 😥 😓 🤗 🤔 🫣 🤭 🫢 🫡 🤫 🤥 😶 😐 😑 😬 🙄 😯 😦 😧 😮 😲 🥱 😴 🤤 😪 😵 🤐 🥴 🤢 🤮 🤧 😷 🤒 🤕 🤑 🤠 😈 👿 👹 👺 🤡 💩 👻 💀 ☠️ 👽 🤖 🎃 😺 😸 😹 😻 😼 😽 🙀 😿 😾 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 👍 👎 👌 🤌 🤏 ✌️ 🤞 🫰 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤝 👏 🙌 🫶 🙏 ✍️ 💅 🤳 💪 🦾 🦵 🦶 👂 👃 🧠 🫀 🫁 🦷 👀 👁️ 👅 👄 👶 🧒 👦 👧 🧑 👨 👩 👴 👵 👪 🧍 🚶 🏃 💃 🕺 🧘 🛌 🛀 🏊 🚴 🤸 ⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🥅 🏒 🥊 🎨 🎭 🎤 🎧 🎵 🎹 🥁 🎮 🎲 🧩 🧸 📚 ✏️ 🖍️ 🖌️ 📱 💻 ⌚ 📷 📺 💡 🔦 ⏰ 🔔 🔑 🔒 🧰 🛠️ 🧹 🧺 🧻 🧼 🪥 🚽 🚿 🛁 🛏️ 🛋️ 👕 👖 👗 👟 🧢 🎒 🏠 🏡 🏫 🏥 🏪 🏬 🏨 🏖️ 🏕️ 🛝 🛒 🚗 🚕 🚌 🚑 🚒 🚓 🚲 🛴 ✈️ 🚂 🚢 🍎 🍏 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🥦 🥬 🥒 🌶️ 🫑 🌽 🥕 🫒 🧄 🧅 🥔 🍠 🥐 🥯 🍞 🥖 🥨 🧀 🥚 🍳 🧈 🥞 🧇 🥓 🥩 🍗 🍖 🌭 🍔 🍟 🍕 🥪 🥙 🌮 🌯 🥗 🥘 🫕 🥫 🍝 🍜 🍲 🍛 🍣 🍱 🍚 🍙 🍘 🍥 🥠 🥟 🍤 🍦 🍧 🍨 🍩 🍪 🎂 🍰 🧁 🥧 🍫 🍬 🍭 🍮 🍯 🍼 🥛 ☕ 🍵 🧃 🥤 🧋 🧊 🥄 🍴 🥣 🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦆 🦅 🦉 🐴 🦄 🐝 🪱 🐛 🦋 🐌 🐞 🐜 🕷️ 🐢 🐍 🦎 🐙 🦑 🦀 🐠 🐟 🐬 🐳 🌸 🌹 🌺 🌻 🌼 🌷 🌱 🌲 🌳 🌴 🌵 🍀 🍁 🍂 🍃 🌈 ☀️ 🌤️ ☁️ 🌧️ ⛈️ 🌩️ ❄️ ☃️ 💨 💧 🌊 🔥 ⭐ 🌟 ✨ 🌙 🌍 🎁 🎈 🎉 🎂 📁 📂 🏷️ ✅ ❌ ➕ ➖ ⬆️ ⬇️ ⬅️ ➡️").split(" ");
@@ -1863,7 +1915,7 @@ function chooseSubcategoryEmoji(title,current,onChoose){
 function adminManageSubcategories(cat){
  const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100650";
  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="980px";
- panel.innerHTML="<h2>📁 Catégories et dossiers : "+adminCatName(cat)+"</h2><div style='color:#667085;margin-bottom:14px'>Crée autant de niveaux que nécessaire : dossier → sous-dossier → sous-sous-dossier…</div>";
+ panel.innerHTML="<h2>📁 Catégories et dossiers : "+adminCatName(cat)+"</h2><div style='color:#667085;margin-bottom:14px'>Crée autant de niveaux que nécessaire : dossier → sous-dossier → sous-sous-dossier… Chaque niveau apparaîtra progressivement en mode utilisateur.</div>";
  const list=document.createElement("div");panel.appendChild(list);
  const sm=(t,f,title)=>{const b=document.createElement("button");b.type="button";b.textContent=t;b.title=title||"";b.style.cssText="padding:7px 9px;min-height:36px;border:1px solid #dfe3ea;border-radius:9px;background:#fff";b.onclick=f;return b};
  function pickItems(sc){panel.querySelector(".subcat-picker")?.remove();const pick=document.createElement("div");pick.className="subcat-picker";pick.style.cssText="max-height:430px;overflow:auto;border:2px solid #d8e0eb;border-radius:14px;padding:12px;margin:10px 0;background:#fbfcff";pick.innerHTML="<b>🧩 Pictogrammes dans : "+adminSubcatPath(sc)+"</b>";allPermanentPictograms().filter(v=>v.category===sc.category).forEach(v=>{const row=document.createElement("label");row.style.cssText="display:flex;gap:8px;align-items:center;padding:8px;border-bottom:1px solid #eef1f5";const cb=document.createElement("input");cb.type="checkbox";cb.style.cssText="width:21px;height:21px";const fresh=()=>{const now=readAdminBase();return (now.subcategories||[]).find(x=>x.id===sc.id)};cb.checked=(fresh()?.itemIds||[]).includes(v.id);cb.onchange=()=>{const now=readAdminBase(),target=(now.subcategories||[]).find(x=>x.id===sc.id);if(!target)return;target.itemIds=target.itemIds||[];target.itemIds=cb.checked?[...new Set([...target.itemIds,v.id])]:target.itemIds.filter(id=>id!==v.id);writeAdminBase(now)};row.append(cb,document.createTextNode((v.emoji||"🖼️")+" "+v.label));pick.appendChild(row)});list.after(pick)}
@@ -1955,7 +2007,7 @@ const ADMIN_PIN_KEY="ma-caa-admin-pin-v1";
 const DEFAULT_ADMIN_PIN="2580";
 
 const ADMIN_BASE_KEY="ma-caa-admin-base-v1";
-function readAdminBase(){try{const a=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}');a.subcategories=a.subcategories||[];a.submenus=a.submenus||{};return a}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[],subcategories:[],submenus:{}}}}
+function readAdminBase(){try{const a=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}');a.subcategories=a.subcategories||[];a.submenus=a.submenus||{};a.adminOrder=a.adminOrder||{};return a}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[],subcategories:[],submenus:{},adminOrder:{}}}}
 function syncAdminCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].adminAdded)categories.splice(i,1)}
   const a=readAdminBase();
@@ -2088,6 +2140,19 @@ function adminManagedBaseItemsFor(cat){
 }
 
 
+function adminPermanentEntries(cat){
+  const a=readAdminBase(),out=[];
+  adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{const d=adminItemData(source,x);out.push({id,label:d[1],emoji:d[0],image:d[4]||"",kind:"base",source,x,hidden:a.hiddenItems.includes(id)})});
+  (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>out.push({id:item.id,label:item.label,emoji:item.emoji||"🖼️",image:item.image||"",kind:"added",item,hidden:!!item.hidden}));
+  const saved=(a.adminOrder||{})[cat.name]||[],map=new Map(out.map(x=>[x.id,x])),ordered=[];
+  saved.forEach(id=>{if(map.has(id)){ordered.push(map.get(id));map.delete(id)}});map.forEach(v=>ordered.push(v));return ordered
+}
+function adminMovePermanent(cat,id,dir){
+  const a=readAdminBase();a.adminOrder=a.adminOrder||{};
+  const entries=adminPermanentEntries(cat),ids=entries.map(x=>x.id),i=ids.indexOf(id),j=i+dir;
+  if(i<0||j<0||j>=ids.length)return;
+  [ids[i],ids[j]]=[ids[j],ids[i]];a.adminOrder[cat.name]=ids;writeAdminBase(a);
+}
 async function adminCloudLogin(email,password){
   if(!cloudClient)return {ok:false,message:"Connexion Supabase indisponible"};
   const r=await cloudClient.auth.signInWithPassword({email,password});
@@ -2189,36 +2254,36 @@ function openAdminPanel(initialView="home"){
     }
 
     if(view==="pictos"){
-      const add=mkSection();add.innerHTML="<h2>🧩 Pictogrammes permanents</h2>";
-      const addPic=document.createElement("button");addPic.className="saveedit";addPic.textContent="➕ Ajouter un pictogramme permanent";addPic.onclick=()=>adminAddPictogram();add.appendChild(addPic);
-      const search=document.createElement("input");search.placeholder="🔎 Rechercher un pictogramme…";search.style.cssText="width:100%;padding:12px;margin:12px 0;border:1px solid #d9e0ea;border-radius:12px";add.appendChild(search);
-      const grid=document.createElement("div");grid.className="admin-card-grid";add.appendChild(grid);
+      const sec=mkSection();sec.innerHTML="<h2>🧩 Pictogrammes permanents</h2><p style='color:#667085'>Les pictogrammes sont regroupés par catégorie. Les flèches modifient l’ordre permanent d’affichage dans la catégorie.</p>";
+      const addPic=document.createElement("button");addPic.className="saveedit";addPic.textContent="➕ Ajouter un pictogramme permanent";addPic.onclick=()=>adminAddPictogram();sec.appendChild(addPic);
+      const search=document.createElement("input");search.placeholder="🔎 Rechercher un pictogramme…";search.style.cssText="width:100%;padding:12px;margin:12px 0;border:1px solid #d9e0ea;border-radius:12px";sec.appendChild(search);
+      const host=document.createElement("div");sec.appendChild(host);
       const renderPictos=()=>{
-        grid.innerHTML="";const q=search.value.trim().toLowerCase(),a=readAdminBase();
+        host.innerHTML="";const q=search.value.trim().toLowerCase();
         categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
-          adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{
-            const d=adminItemData(source,x);if(q&&!d[1].toLowerCase().includes(q))return;
+          const entries=adminPermanentEntries(cat).filter(e=>!q||e.label.toLowerCase().includes(q));
+          if(!entries.length)return;
+          const group=document.createElement("div");group.style.cssText="margin:16px 0 24px;border:1px solid #dfe6ef;border-radius:16px;padding:12px;background:#fbfcff";
+          const gh=document.createElement("div");gh.style.cssText="font-size:19px;font-weight:900;padding:8px 10px;background:#eef4ff;border-radius:11px;margin-bottom:10px";gh.textContent=adminCatIcon(cat)+" "+adminCatName(cat);group.appendChild(gh);
+          const grid=document.createElement("div");grid.className="admin-card-grid";
+          entries.forEach((e,i)=>{
             const card=document.createElement("div");card.className="admin-picto-card";
-            const name=document.createElement("div");name.className="ap-name";name.textContent=d[1];
-            const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(d[4]||"",d[0]||"🖼️");
-            const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditItem(source,x);
-            const hide=document.createElement("button");hide.textContent=a.hiddenItems.includes(id)?"👁️ Réafficher":"🙈 Masquer";hide.onclick=()=>adminToggleItem(source,x);
-            const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteItem(source,x);
-            card.append(name,vis,edit,hide,del);grid.appendChild(card);
+            const name=document.createElement("div");name.className="ap-name";name.textContent=e.label;
+            const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️");
+            const order=document.createElement("div");order.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:5px";
+            const up=document.createElement("button");up.textContent="↑ Monter";up.disabled=i===0;up.onclick=()=>{adminMovePermanent(cat,e.id,-1);openAdminPanel("pictos")};
+            const down=document.createElement("button");down.textContent="↓ Descendre";down.disabled=i===entries.length-1;down.onclick=()=>{adminMovePermanent(cat,e.id,1);openAdminPanel("pictos")};order.append(up,down);
+            const edit=document.createElement("button");edit.textContent="✏️ Modifier";
+            const hide=document.createElement("button");hide.textContent=e.hidden?"👁️ Réafficher":"🙈 Masquer";
+            const del=document.createElement("button");del.textContent="🗑️ Supprimer";
+            if(e.kind==="base"){edit.onclick=()=>adminEditItem(e.source,e.x);hide.onclick=()=>adminToggleItem(e.source,e.x);del.onclick=()=>adminDeleteItem(e.source,e.x)}
+            else{edit.onclick=()=>adminEditAddedItem(e.item);hide.onclick=()=>adminToggleAddedItem(e.item);del.onclick=()=>adminDeleteAddedItem(e.item)}
+            card.append(name,vis,order,edit,hide,del);grid.appendChild(card);
           });
-          (a.addedItems||[]).filter(x=>x.category===cat.name&&!x.deleted).forEach(item=>{
-            if(q&&!item.label.toLowerCase().includes(q))return;
-            const card=document.createElement("div");card.className="admin-picto-card";
-            const name=document.createElement("div");name.className="ap-name";name.textContent=item.label;
-            const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(item.image||"",item.emoji||"🖼️");
-            const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditAddedItem(item);
-            const hide=document.createElement("button");hide.textContent=item.hidden?"👁️ Réafficher":"🙈 Masquer";hide.onclick=()=>adminToggleAddedItem(item);
-            const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteAddedItem(item);
-            card.append(name,vis,edit,hide,del);grid.appendChild(card);
-          });
+          group.appendChild(grid);host.appendChild(group)
         });setTimeout(hydrateAllCloudPictures,0)
       };
-      search.oninput=renderPictos;renderPictos();content.appendChild(add);return
+      search.oninput=renderPictos;renderPictos();content.appendChild(sec);return
     }
 
     if(view==="categories"){

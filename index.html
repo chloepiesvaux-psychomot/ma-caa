@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 61</title>
+<title>Ma CAA v2.0 bêta 62</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -87,7 +87,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 61</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 62</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1356,7 +1356,11 @@ function createNormalCard(x,box){
     star.onclick=(e)=>{e.stopPropagation();toggleFav(x)};
     b.appendChild(star);
   }
-  b.onclick=()=>{if(submenuFor(x).length){activeSubmenu=x;renderGrid()}else add(displayItem(x))};box.appendChild(b);
+  b.onclick=(ev)=>{
+    add(displayItem(x));
+    if(submenuFor(x).length){ev.stopPropagation();openSubmenuBubble(x,b)}
+    else closeSubmenuBubble();
+  };box.appendChild(b);
 }
 function renderPersonalize(box){
   const tools=document.createElement("div");
@@ -1531,17 +1535,41 @@ function submenuFor(x){
   return (ae.action==="submenu"||entries.length)?entries:[];
 }
 let activeSubmenu=null;
-function renderSubmenu(box,parent){
-  const entries=submenuFor(parent).filter(e=>!e.hidden),custom=readCustom(),hidden=hiddenIds();
-  const back=document.createElement("button");back.className="catmanage";back.textContent="← Retour";back.style.gridColumn="1/-1";back.onclick=()=>{activeSubmenu=null;renderGrid()};box.appendChild(back);
-  const pid=parent[6]||"";
-  const order=custom["submenu-order:"+pid]||[];
-  let list=[...entries];
-  if(order.length){const map=new Map(list.map(e=>[e.id,e])),out=[];order.forEach(id=>{if(map.has(id)){out.push(map.get(id));map.delete(id)}});map.forEach(e=>out.push(e));list=out}
-  list.filter(e=>!hidden.includes("sub:"+e.id)).forEach(e=>{
-    const x=[e.emoji||"🖼️",e.label,e.speech||e.label,"sub:"+e.id,e.image||"",false,"submenu:"+e.id];
-    const b=document.createElement("button");b.className="pic";b.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️")+"<b>"+e.label+"</b>";b.onclick=()=>add([e.emoji||"🖼️",e.label,e.speech||e.label]);box.appendChild(b);
+function closeSubmenuBubble(){
+  document.querySelector(".submenu-bubble")?.remove();
+  document.removeEventListener("pointerdown",submenuOutsideClose,true);
+}
+function submenuOutsideClose(e){
+  const pop=document.querySelector(".submenu-bubble");
+  if(pop&&!pop.contains(e.target)&&!e.target.closest?.(".pic"))closeSubmenuBubble();
+}
+function openSubmenuBubble(parent,anchor){
+  closeSubmenuBubble();
+  const entries=submenuFor(parent).filter(e=>!e.hidden),hidden=hiddenIds();
+  const pid=permanentItemId(parent),custom=readCustom(),order=custom["submenu-order:"+pid]||[];
+  let list=entries.filter(e=>!hidden.includes("sub:"+e.id));
+  if(order.length){
+    const map=new Map(list.map(e=>[e.id,e])),out=[];
+    order.forEach(id=>{if(map.has(id)){out.push(map.get(id));map.delete(id)}});map.forEach(e=>out.push(e));list=out;
+  }
+  if(!list.length)return;
+  const pop=document.createElement("div");pop.className="submenu-bubble";
+  pop.style.cssText="position:fixed;z-index:100200;background:white;border:1px solid #dfe3ea;border-radius:18px;box-shadow:0 10px 30px rgba(25,40,70,.18);padding:10px;display:grid;grid-template-columns:repeat("+Math.min(3,list.length)+",minmax(86px,112px));gap:8px;max-width:calc(100vw - 24px)";
+  list.forEach(e=>{
+    const b=document.createElement("button");b.type="button";
+    b.style.cssText="border:1px solid #e2e6ee;border-radius:13px;background:#fff;padding:8px 6px;min-height:94px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font:inherit";
+    b.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️")+"<b style='font-size:13px'>"+e.label+"</b>";
+    b.onclick=ev=>{ev.stopPropagation();add([e.emoji||"🖼️",e.label,e.speech||e.label,null,e.image||null]);closeSubmenuBubble()};
+    pop.appendChild(b);
   });
+  document.body.appendChild(pop);
+  const r=anchor.getBoundingClientRect(),pr=pop.getBoundingClientRect();
+  let left=Math.min(window.innerWidth-pr.width-12,Math.max(12,r.left+r.width/2-pr.width/2));
+  let top=r.bottom+8;
+  if(top+pr.height>window.innerHeight-12)top=Math.max(12,r.top-pr.height-8);
+  pop.style.left=left+"px";pop.style.top=top+"px";
+  setTimeout(hydrateAllCloudPictures,0);
+  setTimeout(()=>document.addEventListener("pointerdown",submenuOutsideClose,true),0);
 }
 function allPermanentPictograms(){
   syncAdminCategories();
@@ -1653,10 +1681,9 @@ function adminManageSubmenu(parentId,parentLabel){
   secondary.append(create,clear,close);
   panel.append(choose,secondary);overlay.appendChild(panel);document.body.appendChild(overlay);refresh();
 }
-function renderGrid(){ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
+function renderGrid(){closeSubmenuBubble();ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
-  if(activeSubmenu){renderSubmenu(box,activeSubmenu);return}
   if(c.name==="Mode parents"){
     if(!adultUnlocked){
       if(!document.getElementById("adult-gate"))openAdultGate();

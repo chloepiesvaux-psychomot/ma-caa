@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 126</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 127</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1265,8 +1265,20 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const safePath=path.concat(k).join("-").replace(/[^a-zA-Z0-9_-]/g,"_");
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
-          if(!up.error)obj[k]={__cloud_image:true,path:filePath};
-          else console.error("Envoi photo pictogramme",up.error);
+          if(!up.error){
+            // BETA127: the synchronized profile stores a portable HTTPS URL.
+            // The iPhone therefore does not need a Supabase session to render it.
+            try{
+              const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
+              obj[k]=(!signed.error&&signed.data?.signedUrl)?signed.data.signedUrl:{__cloud_image:true,path:filePath};
+            }catch(e){obj[k]={__cloud_image:true,path:filePath}}
+          }else console.error("Envoi photo pictogramme",up.error);
+        }else if(v&&typeof v==="object"&&v.__cloud_image===true&&typeof v.path==="string"){
+          // Heal old synchronized cloud references too.
+          try{
+            const signed=await cloudClient.storage.from("pictograms").createSignedUrl(v.path,31536000);
+            if(!signed.error&&signed.data?.signedUrl)obj[k]=signed.data.signedUrl;
+          }catch(e){}
         }else if(v&&typeof v==="object")await walk(v,path.concat(k));
       }
     }
@@ -3439,7 +3451,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA126: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA127: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -4102,5 +4114,5 @@ function installAdminButton(){
 </script>
 
 <div id="beta125-marker" style="display:none">beta125-cloud-admin-images-quickcatalog</div>
-<div id="beta126-marker" style="display:none">beta126-signed-admin-images</div>
+<div id="beta126-marker" style="display:none">beta127-portable-profile-images</div>
 </body></html>

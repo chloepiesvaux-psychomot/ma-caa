@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 129</title>
+<title>Ma CAA v2.0 bêta 130</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 129</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 130</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1266,7 +1266,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error){
-            // BETA129: the synchronized profile stores a portable HTTPS URL.
+            // BETA130: the synchronized profile stores a portable HTTPS URL.
             // The iPhone therefore does not need a Supabase session to render it.
             try{
               const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
@@ -2789,6 +2789,25 @@ function writeAdminBase(next){
 let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null,adminBaseLocalDirty=false;
 
 let adminBaseRemoteCanonicalV129=null;
+
+let adminNavRefreshBusyV130=false;
+let adminNavRefreshLastV130=0;
+async function refreshAdminBaseOnNavigationV130(reason){
+  if(adminNavRefreshBusyV130 || !cloudClient) return;
+  const now=Date.now();
+  // Avoid duplicate events fired by the same tap/render.
+  if(now-adminNavRefreshLastV130 < 700) return;
+  adminNavRefreshLastV130=now;
+  adminNavRefreshBusyV130=true;
+  try{
+    await adminBasePull(true);
+  }catch(e){
+    console.warn("BETA130 navigation refresh", reason, e);
+  }finally{
+    adminNavRefreshBusyV130=false;
+  }
+}
+
 function cloneV129(v){try{return JSON.parse(JSON.stringify(v))}catch(e){return v}}
 async function canonicalizeAdminBaseV129(base){
   // Build the cloud copy without mutating the local/rendering copy.
@@ -2918,7 +2937,7 @@ async function adminBasePull(showStatus=false){
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
 
     const remoteDataRaw=r.data.data||{};
-    // BETA129: keep an untouched canonical copy. Rendering gets a separate materialized copy.
+    // BETA130: keep an untouched canonical copy. Rendering gets a separate materialized copy.
     adminBaseRemoteCanonicalV129=cloneV129(remoteDataRaw);
     const remoteData=await materializeAdminBaseV129(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
@@ -2958,7 +2977,7 @@ async function adminBasePull(showStatus=false){
       requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
     }
 
-    // BETA129: authenticated desktop can heal legacy cloud/local image refs
+    // BETA130: authenticated desktop can heal legacy cloud/local image refs
     // into portable signed HTTPS URLs for every other device.
     setTimeout(()=>migrateCurrentAdminImagesV125(),150);
 
@@ -2984,7 +3003,7 @@ function startAdminBaseCloud(){
   setTimeout(adminBasePull,300);
   setTimeout(adminBasePull,1800);
   // BETA123: background sync stays active but no longer hammers the UI.
-  setInterval(()=>{if(document.visibilityState==="visible")adminBasePull(false)},15000);
+  /* BETA130: synchro périodique supprimée; rafraîchissement déclenché par navigation */
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});
   window.addEventListener("focus",()=>adminBasePull());
 }
@@ -3518,7 +3537,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA129: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA130: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -3643,7 +3662,7 @@ async function migrateCurrentAdminImagesV125(){
 
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
-  // BETA129: keep local copy in IndexedDB (no localStorage quota issue).
+  // BETA130: keep local copy in IndexedDB (no localStorage quota issue).
   // adminBasePush serializes the image bytes into the remote admin_base payload.
   return await saveLocalAdminImage(dataUrlToBlob(dataUrl));
 }
@@ -4170,8 +4189,8 @@ function installAdminButton(){
 </script>
 
 <div id="beta125-marker" style="display:none">beta125-cloud-admin-images-quickcatalog</div>
-<div id="beta129-marker" style="display:none">beta129-image-sync-build</div>
-<div id="beta129-marker" style="display:none">beta129-admin-image-portable-payload</div>
+<div id="beta130-marker" style="display:none">beta130-image-sync-build</div>
+<div id="beta130-marker" style="display:none">beta130-admin-image-portable-payload</div>
 
 <script>
 /* ===== BETA 129 — stabilité visuelle des pictogrammes ARASAAC ===== */
@@ -4189,5 +4208,40 @@ function installAdminButton(){
   obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["src"]});
 })();
 </script>
-<div id="beta129-marker" style="display:none">beta129-image-persistence-canonical</div>
+<div id="beta130-marker" style="display:none">beta130-image-persistence-canonical</div>
+
+<script>
+/* ===== BETA 130 — synchro uniquement lors des changements d'écran ===== */
+(function(){
+  function isNavigationControlV130(el){
+    if(!el) return false;
+    const node=el.closest("button,.cat,[data-category],[data-subcategory],[data-profile],[data-user],[data-mode],.back,.admin-card,.parent-card");
+    if(!node) return false;
+    const txt=(node.textContent||"").trim().toLowerCase();
+    const cls=(node.className||"").toString().toLowerCase();
+    const attrs=[
+      node.getAttribute("data-category"),
+      node.getAttribute("data-subcategory"),
+      node.getAttribute("data-profile"),
+      node.getAttribute("data-user"),
+      node.getAttribute("data-mode")
+    ].filter(Boolean).join(" ").toLowerCase();
+    return /cat|category|categorie|sous|profil|profile|utilisateur|user|parent|administrateur|admin|retour|quitter|accueil/.test(cls+" "+attrs+" "+txt);
+  }
+  document.addEventListener("click",function(e){
+    if(!isNavigationControlV130(e.target)) return;
+    // Let the page/mode/category switch render first, then refresh once.
+    setTimeout(()=>refreshAdminBaseOnNavigationV130("navigation"),80);
+  },true);
+
+  // App returning to foreground: one refresh is useful, but no repeating timer.
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible"){
+      setTimeout(()=>refreshAdminBaseOnNavigationV130("foreground"),100);
+    }
+  });
+})();
+</script>
+
+<div id="beta130-marker" style="display:none">beta130-navigation-only-sync</div>
 </body></html>

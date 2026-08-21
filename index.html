@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 154</title>
+<title>Ma CAA v2.0 bêta 155</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 154</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 155</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1421,9 +1421,28 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 let autoPushTimer=null,autoPushBusy=false;
+let profilePushPendingV155=false;
 function scheduleProfileAutoPush(){
- clearTimeout(autoPushTimer);
- autoPushTimer=setTimeout(async()=>{if(autoPushBusy||!cloudClient)return;const id=localStorage.getItem(ACTIVE_PROFILE_KEY);if(!id)return;const u=await cloudUser();if(!u)return;autoPushBusy=true;try{await syncPushOne(id,true)}catch(e){console.error("Auto sync",e)}finally{autoPushBusy=false}},1200);
+  profilePushPendingV155=true;
+  clearTimeout(autoPushTimer);
+  autoPushTimer=setTimeout(async function pushProfileV155(){
+    if(autoPushBusy){ autoPushTimer=setTimeout(pushProfileV155,350); return; }
+    if(!cloudClient){ autoPushTimer=setTimeout(pushProfileV155,1200); return; }
+    const id=localStorage.getItem(ACTIVE_PROFILE_KEY);
+    if(!id){ profilePushPendingV155=false; return; }
+    autoPushBusy=true;
+    try{
+      const u=await cloudUser();
+      if(!u){ autoPushTimer=setTimeout(pushProfileV155,1800); return; }
+      await syncPushOne(id,true);
+      profilePushPendingV155=false;
+    }catch(e){
+      console.error("Auto sync V155",e);
+      autoPushTimer=setTimeout(pushProfileV155,1800);
+    }finally{
+      autoPushBusy=false;
+    }
+  },180);
 }
 
 async function syncPushOne(id,silent=false){
@@ -5573,7 +5592,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let old=document.getElementById("diag153");if(old)old.remove();
     const ov=document.createElement("div");ov.id="diag153";ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:15px;overflow:auto";
     const box=document.createElement("div");box.style.cssText="max-width:720px;margin:auto;background:white;border-radius:16px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 154</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 155</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");box.appendChild(pre);
     const refresh=document.createElement("button");refresh.textContent="Actualiser";refresh.style.cssText="padding:10px 16px;margin-right:8px";refresh.onclick=()=>{ov.remove();show153()};box.appendChild(refresh);
     const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:10px 16px";close.onclick=()=>ov.remove();box.appendChild(close);
@@ -5582,7 +5601,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 154";b.onclick=show153;
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 155";b.onclick=show153;
     b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
@@ -5591,7 +5610,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   setTimeout(install,1000);
 })();
 </script>
-<div id="beta154-marker" style="display:none">beta154-local-first-stabilisation</div>
+<div id="beta155-marker" style="display:none">beta155-local-first-stabilisation</div>
 
 
 <script>
@@ -5605,7 +5624,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   const install154=()=>{
     const d=document.getElementById("diag153btn");
     if(d){
-      d.textContent="☁️ Diagnostic 154";
+      d.textContent="☁️ Diagnostic 155";
       d.style.left="50%";
       d.style.right="auto";
       d.style.bottom="88px";
@@ -5621,6 +5640,74 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install154);
   else install154();
   setTimeout(install154,500);
+})();
+</script>
+
+
+<script>
+/* ===== BETA 155 — synchro inter-appareils + Parent local-first ===== */
+(function(){
+  let adminPull155Busy=false;
+  let adminPull155Last=0;
+
+  async function pullAdmin155(reason){
+    if(adminPull155Busy || !window.cloudClient) return false;
+    if(window.adminBaseLocalDirty) return false;
+    const now=Date.now();
+    if(now-adminPull155Last<1200) return false;
+    adminPull155Last=now;
+    adminPull155Busy=true;
+    try{
+      const ok=await adminBasePull(true);
+      if(ok!==false){
+        try{
+          if(typeof syncAdminCategories==="function")syncAdminCategories();
+          if(typeof render==="function")render();
+          if(typeof renderAdmin==="function" && document.querySelector(".admin-overlay"))renderAdmin();
+        }catch(e){}
+        return true;
+      }
+    }catch(e){ console.warn("BETA155 pull",reason,e); }
+    finally{ adminPull155Busy=false; }
+    return false;
+  }
+
+  // A second device must not wait for a manual action to receive Admin changes.
+  function start155(){
+    setTimeout(()=>pullAdmin155("startup-1"),700);
+    setTimeout(()=>pullAdmin155("startup-2"),2600);
+    setTimeout(()=>pullAdmin155("startup-3"),6500);
+    setInterval(()=>{
+      if(document.visibilityState==="visible" && !window.adminBaseLocalDirty){
+        pullAdmin155("periodic");
+      }
+    },12000);
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start155,{once:true});
+  else start155();
+
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible")setTimeout(()=>pullAdmin155("foreground"),180);
+  });
+  window.addEventListener("focus",()=>setTimeout(()=>pullAdmin155("focus"),180));
+
+  document.addEventListener("click",e=>{
+    const n=e.target&&e.target.closest&&e.target.closest("button,.cat,[data-category],[data-mode],[data-user],[data-profile]");
+    if(!n)return;
+    const t=((n.textContent||"")+" "+(n.className||"")).toLowerCase();
+    if(/administrateur|parent|utilisateur|accueil|catégorie|categorie|changer d.utilisateur/.test(t)){
+      setTimeout(()=>pullAdmin155("navigation"),250);
+    }
+  },true);
+
+  // Keep diagnostic away from navigation.
+  function diag155(){
+    const d=document.getElementById("diag153btn");
+    if(d){d.textContent="☁️ Diagnostic 155";d.style.bottom="88px";d.style.zIndex="80";}
+  }
+  setTimeout(diag155,100);
+  setTimeout(diag155,1000);
 })();
 </script>
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 148 diagnostic</title>
+<title>Ma CAA v2.0 bêta 149</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 148 diagnostic</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 149</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -756,7 +756,7 @@ function adminOverrideFor(x){
     if((c.items||[]).includes(x)){
       const direct=items[adminItemId(c,x)];
       if(direct)return direct;
-      // BETA147: legacy IDs can differ from the current runtime ID (notably
+      // BETA149: legacy IDs can differ from the current runtime ID (notably
       // J’ai chaud / J’ai froid). Fall back to the permanent pictogram's
       // stable category + original label/speech so User and Admin read the
       // exact same saved override.
@@ -2828,6 +2828,7 @@ const ADMIN_PIN_KEY="ma-caa-admin-pin-v1";
 const DEFAULT_ADMIN_PIN="2580";
 
 const ADMIN_BASE_KEY="ma-caa-admin-base-v1";
+const ADMIN_LOCAL_EDIT_TS_V149="ma-caa-admin-local-edit-ts-v149";
 function readAdminBase(){try{const a=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||'{"items":{},"hiddenItems":[],"deletedItems":[],"hiddenCats":[],"deletedCats":[],"catEdits":{},"addedItems":[],"addedCats":[]}');a.subcategories=a.subcategories||[];a.submenus=a.submenus||{};a.quickChoices=a.quickChoices||{};a.adminOrder=a.adminOrder||{};return a}catch(e){return {items:{},hiddenItems:[],deletedItems:[],hiddenCats:[],deletedCats:[],catEdits:{},addedItems:[],addedCats:[],subcategories:[],submenus:{},quickChoices:{},adminOrder:{}}}}
 function syncAdminCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].adminAdded)categories.splice(i,1)}
@@ -2846,6 +2847,10 @@ function readLatestAdminBaseV113(){
 }
 function writeAdminBase(next){
   try{
+    // BETA149: an Admin edit is authoritative locally from the very first line.
+    // This prevents a navigation-triggered cloud pull from restoring an older snapshot.
+    adminBaseLocalDirty=true;
+    localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
     const prev=JSON.parse(localStorage.getItem(ADMIN_BASE_KEY)||"{}");
     const merged={
       ...prev,
@@ -2867,7 +2872,8 @@ function writeAdminBase(next){
     ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(merged));
     localStorage.setItem("ma-caa-last-save",String(Date.now()));
     scheduleAdminBasePush();
-    scheduleProfileAutoPush();
+    // ADMIN_BASE_KEY is global, not profile-scoped. Do not trigger the profile
+    // synchronizer here: it adds latency and cannot persist this Admin base.
     return merged;
   }catch(err){
     console.error("writeAdminBase",err);
@@ -3117,8 +3123,17 @@ async function bootstrapCanonicalAdminBaseV131(reason){
     const u=await cloudUser();
     if(!u) return false;
 
-    // Cloud is authoritative on a newly connected / secondary device.
-    // Pull first; never push the tablet/phone's incomplete defaults over it.
+    // BETA149: preserve a real local Admin edit. Cloud bootstrap is only
+    // authoritative when this device has no pending/newer local Admin change.
+    const localEditRaw=localStorage.getItem(ADMIN_LOCAL_EDIT_TS_V149)||"";
+    if(adminBaseLocalDirty || localEditRaw){
+      const pushed=await adminBasePush();
+      if(pushed){
+        canonicalBootstrapDoneV131=true;
+        return true;
+      }
+      if(adminBaseLocalDirty)return false;
+    }
     const ok=await adminBasePull(true);
     if(ok!==false){
       canonicalBootstrapDoneV131=true;
@@ -3144,14 +3159,24 @@ let adminNavRefreshLastV130=0;
 async function refreshAdminBaseOnNavigationV130(reason){
   if(adminNavRefreshBusyV130 || !cloudClient) return;
   const now=Date.now();
-  // Avoid duplicate events fired by the same tap/render.
   if(now-adminNavRefreshLastV130 < 700) return;
   adminNavRefreshLastV130=now;
   adminNavRefreshBusyV130=true;
   try{
+    // BETA149: navigation must never be allowed to undo a just-saved Admin edit.
+    if(adminBaseLocalDirty){
+      await adminBasePush();
+      return;
+    }
+    const localEditRaw=localStorage.getItem(ADMIN_LOCAL_EDIT_TS_V149)||"";
+    const localEditMs=localEditRaw?Date.parse(localEditRaw):0;
+    if(localEditMs && Date.now()-localEditMs<8000){
+      await adminBasePush();
+      return;
+    }
     await adminBasePull(true);
   }catch(e){
-    console.warn("BETA139 navigation refresh", reason, e);
+    console.warn("BETA149 navigation refresh", reason, e);
   }finally{
     adminNavRefreshBusyV130=false;
   }
@@ -3187,7 +3212,17 @@ function adminBaseUpdatedLabel(){
   const updated=localStorage.getItem(ADMIN_BASE_UPDATED_KEY);
   return updated?"Dernière modification de la base : "+formatFrDateTime(updated):"Dernière modification de la base : inconnue";
 }
-function scheduleAdminBasePush(){adminBaseLocalDirty=true;clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,250)}
+function scheduleAdminBasePush(){
+  adminBaseLocalDirty=true;
+  clearTimeout(adminBasePushTimer);
+  adminBasePushTimer=setTimeout(async()=>{
+    const ok=await adminBasePush();
+    if(!ok && adminBaseLocalDirty){
+      clearTimeout(adminBasePushTimer);
+      adminBasePushTimer=setTimeout(adminBasePush,1800);
+    }
+  },60);
+}
 
 /* ===== BETA 128 — transport d'images administrateur indépendant de Storage ===== */
 function blobToDataUrlV128(blob){
@@ -3250,7 +3285,7 @@ async function materializeAdminRemoteImagesV128(base){
 }
 async function adminBasePush(){
   if(!canonicalBootstrapDoneV131){
-    // BETA147: an explicit Administrator save is authoritative. If local data
+    // BETA149: an explicit Administrator save is authoritative. If local data
     // is dirty, never pull the older cloud snapshot before pushing it: that
     // was silently restoring Restaurant and other edits a few seconds later.
     if(adminBaseLocalDirty){
@@ -3280,6 +3315,7 @@ async function adminBasePush(){
     adminBaseCloudUpdated=r.data?.updated_at||null;
     markAdminBaseSynced(adminBaseCloudUpdated);
     adminBaseLocalDirty=false;
+    if(adminBaseCloudUpdated)localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,adminBaseCloudUpdated);
     return true;
   }catch(e){
     console.error("Admin base push v129",e);
@@ -3307,6 +3343,20 @@ async function adminBasePull(showStatus=false){
     const localRaw=localStorage.getItem(ADMIN_BASE_KEY)||"";
     const remoteRaw=JSON.stringify(remoteData);
     const changed=(localRaw!==remoteRaw);
+
+    // BETA149: compare freshness BEFORE replacing localStorage.
+    // The old code accepted every cloud difference as authoritative, even if it
+    // was an older snapshot. That is exactly why an Admin edit could appear,
+    // then vanish as soon as another Admin page/category was opened.
+    const localEditRaw=localStorage.getItem(ADMIN_LOCAL_EDIT_TS_V149)||"";
+    const localEditMs=localEditRaw?Date.parse(localEditRaw):0;
+    const remoteMs=remoteUpdated?Date.parse(remoteUpdated):0;
+    if(changed && localEditMs && remoteMs && localEditMs>remoteMs){
+      adminBaseLocalDirty=true;
+      if(showStatus)setStatus("⏳ Modification locale plus récente : envoi vers le cloud…",true);
+      setTimeout(()=>scheduleAdminBasePush(),20);
+      return false;
+    }
 
     adminBaseCloudUpdated=remoteUpdated;
     markAdminBaseSynced(remoteUpdated);
@@ -4340,13 +4390,13 @@ function adminPermanentPictogramForm(existing){
 
       writeAdminBase(base);
 
-      // BETA147: do not report success until the common admin_base has really
+      // BETA149: do not report success until the common admin_base has really
       // accepted this edit. This also prevents a later pull from restoring the
       // previous cloud value.
       clearTimeout(adminBasePushTimer);
       const pushed=await adminBasePush();
       if(!pushed){
-        // BETA147: local save is authoritative. A temporary cloud/auth failure
+        // BETA149: local save is authoritative. A temporary cloud/auth failure
         // must NEVER cancel the editor save or allow an older cloud snapshot
         // to overwrite it. Keep the base dirty and retry in the background.
         adminBaseLocalDirty=true;
@@ -4359,7 +4409,7 @@ function adminPermanentPictogramForm(existing){
             adminBasePushTimer=setTimeout(retryAdminSave147,5000);
           }
         },1500);
-        console.warn("BETA147: modification conservée localement; synchronisation cloud différée.");
+        console.warn("BETA149: modification conservée localement; synchronisation cloud différée.");
       }
 
       // BETA145: the diagnostic proved that admin_base contains the new values.
@@ -5282,6 +5332,5 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
 
 <div id="beta139-marker" style="display:none">beta139-school-stale-deletion-repair</div>
-<div id="beta145-marker" style="display:none">beta146-admin-save-persistence</div>
-<div id="beta145-marker" style="display:none">beta146-user-admin-image-consistency</div>
-\n<script id="beta148-restaurant-diagnostic">\n/* BETA148 — diagnostic non destructif des sauvegardes administrateur. */\n(function(){\n  const LOG_KEY="ma-caa-beta148-diagnostic";\n  function clone(v){try{return JSON.parse(JSON.stringify(v))}catch(e){return v}}\n  function restaurantState(){\n    try{\n      const a=readAdminBase(), out={};\n      Object.entries(a.items||{}).forEach(([k,v])=>{\n        const txt=(k+" "+(v?.label||"")+" "+(v?.speech||"")+" "+(v?.category||"")+" "+((v?.categories||[]).join(" "))).toLowerCase();\n        if(txt.includes("restaurant"))out[k]=clone(v);\n      });\n      return out;\n    }catch(e){return {error:String(e)}}\n  }\n  function log(stage,extra){\n    try{\n      const rows=JSON.parse(localStorage.getItem(LOG_KEY)||"[]");\n      rows.push({time:new Date().toISOString(),stage,dirty:!!window.adminBaseLocalDirty,restaurant:restaurantState(),extra:clone(extra||{})});\n      localStorage.setItem(LOG_KEY,JSON.stringify(rows.slice(-40)));\n      console.log("BETA148",stage,rows[rows.length-1]);\n    }catch(e){console.warn("BETA148 diagnostic",e)}\n  }\n  window.__beta148Diagnostic={log,restaurantState,read:()=>{try{return JSON.parse(localStorage.getItem(LOG_KEY)||"[]")}catch(e){return []}},clear:()=>localStorage.removeItem(LOG_KEY)};\n\n  try{\n    const originalWrite=writeAdminBase;\n    writeAdminBase=function(next){\n      log("before-writeAdminBase");\n      const r=originalWrite(next);\n      log("after-writeAdminBase");\n      return r;\n    };\n  }catch(e){}\n\n  try{\n    const originalPush=adminBasePush;\n    adminBasePush=async function(){\n      log("before-adminBasePush");\n      const ok=await originalPush();\n      log("after-adminBasePush",{ok});\n      return ok;\n    };\n  }catch(e){}\n\n  try{\n    const originalPull=adminBasePull;\n    adminBasePull=async function(showStatus){\n      log("before-adminBasePull",{showStatus:!!showStatus});\n      const ok=await originalPull(showStatus);\n      log("after-adminBasePull",{ok});\n      return ok;\n    };\n  }catch(e){}\n\n  document.addEventListener("click",function(ev){\n    const b=ev.target?.closest?.("button");\n    if(!b)return;\n    const t=(b.textContent||"").trim();\n    if(/Enregistrer/.test(t))log("click-enregistrer",{button:t});\n    if(/Modifier/.test(t))setTimeout(()=>log("open-modifier",{button:t}),0);\n  },true);\n\n  window.addEventListener("pageshow",()=>log("pageshow"));\n  window.addEventListener("focus",()=>log("focus"));\n  document.addEventListener("visibilitychange",()=>{if(!document.hidden)log("visible")});\n  log("beta148-loaded");\n})();\n</script>\n</body></html>
+<div id="beta149-marker" style="display:none">beta149-admin-local-authoritative-save</div>
+</body></html>

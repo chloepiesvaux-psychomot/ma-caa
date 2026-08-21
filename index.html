@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 151</title>
+<title>Ma CAA v2.0 bêta 152</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 151</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 152</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5413,7 +5413,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     const ov=document.createElement("div");ov.id="diag151";
     ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:9999999;padding:15px;overflow:auto";
     const box=document.createElement("div");box.style.cssText="max-width:900px;margin:auto;background:white;border-radius:16px;padding:16px;color:#172033;font-family:system-ui";
-    const title=document.createElement("h2");title.textContent="☁️ Diagnostic cloud Admin — bêta 151";box.appendChild(title);
+    const title=document.createElement("h2");title.textContent="☁️ Diagnostic cloud Admin — bêta 152";box.appendChild(title);
     const p=document.createElement("p");p.textContent="Montre les PUSH (envoi) et PULL (réception) de la base Administrateur.";box.appendChild(p);
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;font-size:11px;background:#f5f7fa;padding:12px;border-radius:10px;max-height:65vh;overflow:auto";
     pre.textContent=JSON.stringify(D.events,null,2);box.appendChild(pre);
@@ -5431,4 +5431,45 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
 
 <div id="beta151-marker" style="display:none">beta151-cloud-admin-diagnostic</div>
+
+<script>
+/* BETA 152 diagnostic cloud compact */
+(function(){
+  function compact152(){
+    const events=(window.__adminCloudDiag151&&window.__adminCloudDiag151.events)||[];
+    let lines=[];
+    for(const e of events){
+      if(!e || !e.stage) continue;
+      if(/PUSH|PULL|DÉMARRAGE|OUVERTURE/.test(e.stage)){
+        let x="";
+        if(e.extra){
+          if(e.extra.error)x="ERREUR : "+e.extra.error;
+          else if("result" in e.extra)x=(e.extra.result===false?"ÉCHEC / aucune donnée nouvelle":"OK")+(e.extra.ms!=null?" — "+e.extra.ms+" ms":"");
+        }
+        lines.push((e.at?new Date(e.at).toLocaleTimeString("fr-FR")+" — ":"")+e.stage+(x?" : "+x:""));
+      }
+    }
+    if(!lines.length)lines=["Aucun PUSH/PULL enregistré depuis l’ouverture de l’application."];
+    let old=document.getElementById("diag152");if(old)old.remove();
+    const ov=document.createElement("div");ov.id="diag152";ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:15px;overflow:auto";
+    const box=document.createElement("div");box.style.cssText="max-width:650px;margin:auto;background:white;border-radius:16px;padding:18px;color:#172033;font-family:system-ui";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 152</h2><p>Version courte : seulement les envois et réceptions cloud.</p>";
+    const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");box.appendChild(pre);
+    const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:10px 16px";close.onclick=()=>ov.remove();box.appendChild(close);
+    ov.appendChild(box);document.body.appendChild(ov);
+  }
+  function install(){
+    // Hide the old verbose 151 button by its text.
+    [...document.querySelectorAll("button")].forEach(b=>{if((b.textContent||"").includes("Diagnostic cloud 151"))b.style.display="none"});
+    if(document.getElementById("diag152btn"))return;
+    const b=document.createElement("button");b.id="diag152btn";b.textContent="☁️ Diagnostic cloud 152";b.onclick=compact152;
+    b.style.cssText="position:fixed;right:12px;bottom:68px;z-index:2147483000;padding:10px 13px;border:0;border-radius:12px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004";
+    document.body.appendChild(b);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install);else install();
+  setTimeout(install,1000);
+})();
+</script>
+
+<div id='beta152-marker' style='display:none'>beta152-compact-diagnostic</div>
 </body></html>

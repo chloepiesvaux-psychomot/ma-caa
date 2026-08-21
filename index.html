@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 124</title>
+<title>Ma CAA v2.0 bêta 125</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 124</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 125</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -611,19 +611,61 @@ function adminManageQuickChoices(parentId,parentLabel){
   let selected=(base.quickChoices[parentId]||[]).map(c=>c.sourceId||c.id).filter(Boolean);
 
   function permanentRows(){
-    const a=readAdminBase(),out=[];
-    const hidden=new Set(a.hiddenItems||[]),deleted=new Set(a.deletedItems||[]);
-    normalCategories().forEach(cat=>{
-      (cat.items||[]).forEach(x=>{
-        const id=permanentItemId(x); if(!id||id===parentId||hidden.has(id)||deleted.has(id))return;
-        out.push({id,cat:adminCategoryDisplay(cat).name,item:x,label:displayLabel(x),speech:spokenText(x),emoji:displayEmoji(x),image:displayImage(x)||""});
+    // BETA125 : même catalogue que Administrateur > Pictogrammes.
+    // On parcourt chaque catégorie et adminPermanentEntries(cat), qui contient :
+    // - les pictogrammes permanents d'origine,
+    // - les pictogrammes ajoutés,
+    // - les pictogrammes affectés à plusieurs catégories,
+    // - les pictogrammes masqués (mais pas supprimés).
+    syncCustomCategories();
+    syncAdminCategories();
+    const a=readAdminBase(),out=[],seenPlacement=new Set();
+
+    const cats=categories.filter(c=>
+      c.name!=="Favoris" &&
+      c.name!=="Mode parents" &&
+      !(a.deletedCats||[]).includes(c.name)
+    );
+
+    cats.forEach(cat=>{
+      let entries=[];
+      try{entries=adminPermanentEntries(cat)||[]}catch(e){console.warn("Suite rapide catalogue",cat.name,e)}
+      entries.forEach(v=>{
+        if(!v||!v.id||v.id===parentId)return;
+        const placementKey=cat.name+"||"+v.id;
+        if(seenPlacement.has(placementKey))return;
+        seenPlacement.add(placementKey);
+
+        let item=null, speech="", emoji=v.emoji||"🖼️", image=v.image||"";
+        if(v.kind==="base" && v.source && v.x){
+          item=adminItemData(v.source,v.x);
+          speech=spokenText(item);
+          emoji=displayEmoji(item);
+          image=displayImage(item)||image||"";
+        }else if(v.kind==="added" && v.item){
+          const ai=v.item;
+          item=[ai.emoji||"🖼️",ai.label||"Pictogramme",ai.speech||ai.label||"Pictogramme",ai.id,ai.image||null,true,ai.id];
+          speech=ai.speech||ai.label||"Pictogramme";
+          emoji=ai.emoji||"🖼️";
+          image=ai.image||image||"";
+        }else{
+          speech=v.speech||v.label||"Pictogramme";
+        }
+
+        out.push({
+          id:v.id,
+          cat:adminCategoryDisplay(cat).name||cat.name,
+          sourceCat:cat.name,
+          item,
+          label:v.label||"Pictogramme",
+          speech,
+          emoji,
+          image,
+          hidden:!!v.hidden
+        });
       });
     });
-    (a.addedItems||[]).filter(x=>!x.deleted&&!x.hidden).forEach(ai=>{
-      if(ai.id===parentId)return;
-      out.push({id:ai.id,cat:ai.category||"Autres",item:[ai.emoji||"🖼️",ai.label||"Pictogramme",ai.speech||ai.label||"Pictogramme",ai.id,ai.image||null,null,ai.id],label:ai.label||"Pictogramme",speech:ai.speech||ai.label||"Pictogramme",emoji:ai.emoji||"🖼️",image:ai.image||""});
-    });
-    const seen=new Set();return out.filter(r=>!seen.has(r.id)&&(seen.add(r.id),true));
+    return out;
   }
   function updateSelected(){
     selectedBox.textContent="Sélection : "+selected.length+"/4"+(selected.length?" — "+selected.map(id=>permanentRows().find(r=>r.id===id)?.label||"").filter(Boolean).join(" · "):"");
@@ -640,8 +682,12 @@ details.addEventListener("toggle",()=>{if(details.open)quickOpenCategories.add(c
       const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;margin:8px 0 14px";
       items.forEach(r=>{
         const card=document.createElement("button");card.type="button";card.style.cssText="min-height:125px;border:2px solid "+(selected.includes(r.id)?"#2eaf58":"#e1e5ed")+";border-radius:14px;background:"+(selected.includes(r.id)?"#effaf2":"white")+";padding:8px;display:grid;place-items:center;gap:5px;font-weight:800";
-        const vis=document.createElement("div");vis.style.cssText="height:70px;display:grid;place-items:center;font-size:42px";
-        if(r.image){const im=document.createElement("img");im.src=normalizeCloudImageRef(r.image);im.style.cssText="max-width:70px;max-height:70px;object-fit:contain;background:#fff";vis.appendChild(im)}else vis.textContent=r.emoji||"🖼️";
+        const vis=document.createElement("div");vis.style.cssText="height:70px;display:grid;place-items:center;font-size:42px;background:#fff";
+        if(r.image){
+          vis.innerHTML=imageHtml(r.image,r.emoji||"🖼️");
+          const im=vis.querySelector("img");
+          if(im)im.style.cssText+=";max-width:70px;max-height:70px;object-fit:contain;background:#fff";
+        }else vis.textContent=r.emoji||"🖼️";
         const lab=document.createElement("div");lab.textContent=r.label;card.append(vis,lab);
         card.onclick=()=>{
           if(selected.includes(r.id))selected=selected.filter(x=>x!==r.id);
@@ -652,6 +698,7 @@ details.addEventListener("toggle",()=>{if(details.open)quickOpenCategories.add(c
       });
       details.appendChild(grid);browser.appendChild(details);
     });
+    setTimeout(hydrateAllCloudPictures,0);
   }
   search.oninput=renderBrowser;updateSelected();renderBrowser();
 
@@ -1160,7 +1207,13 @@ function chooseProfileImport(){
 
 const SUPABASE_URL="https://kawdtolbnflwbesbrntn.supabase.co",SUPABASE_PUBLISHABLE_KEY="sb_publishable_zyK0hA08C8Fg8hPYPBT5_g_I0KAi9UN";
 let cloudClient=null;
-function initCloud(){try{if(window.supabase){cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);setTimeout(startSafeAutoPull,1200);setTimeout(startAdminBaseCloud,1400);setTimeout(startProfilesDirectorySync,1600)}}catch(e){console.error(e)}}
+function initCloud(){try{if(window.supabase){
+  cloudClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  setTimeout(startSafeAutoPull,1200);
+  setTimeout(startAdminBaseCloud,1400);
+  setTimeout(startProfilesDirectorySync,1600);
+  setTimeout(migrateCurrentAdminImagesV125,3200);
+}}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){
   const p=readProfiles().find(x=>x.id===id);if(!p)return null;
@@ -1249,24 +1302,61 @@ function decodeCloudStoredImage(v){
 async function hydrateCloudPictures(){
   if(!cloudClient)return;
   const all=[...document.querySelectorAll("img")];
+
   for(const img of all){
     if(img.hasAttribute("data-cloud-path"))continue;
-    const s=img.getAttribute("src")||"";
-    const d=decodeCloudStoredImage(s);
-    if(d&&typeof d==="object"&&d.__cloud_image===true)img.setAttribute("data-cloud-path",d.path);
+    const raw=img.getAttribute("src")||"";
+    const d=decodeCloudStoredImage(raw);
+    if(d&&typeof d==="object"&&d.__cloud_image===true&&d.path){
+      img.removeAttribute("src");
+      img.setAttribute("data-cloud-path",d.path);
+    }
   }
+
   const imgs=[...document.querySelectorAll("img[data-cloud-path]")];
   for(const img of imgs){
     const path=img.getAttribute("data-cloud-path");
     if(!path)continue;
+    if(img.dataset.cloudLoadedPath===path && img.getAttribute("src"))continue;
+
+    img.style.background="#fff";
+
+    // 1. URL publique : très stable dans l'application iPhone si le bucket est public.
+    try{
+      const pub=cloudClient.storage.from("pictograms").getPublicUrl(path);
+      const publicUrl=pub?.data?.publicUrl||"";
+      if(publicUrl){
+        const ok=await new Promise(resolve=>{
+          const test=new Image();
+          const timer=setTimeout(()=>resolve(false),3500);
+          test.onload=()=>{clearTimeout(timer);resolve(true)};
+          test.onerror=()=>{clearTimeout(timer);resolve(false)};
+          test.src=publicUrl+(publicUrl.includes("?")?"&":"?")+"v=125";
+        });
+        if(ok){
+          const old=img.dataset.objectUrl;
+          if(old){try{URL.revokeObjectURL(old)}catch(e){};delete img.dataset.objectUrl}
+          img.src=publicUrl;
+          img.dataset.cloudLoadedPath=path;
+          continue;
+        }
+      }
+    }catch(e){}
+
+    // 2. Fallback : téléchargement Supabase (fonctionne si la session/policy l'autorise).
     try{
       const dl=await cloudClient.storage.from("pictograms").download(path);
       if(dl.error)throw dl.error;
       const old=img.dataset.objectUrl;
-      if(old)URL.revokeObjectURL(old);
+      if(old)try{URL.revokeObjectURL(old)}catch(e){}
       const url=URL.createObjectURL(dl.data);
-      img.src=url;img.dataset.objectUrl=url;
-    }catch(e){console.error(e)}
+      img.src=url;
+      img.dataset.objectUrl=url;
+      img.dataset.cloudLoadedPath=path;
+    }catch(e){
+      console.error("Image cloud inaccessible",path,e);
+      // On garde le cadre blanc ; l'emoji n'écrase pas l'image.
+    }
   }
 }
 
@@ -2715,9 +2805,29 @@ async function adminBasePush(){
   }
   adminBaseCloudBusy=true;
   try{
-    const r=await cloudClient.from("app_config").upsert({key:"admin_base",data:readAdminBase(),updated_at:new Date().toISOString()},{onConflict:"key"}).select("updated_at").single();
-    if(r.error)throw r.error;adminBaseCloudUpdated=r.data?.updated_at||null;markAdminBaseSynced(adminBaseCloudUpdated);adminBaseLocalDirty=false;return true;
-  }catch(e){console.error("Admin base push",e);return false}finally{adminBaseCloudBusy=false}
+    // BETA125 : aucune référence IndexedDB locale ne doit être envoyée aux autres appareils.
+    // On la transforme d'abord en référence Supabase Storage partageable.
+    let base=readAdminBase();
+    const mig=await migrateAdminLocalImagesToCloudV125(base,u.id);
+    base=mig.base;
+    if(mig.changed){
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+      ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base));
+    }
+
+    const r=await cloudClient.from("app_config").upsert(
+      {key:"admin_base",data:base,updated_at:new Date().toISOString()},
+      {onConflict:"key"}
+    ).select("updated_at").single();
+    if(r.error)throw r.error;
+    adminBaseCloudUpdated=r.data?.updated_at||null;
+    markAdminBaseSynced(adminBaseCloudUpdated);
+    adminBaseLocalDirty=false;
+    return true;
+  }catch(e){
+    console.error("Admin base push",e);
+    return false;
+  }finally{adminBaseCloudBusy=false}
 }
 async function adminBasePull(showStatus=false){
   const status=document.getElementById("admin-sync-live");
@@ -2895,6 +3005,7 @@ function addAdminCloudConnection(panel){
         if(!r.ok){state.textContent="❌ "+r.message;return}
         state.textContent="✅ Connecté";
         await adminBasePull(true);
+        await migrateCurrentAdminImagesV125();
         await pullProfilesDirectory();
         await recoverProfilesFromProfilesTable();
         await pushProfilesDirectory();
@@ -3296,6 +3407,110 @@ async function loadLocalAdminImage(key){
     db.close();return blob?URL.createObjectURL(blob):"";
   }catch(e){console.error("Image locale",e);return ""}
 }
+
+async function getLocalAdminImageBlob(key){
+  try{
+    const db=await openLocalImageDB();
+    const blob=await new Promise((resolve,reject)=>{
+      const tx=db.transaction("images","readonly");
+      const r=tx.objectStore("images").get(key);
+      r.onsuccess=()=>resolve(r.result||null);
+      r.onerror=()=>reject(r.error);
+    });
+    db.close();
+    return blob||null;
+  }catch(e){
+    console.error("Lecture image locale admin",e);
+    return null;
+  }
+}
+
+async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
+  if(!blob||!cloudClient||!userId)return null;
+  const ext=((blob.type||"image/jpeg").split("/")[1]||"jpg").replace("jpeg","jpg");
+  const path="admin/"+userId+"/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+"-"+tag+"."+ext;
+  const up=await cloudClient.storage.from("pictograms").upload(path,blob,{
+    upsert:true,
+    contentType:blob.type||"image/jpeg"
+  });
+  if(up.error)throw up.error;
+  return {__cloud_image:true,path};
+}
+
+async function migrateAdminLocalImagesToCloudV125(base,userId){
+  if(!base||!userId||!cloudClient)return {base,changed:false,missing:0};
+  let changed=false,missing=0;
+  const cache=new Map();
+
+  async function convert(v,tag){
+    if(!(v&&typeof v==="object"&&v.__local_image===true&&v.key))return v;
+    if(cache.has(v.key))return cache.get(v.key);
+    const blob=await getLocalAdminImageBlob(v.key);
+    if(!blob){missing++;cache.set(v.key,v);return v}
+    try{
+      const cloudRef=await uploadAdminBlobToCloudV125(blob,userId,tag);
+      if(cloudRef){changed=true;cache.set(v.key,cloudRef);return cloudRef}
+    }catch(e){
+      console.error("Migration image admin vers cloud",e);
+    }
+    cache.set(v.key,v);
+    return v;
+  }
+
+  base.items=base.items||{};
+  for(const [id,item] of Object.entries(base.items)){
+    if(item&&item.image)item.image=await convert(item.image,"base");
+  }
+
+  base.addedItems=Array.isArray(base.addedItems)?base.addedItems:[];
+  for(const item of base.addedItems){
+    if(item&&item.image)item.image=await convert(item.image,"added");
+  }
+
+  base.quickChoices=base.quickChoices||{};
+  for(const list of Object.values(base.quickChoices)){
+    if(!Array.isArray(list))continue;
+    for(const q of list){
+      if(q&&q.image)q.image=await convert(q.image,"quick");
+    }
+  }
+
+  base.submenus=base.submenus||{};
+  for(const list of Object.values(base.submenus)){
+    if(!Array.isArray(list))continue;
+    for(const q of list){
+      if(q&&q.image)q.image=await convert(q.image,"submenu");
+    }
+  }
+
+  return {base,changed,missing};
+}
+
+let adminImageMigrationV125Busy=false;
+async function migrateCurrentAdminImagesV125(){
+  if(adminImageMigrationV125Busy||!cloudClient)return false;
+  const u=await cloudUser();if(!u)return false;
+  adminImageMigrationV125Busy=true;
+  try{
+    const current=readAdminBase();
+    const r=await migrateAdminLocalImagesToCloudV125(current,u.id);
+    if(r.changed){
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(r.base));
+      ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(r.base));
+      adminBaseLocalDirty=true;
+      await adminBasePush();
+      render();
+      setTimeout(hydrateAllCloudPictures,100);
+    }
+    return r.changed;
+  }catch(e){
+    console.error("Migration images admin v125",e);
+    return false;
+  }finally{
+    adminImageMigrationV125Busy=false;
+  }
+}
+
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
   const blob=dataUrlToBlob(dataUrl);
@@ -3303,14 +3518,14 @@ async function storeAdminPictogramImage(dataUrl){
     if(cloudClient){
       const u=await cloudUser();
       if(u){
-        const path="admin/"+u.id+"/"+Date.now()+"-"+Math.random().toString(36).slice(2,8)+".jpg";
-        const up=await cloudClient.storage.from("pictograms").upload(path,blob,{upsert:true,contentType:blob.type});
-        if(!up.error)return {__cloud_image:true,path:path};
-        console.error("Admin image upload",up.error);
+        const ref=await uploadAdminBlobToCloudV125(blob,u.id,"new");
+        if(ref)return ref;
       }
     }
-  }catch(e){console.error("Admin image storage",e)}
-  // Fallback: keep the image outside localStorage so it cannot overflow the app's settings storage.
+  }catch(e){console.error("Admin image storage cloud",e)}
+  // Hors connexion : stockage local temporaire.
+  // Dès que le compte cloud Administrateur sera reconnecté,
+  // migrateCurrentAdminImagesV125() l'enverra automatiquement vers Supabase.
   return await saveLocalAdminImage(blob);
 }
 function safeOpenAdminPermanentPictogramForm(existing){
@@ -3835,4 +4050,5 @@ function installAdminButton(){
 })();
 </script>
 
+<div id="beta125-marker" style="display:none">beta125-cloud-admin-images-quickcatalog</div>
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 140</title>
+<title>Ma CAA v2.0 bêta 141</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 140</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 141</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -792,7 +792,7 @@ function pictoImageNodeV116(x,size=86){
 function displayImage(x){
   const cu=customFor(x);
 
-  // BETA140: for permanent/base pictograms, the Administrator image is the
+  // BETA141: for permanent/base pictograms, the Administrator image is the
   // canonical image. Legacy per-profile custom images must not mask a newer
   // Administrator edit (this caused J’ai chaud / J’ai froid to differ).
   if(!isAdded(x)){
@@ -818,7 +818,7 @@ function displayImage(x){
 
   const ae=adminOverrideFor(x);
 
-  // BETA140: admin image was already checked above. Then base/ARASAAC, then legacy custom.
+  // BETA141: admin image was already checked above. Then base/ARASAAC, then legacy custom.
   if(x[4])return normalizeCloudImageRef(x[4]);
   if(cu.image)return normalizeCloudImageRef(cu.image);
   if(localPictos[x[1]])return normalizeCloudImageRef(localPictos[x[1]]);
@@ -3176,7 +3176,7 @@ function adminBaseUpdatedLabel(){
   const updated=localStorage.getItem(ADMIN_BASE_UPDATED_KEY);
   return updated?"Dernière modification de la base : "+formatFrDateTime(updated):"Dernière modification de la base : inconnue";
 }
-function scheduleAdminBasePush(){adminBaseLocalDirty=true;clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,250)}
+function scheduleAdminBasePush(){adminBaseLocalDirty=true;clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,700)}
 
 /* ===== BETA 128 — transport d'images administrateur indépendant de Storage ===== */
 function blobToDataUrlV128(blob){
@@ -3588,8 +3588,9 @@ function openAdminPanel(initialView="home"){
           grid.className="admin-card-grid";
           entries.forEach((e,i)=>{
             const card=document.createElement("div");card.className="admin-picto-card";
-            const name=document.createElement("div");name.className="ap-name";name.textContent=e.label;
-            const vis=document.createElement("div");vis.className="ap-vis";vis.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️");
+            card.dataset.adminItemId=e.id;
+            const name=document.createElement("div");name.className="ap-name";name.dataset.adminItemLabel="1";name.textContent=e.label;
+            const vis=document.createElement("div");vis.className="ap-vis";vis.dataset.adminItemVisual="1";vis.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️");
 
             const order=document.createElement("div");
             order.style.cssText="display:grid;grid-template-columns:1fr 1fr;gap:5px";
@@ -3757,6 +3758,8 @@ function adminEditItem(cat,x){
   adminPermanentPictogramForm({
     _baseItem:true,
     _baseId:id,
+    _baseOriginalLabel:x[1],
+    _baseOriginalSpeech:x[2],
     category:e.category||cat.name,
     categories:adminItemCategories(cat.name,e),
     label:e.label||x[1],
@@ -4233,7 +4236,7 @@ function adminPermanentPictogramForm(existing){
         setTimeout(hydrateAllCloudPictures,0);
       }else{
         preview.src=String(chosenAdminImage);
-        // BETA140: direct HTTPS/data images need no global hydration pass.
+        // BETA141: direct HTTPS/data images need no global hydration pass.
       }
     }else{
       preview.removeAttribute("src");preview.style.display="none";
@@ -4297,6 +4300,27 @@ function adminPermanentPictogramForm(existing){
         cur.label=l;cur.speech=speechText;cur.emoji=emojiText;cur.category=cat.value;cur.categories=cats;cur.action=action.value;
         if(finalImage)cur.image=finalImage;else delete cur.image;
         base.items[existing._baseId]=cur;
+
+        // BETA141: a few historic permanent pictograms exist in more than one
+        // category. The user grid can therefore resolve a different category ID
+        // than the one edited in Admin. Mirror the same override to every exact
+        // original occurrence of that permanent pictogram.
+        const originalLabel=existing._baseOriginalLabel||"";
+        const originalSpeech=existing._baseOriginalSpeech||"";
+        if(originalLabel){
+          for(const source of categories){
+            for(const bx of (source.items||[])){
+              if(bx[1]===originalLabel && (!originalSpeech || bx[2]===originalSpeech)){
+                const aliasId=adminItemId(source,bx);
+                const alias={...(base.items[aliasId]||{})};
+                alias.label=l;alias.speech=speechText;alias.emoji=emojiText;
+                alias.action=action.value;
+                if(finalImage)alias.image=finalImage;else delete alias.image;
+                base.items[aliasId]=alias;
+              }
+            }
+          }
+        }
       }else if(existing){
         savedItemId=existing.id;
         const cur=(base.addedItems||[]).find(x=>x.id===existing.id);
@@ -4332,8 +4356,18 @@ function adminPermanentPictogramForm(existing){
         if(card){
           const lab=card.querySelector("[data-admin-item-label]");
           if(lab)lab.textContent=l;
+          const visual=card.querySelector("[data-admin-item-visual]");
+          if(visual){
+            visual.innerHTML=imageHtml(finalImage||"",emojiText||"🖼️");
+            // Only hydrate if the saved value is a cloud/local image reference.
+            if(finalImage && typeof finalImage==="object") setTimeout(hydrateAllCloudPictures,0);
+          }
         }
       }catch(e){}
+
+      // Refresh the user grid once, cheaply, so the same saved override is visible
+      // immediately when switching modes. No full Admin panel reconstruction.
+      try{ if(typeof renderGrid==="function") renderGrid(); }catch(e){}
     }catch(err){
       console.error("Enregistrement pictogramme",err);
       alert("Erreur pendant la sauvegarde : "+(err&&err.message?err.message:"erreur inconnue"));
@@ -5236,5 +5270,5 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
 
 <div id="beta139-marker" style="display:none">beta139-school-stale-deletion-repair</div>
-<div id="beta140-marker" style="display:none">beta140-admin-save-priority-performance</div>
-</body></html>
+<div id="beta141-marker" style="display:none">beta141-admin-save-priority-performance</div>
+<div id="beta141-marker" style="display:none">beta141-admin-picto-save-consistency-speed</div>\n</body></html>

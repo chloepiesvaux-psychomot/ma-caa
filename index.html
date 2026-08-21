@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 136</title>
+<title>Ma CAA v2.0 bêta 137</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 136</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 137</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1266,7 +1266,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error){
-            // BETA136: the synchronized profile stores a portable HTTPS URL.
+            // BETA137: the synchronized profile stores a portable HTTPS URL.
             // The iPhone therefore does not need a Supabase session to render it.
             try{
               const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
@@ -1656,7 +1656,7 @@ async function pushGlobalCustomCatsV135(){
     if(r.error)throw r.error;
     return true;
   }catch(e){
-    console.warn("BETA136 push catégories personnalisées",e);
+    console.warn("BETA137 push catégories personnalisées",e);
     return false;
   }finally{globalCustomCatsBusyV135=false}
 }
@@ -1682,7 +1682,7 @@ async function pullGlobalCustomCatsV135(){
     }
     return true;
   }catch(e){
-    console.warn("BETA136 pull catégories personnalisées",e);
+    console.warn("BETA137 pull catégories personnalisées",e);
     return false;
   }finally{globalCustomCatsBusyV135=false}
 }
@@ -2959,7 +2959,7 @@ async function syncAdminCategoryManifestV134(reason){
     }
     return true;
   }catch(e){
-    console.warn("BETA136 admin category manifest",reason,e);
+    console.warn("BETA137 admin category manifest",reason,e);
     return false;
   }finally{
     adminCategoryManifestBusyV134=false;
@@ -3030,7 +3030,7 @@ async function forceCloudCategoryMergeV133(reason){
     }catch(e){}
     return true;
   }catch(e){
-    console.warn("BETA136 category cloud merge",reason,e);
+    console.warn("BETA137 category cloud merge",reason,e);
     return false;
   }finally{
     categoryCloudMergeBusyV133=false;
@@ -3114,7 +3114,7 @@ async function bootstrapCanonicalAdminBaseV131(reason){
     }
     return false;
   }catch(e){
-    console.warn("BETA136 canonical bootstrap",reason,e);
+    console.warn("BETA137 canonical bootstrap",reason,e);
     return false;
   }finally{
     canonicalBootstrapBusyV131=false;
@@ -3132,7 +3132,7 @@ async function refreshAdminBaseOnNavigationV130(reason){
   try{
     await adminBasePull(true);
   }catch(e){
-    console.warn("BETA136 navigation refresh", reason, e);
+    console.warn("BETA137 navigation refresh", reason, e);
   }finally{
     adminNavRefreshBusyV130=false;
   }
@@ -3229,7 +3229,7 @@ async function materializeAdminRemoteImagesV128(base){
 }
 async function adminBasePush(){
   if(!canonicalBootstrapDoneV131){
-    console.warn("BETA136: envoi admin_base différé jusqu'au chargement canonique du cloud.");
+    console.warn("BETA137: envoi admin_base différé jusqu'au chargement canonique du cloud.");
     await bootstrapCanonicalAdminBaseV131("before-push");
     if(!canonicalBootstrapDoneV131) return false;
   }
@@ -3273,7 +3273,7 @@ async function adminBasePull(showStatus=false){
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
 
     const remoteDataRaw=r.data.data||{};
-    // BETA136: keep an untouched canonical copy. Rendering gets a separate materialized copy.
+    // BETA137: keep an untouched canonical copy. Rendering gets a separate materialized copy.
     adminBaseRemoteCanonicalV129=cloneV129(remoteDataRaw);
     const remoteData=await materializeAdminBaseV129(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
@@ -3313,7 +3313,7 @@ async function adminBasePull(showStatus=false){
       requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
     }
 
-    // BETA136: authenticated desktop can heal legacy cloud/local image refs
+    // BETA137: authenticated desktop can heal legacy cloud/local image refs
     // into portable signed HTTPS URLs for every other device.
     setTimeout(()=>migrateCurrentAdminImagesV125(),150);
 
@@ -3339,7 +3339,7 @@ function startAdminBaseCloud(){
   setTimeout(adminBasePull,300);
   setTimeout(adminBasePull,1800);
   // BETA123: background sync stays active but no longer hammers the UI.
-  /* BETA136: synchro périodique supprimée; rafraîchissement déclenché par navigation */
+  /* BETA137: synchro périodique supprimée; rafraîchissement déclenché par navigation */
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});
   window.addEventListener("focus",()=>adminBasePull());
 }
@@ -3873,7 +3873,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA136: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA137: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -3998,7 +3998,7 @@ async function migrateCurrentAdminImagesV125(){
 
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
-  // BETA136: keep local copy in IndexedDB (no localStorage quota issue).
+  // BETA137: keep local copy in IndexedDB (no localStorage quota issue).
   // adminBasePush serializes the image bytes into the remote admin_base payload.
   return await saveLocalAdminImage(dataUrlToBlob(dataUrl));
 }
@@ -4690,7 +4690,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 })();
 </script>
 
-<div id="beta136-marker" style="display:none">beta136-admin-category-manifest</div>
+<div id="beta137-marker" style="display:none">beta137-admin-category-manifest</div>
 
 <script>
 /* ===== BETA 135 — vraie source des catégories personnalisées ===== */
@@ -4703,7 +4703,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
       }
       // Then always pull the global list into the active profile (tablet included).
       await pullGlobalCustomCatsV135();
-    }catch(e){console.warn("BETA136 sync",reason,e)}
+    }catch(e){console.warn("BETA137 sync",reason,e)}
   }
   function start135(){
     setTimeout(()=>syncRealCustomCatsV135("startup-1"),700);
@@ -4730,7 +4730,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 })();
 </script>
 
-<div id="beta136-marker" style="display:none">beta136-real-custom-cats-sync</div>
+<div id="beta137-marker" style="display:none">beta137-real-custom-cats-sync</div>
 
 <script>
 /* ===== BETA 136 — diagnostic synchronisation catégories (lecture seule) ===== */
@@ -4837,5 +4837,74 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 })();
 </script>
 
-<div id="beta136-marker" style="display:none">beta136-sync-diagnostic-readonly</div>
+<div id="beta137-marker" style="display:none">beta137-sync-diagnostic-readonly</div>
+
+<script>
+/* ===== BETA 137 — bouton diagnostic administrateur robuste ===== */
+(function(){
+  function isAdminVisible137(){
+    const txt=(document.body?.innerText||"").toLowerCase();
+    return txt.includes("mode administrateur") &&
+           (txt.includes("synchronisation") || txt.includes("connexion cloud administrateur"));
+  }
+  function openDiag137(){
+    if(typeof window.showSyncDiagnostic136==="function") return window.showSyncDiagnostic136();
+    alert("Le diagnostic n'est pas encore chargé. Réessaie dans une seconde.");
+  }
+  function makeBtn137(id){
+    const b=document.createElement("button");
+    b.id=id;
+    b.type="button";
+    b.textContent="🔎 Diagnostic synchronisation";
+    b.onclick=openDiag137;
+    b.style.cssText="padding:12px 16px;border:0;border-radius:12px;background:#172033;color:white;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 2px 8px #0002";
+    return b;
+  }
+  function install137(){
+    const visible=isAdminVisible137();
+
+    // Remove old beta136 floating detector button if present.
+    document.getElementById("diagBtn136")?.remove();
+
+    if(!visible){
+      document.getElementById("diagBtn137")?.remove();
+      return;
+    }
+
+    // Prefer inserting directly in the Synchronisation area, just after "Synchronisé".
+    if(!document.getElementById("diagInline137")){
+      const candidates=[...document.querySelectorAll("button,div,span")];
+      const synced=candidates.find(el=>{
+        const t=(el.textContent||"").trim().toLowerCase();
+        return (t==="synchronisé" || t==="synchronise" || t==="✅ synchronisé" || t==="✅ synchronise")
+               && el.offsetParent!==null;
+      });
+      if(synced){
+        const wrap=document.createElement("div");
+        wrap.id="diagInline137";
+        wrap.style.cssText="margin-top:12px;margin-bottom:8px";
+        wrap.appendChild(makeBtn137("diagInlineBtn137"));
+        const host=synced.closest("div") || synced.parentElement;
+        if(host && host.parentElement) host.parentElement.insertBefore(wrap,host.nextSibling);
+      }
+    }
+
+    // Guaranteed fallback: visible fixed button in admin mode.
+    if(!document.getElementById("diagInline137") && !document.getElementById("diagBtn137")){
+      const b=makeBtn137("diagBtn137");
+      b.style.cssText+=";position:fixed;right:18px;bottom:18px;z-index:999999";
+      document.body.appendChild(b);
+    }
+  }
+
+  new MutationObserver(()=>setTimeout(install137,30))
+    .observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+  setInterval(install137,700);
+  document.addEventListener("click",()=>setTimeout(install137,120),true);
+  window.addEventListener("focus",()=>setTimeout(install137,120));
+  setTimeout(install137,300);
+})();
+</script>
+
+<div id="beta137-marker" style="display:none">beta137-admin-diagnostic-button</div>
 </body></html>

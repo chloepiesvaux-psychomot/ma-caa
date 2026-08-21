@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 116</title>
+<title>Ma CAA v2.0 bêta 117</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 116</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 117</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -737,12 +737,11 @@ function displayImage(x){
     return "";
   }
   const ae=adminOverrideFor(x);
-  // Si l'Administrateur a explicitement choisi un emoji, il est prioritaire
-  // sur toute ancienne image enregistrée ou image ARASAAC d'origine.
-  if(ae.emoji)return "";
-  // Sinon, une image choisie par l'Administrateur est prioritaire.
+  // Une vraie image est prioritaire sur l’emoji : image Administrateur puis image ARASAAC/base.
   if(ae.image)return normalizeCloudImageRef(ae.image);
   if(x[4])return normalizeCloudImageRef(x[4]);
+  // L’emoji n’est utilisé que lorsqu’aucune image n’est disponible.
+  if(ae.emoji)return "";
   // x[6] = identifiant canonique Administrateur. Si ce pictogramme a été
   // résolu par la base commune et n'a pas d'image, l'emoji Administrateur
   // doit rester affiché : ne jamais reprendre l'ancien pictogramme local.
@@ -1683,7 +1682,7 @@ function moveItem(cat,x,dir){
   renderGrid();
 }
 function imageHtml(p,emoji){
-  const src=(typeof image!=="undefined"&&image)?normalizeCloudImageRef(image):"";
+  const src=(typeof p!=="undefined"&&p)?normalizeCloudImageRef(p):"";
   const em=(typeof emoji!=="undefined"&&emoji)?emoji:"🖼️";
   if(src)return '<span style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img src="'+src+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="this.style.display=\'none\';this.parentElement.textContent='+JSON.stringify(em)+'"></span>';
   return '<span style="font-size:46px">'+em+'</span>';
@@ -2864,7 +2863,7 @@ function openAdminPanel(initialView="home"){
     rememberAdminViewV112(view);
     content.innerHTML="";
     const subtitle=document.getElementById("admin-view-title");
-    if(subtitle)subtitle.textContent=view==="home"?"Tableau de bord":view==="profiles"?"Profils / utilisateurs":view==="pictos"?"Pictogrammes permanents":view==="categories"?"Catégories et dossiers":"Paramètres"; if(view==="pictos")setTimeout(refreshAdminPictoImagesV116,80);
+    if(subtitle)subtitle.textContent=view==="home"?"Tableau de bord":view==="profiles"?"Profils / utilisateurs":view==="pictos"?"Pictogrammes permanents":view==="categories"?"Catégories et dossiers":"Paramètres";
     home.style.display=view==="home"?"none":"inline-block";
 
     if(view==="home"){
@@ -3628,44 +3627,5 @@ function installAdminButton(){
 }
 
 </script>
-
-
-document.addEventListener("change",(ev)=>{
-  const cb=ev.target;
-  if(!(cb instanceof HTMLInputElement)||cb.type!=="checkbox")return;
-  const modal=cb.closest(".admin-modal,.modal,[role='dialog']");
-  if(!modal||!/Pictogrammes dans\s*:/i.test(modal.textContent||""))return;
-  // Existing handler remains authoritative; this listener only prevents accidental
-  // page navigation by remembering exact position.
-  ADMIN_VIEW_STATE_V112.scrollY=window.scrollY||0;
-},true);
-
-
-function refreshAdminPictoImagesV116(){
-  try{
-    const panel=document.getElementById("admin-panel-beta25");if(!panel)return;
-    panel.querySelectorAll("[data-admin-item-id]").forEach(card=>{
-      const id=card.dataset.adminItemId;let found=null;
-      for(const c of (typeof categories!=="undefined"?categories:[])){
-        for(const x of (c.items||[])){if(permanentItemId(x)===id){found=x;break}}
-        if(found)break;
-      }
-      if(!found){
-        const a=readAdminBase(),ai=(a.addedItems||[]).find(x=>x.id===id);
-        if(ai)found=[ai.emoji||"🖼️",ai.label||"",ai.speech||"",ai.id,ai.image||null,null,ai.id];
-      }
-      if(!found)return;
-      const vv=preferredPictoVisualV116(found);if(!vv.image)return;
-      let visual=card.querySelector("[data-admin-item-visual]")||card.querySelector(".admin-picto-visual");
-      if(!visual){
-        const img=card.querySelector("img");
-        visual=img?img.parentElement:null;
-      }
-      if(!visual)return;
-      visual.innerHTML="";
-      visual.appendChild(pictoImageNodeV116(found,88));
-    });
-  }catch(e){console.warn("refreshAdminPictoImagesV116",e)}
-}
 
 </body></html>

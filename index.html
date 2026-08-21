@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 122</title>
+<title>Ma CAA v2.0 bêta 124</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -184,7 +184,7 @@ function adminReturnToPictogramsStable(scrollY){
 
 <style id="beta122-ecole-stability">
 #grid .pic{
-  contain:layout paint;
+  min-height:150px;
 }
 #grid .pic .pic-media{
   width:96px;
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 122</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 124</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2562,10 +2562,7 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
   const __caaBeforeScroll=window.scrollY||0;
   const __caaCurrentCat=categories[current]?.name||"";
   if(__caaCurrentCat==="École"){
-    setTimeout(async()=>{
-      try{await hydrateAllCloudPictures()}catch(e){}
-      requestAnimationFrame(()=>window.scrollTo(0,__caaBeforeScroll));
-    },60);
+    setTimeout(async()=>{try{await hydrateAllCloudPictures()}catch(e){}},60);
   }else{
     setTimeout(hydrateAllCloudPictures,0);
   }
@@ -2731,14 +2728,46 @@ async function adminBasePull(showStatus=false){
   adminBaseCloudBusy=true;
   try{
     if(showStatus)setStatus("🔄 Récupération de la base commune…");
-    // La lecture de app_config est publique : aucun profil enfant ni session utilisateur n'est nécessaire.
     const r=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
     if(r.error)throw r.error;
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
-    localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(r.data.data||{}));
-    adminBaseCloudUpdated=r.data.updated_at||null;
-    markAdminBaseSynced(adminBaseCloudUpdated);
-    syncAdminCategories();render();
+
+    const remoteData=r.data.data||{};
+    const remoteUpdated=r.data.updated_at||null;
+    const localRaw=localStorage.getItem(ADMIN_BASE_KEY)||"";
+    const remoteRaw=JSON.stringify(remoteData);
+    const changed=(localRaw!==remoteRaw);
+
+    adminBaseCloudUpdated=remoteUpdated;
+    markAdminBaseSynced(remoteUpdated);
+
+    // BETA123: do not rebuild the entire UI when nothing changed.
+    // This was the source of the visible periodic jump in École/subfolders.
+    if(changed){
+      const scrollBefore=window.scrollY||0;
+      const currentCatName=categories[current]?.name||"";
+      const currentFolder=(activeSubcategoryByCategory&&currentCatName)
+        ? activeSubcategoryByCategory[currentCatName]
+        : undefined;
+
+      localStorage.setItem(ADMIN_BASE_KEY,remoteRaw);
+      ADMIN_LAST_BASE_V113=JSON.parse(remoteRaw);
+
+      syncAdminCategories();
+
+      // Keep the exact same user location when the remote base really changed.
+      if(currentCatName){
+        const idx=categories.findIndex(c=>c.name===currentCatName);
+        if(idx>=0)current=idx;
+      }
+      if(currentFolder!==undefined && currentCatName){
+        activeSubcategoryByCategory[currentCatName]=currentFolder;
+      }
+
+      render();
+      requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
+    }
+
     if(showStatus)setStatus("✅ Base commune récupérée sur cet appareil : "+formatFrDateTime(localStorage.getItem(ADMIN_LAST_SYNC_KEY)),true);
     updateAdminSyncStatusInPlace();
     return true;
@@ -2756,7 +2785,15 @@ function updateAdminSyncStatusInPlace(){
   if(updated)updated.textContent=adminBaseUpdatedLabel();
 }
 
-function startAdminBaseCloud(){syncAdminCategories();render();setTimeout(adminBasePull,300);setTimeout(adminBasePull,1800);setInterval(()=>{if(document.visibilityState==="visible")adminBasePull(false)},5000);document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});window.addEventListener("focus",()=>adminBasePull())}
+function startAdminBaseCloud(){
+  syncAdminCategories();render();
+  setTimeout(adminBasePull,300);
+  setTimeout(adminBasePull,1800);
+  // BETA123: background sync stays active but no longer hammers the UI.
+  setInterval(()=>{if(document.visibilityState==="visible")adminBasePull(false)},15000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});
+  window.addEventListener("focus",()=>adminBasePull());
+}
 
 function adminItemId(cat,x){return cat.name+"||"+x[1]+"||"+x[2]}
 function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name}
@@ -3675,111 +3712,6 @@ function installAdminButton(){
 </script>
 
 
-<script>
-/* ===== BETA 119 — iOS portable image cache ===== */
-(function(){
-  const CACHE_KEY="caaPortablePictoImagesV119";
-
-  function readCache(){
-    try{return JSON.parse(localStorage.getItem(CACHE_KEY)||"{}")||{}}catch(e){return {}}
-  }
-  function writeCache(x){
-    try{localStorage.setItem(CACHE_KEY,JSON.stringify(x||{}))}catch(e){}
-  }
-  function refKey(ref){
-    try{
-      if(!ref)return "";
-      if(typeof ref==="string")return ref;
-      if(ref.__cloud_image&&ref.path)return "cloud:"+ref.path;
-      if(ref.__local_image&&ref.key)return "local:"+ref.key;
-      return JSON.stringify(ref);
-    }catch(e){return ""}
-  }
-  function portableFor(ref){
-    const k=refKey(ref); if(!k)return "";
-    return readCache()[k]||"";
-  }
-  function rememberPortable(ref,dataUrl){
-    const k=refKey(ref);
-    if(!k||!dataUrl||!String(dataUrl).startsWith("data:image/"))return;
-    const c=readCache(); c[k]=dataUrl; writeCache(c);
-  }
-  function imageToDataURL(img){
-    try{
-      if(!img||!img.naturalWidth||!img.naturalHeight)return "";
-      const c=document.createElement("canvas");
-      c.width=img.naturalWidth; c.height=img.naturalHeight;
-      const ctx=c.getContext("2d");
-      ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height);
-      ctx.drawImage(img,0,0);
-      return c.toDataURL("image/png");
-    }catch(e){return ""}
-  }
-
-  const oldNormalize=window.normalizeCloudImageRef;
-  window.normalizeCloudImageRef=function(ref){
-    const cached=portableFor(ref);
-    if(cached)return cached;
-    return oldNormalize?oldNormalize(ref):ref;
-  };
-
-  function makePortable(img,originalRef){
-    if(!img)return;
-    const save=function(){
-      const d=imageToDataURL(img);
-      if(d)rememberPortable(originalRef,d);
-    };
-    if(img.complete&&img.naturalWidth)save();
-    else img.addEventListener("load",save,{once:true});
-  }
-
-  const oldHydrate=window.hydrateAllCloudPictures;
-  window.hydrateAllCloudPictures=async function(){
-    try{ if(oldHydrate) await oldHydrate(); }catch(e){}
-    document.querySelectorAll("img").forEach(img=>{
-      const cp=img.getAttribute("data-cloud-path");
-      const lk=img.getAttribute("data-local-image-key");
-      const ref=cp?{__cloud_image:true,path:cp}:(lk?{__local_image:true,key:lk}:null);
-      if(!ref)return;
-      const cached=portableFor(ref);
-      if(cached){
-        img.src=cached;
-        img.style.background="#fff";
-      }else{
-        makePortable(img,ref);
-      }
-    });
-  };
-
-  // Cache every successfully displayed non-data pictogram image too.
-  document.addEventListener("load",function(ev){
-    const img=ev.target;
-    if(!(img instanceof HTMLImageElement))return;
-    img.style.background="#fff";
-    const src=img.getAttribute("src")||"";
-    if(src && !src.startsWith("data:")){
-      const d=imageToDataURL(img);
-      if(d)rememberPortable(src,d);
-    }
-  },true);
-
-  // Rehydrate after navigation/rendering and when returning to the installed app.
-  ["DOMContentLoaded","pageshow","focus"].forEach(evt=>{
-    window.addEventListener(evt,()=>setTimeout(()=>window.hydrateAllCloudPictures&&window.hydrateAllCloudPictures(),120));
-  });
-  document.addEventListener("visibilitychange",()=>{
-    if(!document.hidden)setTimeout(()=>window.hydrateAllCloudPictures&&window.hydrateAllCloudPictures(),120);
-  });
-
-  // Mutation observer catches pictogram cards inserted after initial render.
-  try{
-    // beta120: no global MutationObserver here. It caused repeated repainting on iOS.
-    // Rendering functions already call hydration explicitly.
-  }catch(e){}
-})();
-</script>
-
-
 <style id="beta120-white-picto-surface">
 /* BETA 120 — transparent ARASAAC PNGs always sit on a real white surface */
 .pic-media,
@@ -3834,5 +3766,73 @@ function installAdminButton(){
 })();
 </script>
 
+
+<div id="beta123-marker" style="display:none">beta123-no-periodic-rerender</div>
+
+<script>
+/* ===== BETA 124 — nettoyage sûr du stockage temporaire ===== */
+(function(){
+  const CLEAN_FLAG="ma-caa-safe-cleanup-v124-done";
+  if(localStorage.getItem(CLEAN_FLAG)==="1")return;
+
+  const exactKeys=[
+    "caaPortablePictoImagesV119",
+    "ma-caa-cache-clean-111",
+    "ma-caa-cache-clean-112",
+    "ma-caa-cache-clean-113",
+    "ma-caa-cache-clean-114",
+    "ma-caa-cache-clean-115",
+    "ma-caa-cache-clean-116",
+    "ma-caa-cache-clean-117",
+    "ma-caa-cache-clean-118",
+    "ma-caa-cache-clean-119",
+    "ma-caa-cache-clean-120",
+    "ma-caa-cache-clean-121",
+    "ma-caa-cache-clean-122",
+    "ma-caa-cache-clean-123"
+  ];
+
+  const prefixes=[
+    "caaPortablePictoImages",
+    "ma-caa-temp-",
+    "ma-caa-debug-"
+  ];
+
+  try{
+    exactKeys.forEach(k=>localStorage.removeItem(k));
+    const remove=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||"";
+      if(prefixes.some(p=>k.startsWith(p)))remove.push(k);
+    }
+    remove.forEach(k=>localStorage.removeItem(k));
+
+    // Nettoyer aussi les caches navigateur/service-worker sans toucher aux données métier.
+    if("caches" in window){
+      caches.keys().then(names=>Promise.all(names.map(n=>caches.delete(n)))).catch(()=>{});
+    }
+
+    localStorage.setItem(CLEAN_FLAG,"1");
+  }catch(e){
+    console.warn("Nettoyage stockage temporaire v124",e);
+  }
+})();
+</script>
+
+
+<script>
+(function(){
+  function localStorageUsageV124(){
+    let chars=0;
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i)||"";
+      const v=localStorage.getItem(k)||"";
+      chars += k.length + v.length;
+    }
+    return Math.round(chars*2/1024); // rough UTF-16 KB
+  }
+  window.localStorageUsageV124=localStorageUsageV124;
+})();
+</script>
 
 </body></html>

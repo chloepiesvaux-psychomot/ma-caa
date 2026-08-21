@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 117</title>
+<title>Ma CAA v2.0 bêta 118</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -66,7 +66,7 @@ button{min-height:44px;-webkit-tap-highlight-color:transparent}
 .admin-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0 22px}
 .admin-picto-card{border:1px solid #dfe4ec;border-radius:16px;background:white;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:220px}
 .admin-picto-card .ap-name{text-align:center;font-weight:800;min-height:24px}
-.admin-picto-card .ap-vis{height:92px;display:flex;justify-content:center;align-items:center;font-size:56px}
+.admin-picto-card .ap-vis{height:92px;display:flex;justify-content:center;align-items:center;font-size:56px;background:#fff;border-radius:10px}
 .admin-picto-card .ap-vis img{max-width:92px;max-height:92px;object-fit:contain;border-radius:9px}
 .admin-picto-card button{width:100%;min-height:38px}
 </style>
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 117</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 118</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -712,41 +712,41 @@ function pictoImageNodeV116(x,size=86){
   const wrap=document.createElement("div");
   wrap.style.cssText="width:"+size+"px;height:"+size+"px;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:12px;overflow:hidden";
   const v=preferredPictoVisualV116(x);
-  if(v.image){
-    const im=document.createElement("img");
-    im.src=normalizeCloudImageRef(v.image);
-    im.alt="";
-    im.style.cssText="max-width:100%;max-height:100%;object-fit:contain;background:#fff";
-    im.onerror=()=>{wrap.innerHTML="";wrap.textContent=v.emoji||"🖼️";wrap.style.fontSize=Math.round(size*.52)+"px"};
-    wrap.appendChild(im);
-  }else{
-    wrap.textContent=v.emoji||"🖼️";
-    wrap.style.fontSize=Math.round(size*.52)+"px";
-  }
+  wrap.innerHTML=imageHtml(v.image||"",v.emoji||"🖼️");
+  const im=wrap.querySelector("img");
+  if(im){im.style.maxWidth="100%";im.style.maxHeight="100%";im.style.objectFit="contain";im.style.background="#fff"}
+  setTimeout(hydrateAllCloudPictures,0);
   return wrap;
 }
 function displayImage(x){
   const cu=customFor(x);
-  if(cu.visualMode==="emoji")return "";
+
+  // Explicit custom image wins.
   if(cu.visualMode==="image"&&cu.image)return normalizeCloudImageRef(cu.image);
+
+  // Added/admin pictogram image wins over emoji.
   if(isAdded(x)){
     const a=readAdded().find(v=>v.id===x[3]);
     if(a&&a.image)return normalizeCloudImageRef(a.image);
     const aa=(readAdminBase().addedItems||[]).find(v=>v.id===x[3]);
     if(aa&&aa.image)return normalizeCloudImageRef(aa.image);
+    if(x[4])return normalizeCloudImageRef(x[4]);
+    // Only if there is genuinely no image can an explicit emoji mode win.
+    if(cu.visualMode==="emoji")return "";
     return "";
   }
+
   const ae=adminOverrideFor(x);
-  // Une vraie image est prioritaire sur l’emoji : image Administrateur puis image ARASAAC/base.
+
+  // STRICT PRIORITY: Administrator image > base/ARASAAC image > custom legacy image.
   if(ae.image)return normalizeCloudImageRef(ae.image);
   if(x[4])return normalizeCloudImageRef(x[4]);
-  // L’emoji n’est utilisé que lorsqu’aucune image n’est disponible.
-  if(ae.emoji)return "";
-  // x[6] = identifiant canonique Administrateur. Si ce pictogramme a été
-  // résolu par la base commune et n'a pas d'image, l'emoji Administrateur
-  // doit rester affiché : ne jamais reprendre l'ancien pictogramme local.
-  if(x[6])return "";
-  return customFor(x).image||localPictos[x[1]]||"";
+  if(cu.image)return normalizeCloudImageRef(cu.image);
+  if(localPictos[x[1]])return normalizeCloudImageRef(localPictos[x[1]]);
+
+  // Emoji is only a fallback when absolutely no image exists.
+  if(cu.visualMode==="emoji")return "";
+  return "";
 }
 function displayItem(x){
   return [displayEmoji(x),displayLabel(x),spokenText(x),null,displayImage(x)||null];
@@ -1615,8 +1615,7 @@ function baseItems(cat){
       if(a.hiddenItems.includes(id)||a.deletedItems.includes(id))continue;
       if(!adminItemCategories(source.name,e).includes(cat.name))continue;
       if(seen.has(id))continue;seen.add(id);
-      const hasAdminEmoji=!!(e.emoji&&e.emoji!=="🖼️");
-      items.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],hasAdminEmoji?"":(e.image||x[4]||""),false,id]);
+      items.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||x[4]||"",false,id]);
     }
   }
 
@@ -1682,9 +1681,19 @@ function moveItem(cat,x,dir){
   renderGrid();
 }
 function imageHtml(p,emoji){
-  const src=(typeof p!=="undefined"&&p)?normalizeCloudImageRef(p):"";
-  const em=(typeof emoji!=="undefined"&&emoji)?emoji:"🖼️";
-  if(src)return '<span style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img src="'+src+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="this.style.display=\'none\';this.parentElement.textContent='+JSON.stringify(em)+'"></span>';
+  const src=normalizeCloudImageRef(p||"");
+  const em=emoji||"🖼️";
+  const fallback="this.style.display='none';this.parentElement.textContent="+JSON.stringify(em);
+
+  if(src&&typeof src==="object"&&src.__cloud_image&&src.path){
+    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img data-cloud-path="'+String(src.path).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="'+fallback+'"></span>';
+  }
+  if(src&&typeof src==="object"&&src.__local_image&&src.key){
+    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img data-local-image-key="'+String(src.key).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="'+fallback+'"></span>';
+  }
+  if(typeof src==="string"&&src){
+    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img src="'+src.replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="'+fallback+'"></span>';
+  }
   return '<span style="font-size:46px">'+em+'</span>';
 }
 function picHtml(x){
@@ -2719,8 +2728,7 @@ function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
 function adminItemData(cat,x){
   const id=adminItemId(cat,x),e=readAdminBase().items?.[id]||{};
-  const hasAdminEmoji=!!(e.emoji&&e.emoji!=="🖼️");
-  const resolvedImage=hasAdminEmoji?"":(e.image||x[4]||"");
+  const resolvedImage=e.image||x[4]||"";
   return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],resolvedImage,false,id];
 }
 function adminItemAvailable(cat,x){

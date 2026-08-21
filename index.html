@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 120</title>
+<title>Ma CAA v2.0 bêta 121</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -190,7 +190,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 120</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 121</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3190,7 +3190,10 @@ async function compressPictogramImage(file,maxSide=360,quality=.66){
         let data="",tries=0;
         while(tries<7){
           c.width=w;c.height=h;
-          const ctx=c.getContext("2d");ctx.drawImage(img,0,0,w,h);
+          const ctx=c.getContext("2d");
+          // BETA121: ARASAAC PNG transparency must become WHITE, never black, before JPEG export.
+          ctx.fillStyle="#ffffff";ctx.fillRect(0,0,w,h);
+          ctx.drawImage(img,0,0,w,h);
           data=c.toDataURL("image/jpeg",Math.max(.42,quality-tries*.05));
           if(data.length<=70000)break;
           w=Math.max(1,Math.round(w*.82));h=Math.max(1,Math.round(h*.82));tries++;
@@ -3793,6 +3796,67 @@ function installAdminButton(){
     }catch(e){}
     forceWhitePictoSurfaces(document);
   },250);
+})();
+</script>
+
+
+<style id="beta121-stable-pictos">
+.pic-media{width:96px!important;height:96px!important;min-width:96px!important;min-height:96px!important;background:#fff!important}
+.pic-media img,.admin-picto-card .ap-vis img{
+  width:86px!important;height:86px!important;max-width:86px!important;max-height:86px!important;
+  object-fit:contain!important;background:#fff!important;display:block!important;
+}
+</style>
+<script>
+(function(){
+  const done=new WeakSet();
+
+  function repairEdgeBlackBackground(img){
+    if(!img || done.has(img) || !img.complete || !img.naturalWidth)return;
+    done.add(img);
+    try{
+      const w=img.naturalWidth,h=img.naturalHeight;
+      if(w<2||h<2)return;
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      const ctx=c.getContext("2d",{willReadFrequently:true});
+      ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+      const im=ctx.getImageData(0,0,w,h),d=im.data;
+      const seen=new Uint8Array(w*h),q=[],push=(x,y)=>{
+        if(x<0||y<0||x>=w||y>=h)return;
+        const k=y*w+x;if(seen[k])return;
+        const i=k*4,r=d[i],g=d[i+1],b=d[i+2];
+        // dark/near-black only; intended to catch the JPEG background produced by older imports
+        if(r<=65&&g<=65&&b<=65){seen[k]=1;q.push(k)}
+      };
+      for(let x=0;x<w;x++){push(x,0);push(x,h-1)}
+      for(let y=0;y<h;y++){push(0,y);push(w-1,y)}
+      let n=0;
+      for(let p=0;p<q.length;p++){
+        const k=q[p],x=k%w,y=(k/w)|0,i=k*4;
+        d[i]=255;d[i+1]=255;d[i+2]=255;d[i+3]=255;n++;
+        push(x-1,y);push(x+1,y);push(x,y-1);push(x,y+1);
+      }
+      // Only replace if a meaningful edge-connected dark background existed.
+      if(n > w*h*0.06){
+        ctx.putImageData(im,0,0);
+        img.src=c.toDataURL("image/png");
+      }
+    }catch(e){}
+  }
+
+  function repairAll(){
+    document.querySelectorAll(".pic-media img,.admin-picto-card .ap-vis img").forEach(img=>{
+      img.style.background="#fff";
+      if(img.complete&&img.naturalWidth)repairEdgeBlackBackground(img);
+      else img.addEventListener("load",()=>repairEdgeBlackBackground(img),{once:true});
+    });
+  }
+
+  // Fixed-size media boxes prevent the lower grid from jumping while images arrive.
+  window.addEventListener("pageshow",()=>setTimeout(repairAll,180));
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(repairAll,180)});
+  setTimeout(repairAll,300);
+  window.repairArasaacBlackV121=repairAll;
 })();
 </script>
 

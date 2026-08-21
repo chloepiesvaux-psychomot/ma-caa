@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 157</title>
+<title>Ma CAA v2.0 bêta 158</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 157</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 158</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3367,16 +3367,9 @@ async function adminBasePull(showStatus=false){
     // The old code accepted every cloud difference as authoritative, even if it
     // was an older snapshot. That is exactly why an Admin edit could appear,
     // then vanish as soon as another Admin page/category was opened.
-    const localEditRaw=localStorage.getItem(ADMIN_LOCAL_EDIT_TS_V149)||"";
-    const localEditMs=localEditRaw?Date.parse(localEditRaw):0;
-    const remoteMs=remoteUpdated?Date.parse(remoteUpdated):0;
-    if(changed && localEditMs && remoteMs && localEditMs>remoteMs){
-      adminBaseLocalDirty=true;
-      if(showStatus)setStatus("⏳ Modification locale plus récente : envoi vers le cloud…",true);
-      setTimeout(()=>scheduleAdminBasePush(),20);
-      return false;
-    }
-
+    // BETA158: if we reached this point there is NO unsent local Admin edit.
+    // Therefore a newer/different cloud snapshot must be allowed to arrive.
+    // A stale timestamp from an older local edit must never block another device's update.
     adminBaseCloudUpdated=remoteUpdated;
     markAdminBaseSynced(remoteUpdated);
 
@@ -3391,7 +3384,7 @@ async function adminBasePull(showStatus=false){
 
       adminBaseLocalDirty=false;
       localStorage.setItem(ADMIN_BASE_KEY,remoteRaw);
-      try{ if(remoteUpdated)localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V150,remoteUpdated); }catch(e){}
+      try{ if(remoteUpdated)localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,remoteUpdated); }catch(e){}
       adminBaseLocalDirty=false;
       ADMIN_LAST_BASE_V113=JSON.parse(remoteRaw);
 
@@ -5592,7 +5585,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let old=document.getElementById("diag153");if(old)old.remove();
     const ov=document.createElement("div");ov.id="diag153";ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:15px;overflow:auto";
     const box=document.createElement("div");box.style.cssText="max-width:720px;margin:auto;background:white;border-radius:16px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 157</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 158</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");box.appendChild(pre);
     const refresh=document.createElement("button");refresh.textContent="Actualiser";refresh.style.cssText="padding:10px 16px;margin-right:8px";refresh.onclick=()=>{ov.remove();show153()};box.appendChild(refresh);
     const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:10px 16px";close.onclick=()=>ov.remove();box.appendChild(close);
@@ -5601,7 +5594,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 157";b.onclick=show153;
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 158";b.onclick=show153;
     b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
@@ -5610,7 +5603,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   setTimeout(install,1000);
 })();
 </script>
-<div id="beta157-marker" style="display:none">beta157-local-first-stabilisation</div>
+<div id="beta158-marker" style="display:none">beta158-local-first-stabilisation</div>
 
 
 <script>
@@ -5624,7 +5617,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   const install154=()=>{
     const d=document.getElementById("diag153btn");
     if(d){
-      d.textContent="☁️ Diagnostic 157";
+      d.textContent="☁️ Diagnostic 158";
       d.style.left="50%";
       d.style.right="auto";
       d.style.bottom="88px";
@@ -5704,7 +5697,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Keep diagnostic away from navigation.
   function diag155(){
     const d=document.getElementById("diag153btn");
-    if(d){d.textContent="☁️ Diagnostic 157";d.style.bottom="88px";d.style.zIndex="80";}
+    if(d){d.textContent="☁️ Diagnostic 158";d.style.bottom="88px";d.style.zIndex="80";}
   }
   setTimeout(diag155,100);
   setTimeout(diag155,1000);
@@ -5800,7 +5793,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch";
     const box=document.createElement("div");
     box.style.cssText="max-width:760px;margin:8vh auto 120px;background:#fff;border-radius:18px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 157</h2><p>Lecture seule : comparaison directe de la base Administrateur locale et de Supabase.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 158</h2><p>Lecture seule : comparaison directe de la base Administrateur locale et de Supabase.</p>";
     const pre=document.createElement("pre");
     pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";
     pre.textContent=lines.join("\n");
@@ -5821,7 +5814,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let b=document.getElementById("diag156btn");
     if(!b){
       b=document.createElement("button");
-      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 157";
+      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 158";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -5920,7 +5913,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     const ov=document.createElement("div");ov.id="diag157";
     ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch";
     const box=document.createElement("div");box.style.cssText="max-width:860px;margin:5vh auto 120px;background:#fff;border-radius:18px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic stockage — bêta 157</h2><p>Lecture seule : recherche des vraies clés locales et cloud utilisées par Ma CAA.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic stockage — bêta 158</h2><p>Lecture seule : recherche des vraies clés locales et cloud utilisées par Ma CAA.</p>";
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");
     box.appendChild(pre);
     const copy=document.createElement("button");copy.textContent="Copier";copy.style.cssText="padding:11px 16px;margin-right:8px";
@@ -5933,7 +5926,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     document.querySelectorAll("#diag156btn,#diag153btn,#diag152btn").forEach(b=>b.remove());
     let b=document.getElementById("diag157btn");
     if(!b){
-      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 157";
+      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 158";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -5942,6 +5935,73 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   window.showAdminCloudDiag157=open157;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true}); else install();
   setTimeout(install,400);setTimeout(install,1600);
+})();
+</script>
+
+
+<script>
+/* ===== BETA 158 — synchronisation Administrateur inter-appareils =====
+   Correction ciblée :
+   1) un PULL réussi met à jour le vrai timestamp V149 ;
+   2) un ancien timestamp local ne bloque plus une réception cloud ;
+   3) réception périodique légère sur chaque appareil ;
+   4) aucune modification du fonctionnement du profil utilisateur.
+*/
+(function(){
+  let sync158Busy=false;
+  let sync158Timer=null;
+
+  async function pull158(reason){
+    if(sync158Busy) return false;
+    if(typeof adminBasePull!=="function") return false;
+    if(typeof adminBaseLocalDirty!=="undefined" && adminBaseLocalDirty) return false;
+    if(typeof adminBaseCloudBusy!=="undefined" && adminBaseCloudBusy) return false;
+    if(document.querySelector(".editor-overlay,.adult-overlay,[role='dialog']")) return false;
+
+    sync158Busy=true;
+    try{
+      const ok=await adminBasePull(false);
+      return !!ok;
+    }catch(e){
+      console.warn("BETA158 PULL",reason,e);
+      return false;
+    }finally{
+      sync158Busy=false;
+    }
+  }
+
+  function schedule158(delay){
+    clearTimeout(sync158Timer);
+    sync158Timer=setTimeout(async()=>{
+      if(document.visibilityState==="visible") await pull158("periodic");
+      schedule158(5000);
+    },delay);
+  }
+
+  function start158(){
+    setTimeout(()=>pull158("startup-1"),900);
+    setTimeout(()=>pull158("startup-2"),3000);
+    schedule158(5000);
+  }
+
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible") setTimeout(()=>pull158("foreground"),250);
+  });
+  window.addEventListener("focus",()=>setTimeout(()=>pull158("focus"),250));
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",start158,{once:true});
+  }else{
+    start158();
+  }
+
+  // Diagnostic button label
+  function relabel(){
+    const b=document.getElementById("diag157btn");
+    if(b){ b.id="diag158btn"; b.textContent="☁️ Diagnostic 158"; }
+  }
+  setTimeout(relabel,100);
+  setTimeout(relabel,900);
 })();
 </script>
 

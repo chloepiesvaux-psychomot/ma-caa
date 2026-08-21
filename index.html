@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 149</title>
+<title>Ma CAA v2.0 bêta 150</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 149</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 150</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -756,7 +756,7 @@ function adminOverrideFor(x){
     if((c.items||[]).includes(x)){
       const direct=items[adminItemId(c,x)];
       if(direct)return direct;
-      // BETA149: legacy IDs can differ from the current runtime ID (notably
+      // BETA150: legacy IDs can differ from the current runtime ID (notably
       // J’ai chaud / J’ai froid). Fall back to the permanent pictogram's
       // stable category + original label/speech so User and Admin read the
       // exact same saved override.
@@ -2847,7 +2847,7 @@ function readLatestAdminBaseV113(){
 }
 function writeAdminBase(next){
   try{
-    // BETA149: an Admin edit is authoritative locally from the very first line.
+    // BETA150: an Admin edit is authoritative locally from the very first line.
     // This prevents a navigation-triggered cloud pull from restoring an older snapshot.
     adminBaseLocalDirty=true;
     localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
@@ -3123,7 +3123,7 @@ async function bootstrapCanonicalAdminBaseV131(reason){
     const u=await cloudUser();
     if(!u) return false;
 
-    // BETA149: preserve a real local Admin edit. Cloud bootstrap is only
+    // BETA150: preserve a real local Admin edit. Cloud bootstrap is only
     // authoritative when this device has no pending/newer local Admin change.
     const localEditRaw=localStorage.getItem(ADMIN_LOCAL_EDIT_TS_V149)||"";
     if(adminBaseLocalDirty || localEditRaw){
@@ -3163,7 +3163,7 @@ async function refreshAdminBaseOnNavigationV130(reason){
   adminNavRefreshLastV130=now;
   adminNavRefreshBusyV130=true;
   try{
-    // BETA149: navigation must never be allowed to undo a just-saved Admin edit.
+    // BETA150: navigation must never be allowed to undo a just-saved Admin edit.
     if(adminBaseLocalDirty){
       await adminBasePush();
       return;
@@ -3176,7 +3176,7 @@ async function refreshAdminBaseOnNavigationV130(reason){
     }
     await adminBasePull(true);
   }catch(e){
-    console.warn("BETA149 navigation refresh", reason, e);
+    console.warn("BETA150 navigation refresh", reason, e);
   }finally{
     adminNavRefreshBusyV130=false;
   }
@@ -3285,7 +3285,7 @@ async function materializeAdminRemoteImagesV128(base){
 }
 async function adminBasePush(){
   if(!canonicalBootstrapDoneV131){
-    // BETA149: an explicit Administrator save is authoritative. If local data
+    // BETA150: an explicit Administrator save is authoritative. If local data
     // is dirty, never pull the older cloud snapshot before pushing it: that
     // was silently restoring Restaurant and other edits a few seconds later.
     if(adminBaseLocalDirty){
@@ -3344,7 +3344,7 @@ async function adminBasePull(showStatus=false){
     const remoteRaw=JSON.stringify(remoteData);
     const changed=(localRaw!==remoteRaw);
 
-    // BETA149: compare freshness BEFORE replacing localStorage.
+    // BETA150: compare freshness BEFORE replacing localStorage.
     // The old code accepted every cloud difference as authoritative, even if it
     // was an older snapshot. That is exactly why an Admin edit could appear,
     // then vanish as soon as another Admin page/category was opened.
@@ -3372,6 +3372,7 @@ async function adminBasePull(showStatus=false){
 
       adminBaseLocalDirty=false;
       localStorage.setItem(ADMIN_BASE_KEY,remoteRaw);
+      try{ if(remoteUpdated)localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V150,remoteUpdated); }catch(e){}
       adminBaseLocalDirty=false;
       ADMIN_LAST_BASE_V113=JSON.parse(remoteRaw);
 
@@ -4390,13 +4391,13 @@ function adminPermanentPictogramForm(existing){
 
       writeAdminBase(base);
 
-      // BETA149: do not report success until the common admin_base has really
+      // BETA150: do not report success until the common admin_base has really
       // accepted this edit. This also prevents a later pull from restoring the
       // previous cloud value.
       clearTimeout(adminBasePushTimer);
       const pushed=await adminBasePush();
       if(!pushed){
-        // BETA149: local save is authoritative. A temporary cloud/auth failure
+        // BETA150: local save is authoritative. A temporary cloud/auth failure
         // must NEVER cancel the editor save or allow an older cloud snapshot
         // to overwrite it. Keep the base dirty and retry in the background.
         adminBaseLocalDirty=true;
@@ -4409,7 +4410,7 @@ function adminPermanentPictogramForm(existing){
             adminBasePushTimer=setTimeout(retryAdminSave147,5000);
           }
         },1500);
-        console.warn("BETA149: modification conservée localement; synchronisation cloud différée.");
+        console.warn("BETA150: modification conservée localement; synchronisation cloud différée.");
       }
 
       // BETA145: the diagnostic proved that admin_base contains the new values.
@@ -5332,5 +5333,36 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
 
 <div id="beta139-marker" style="display:none">beta139-school-stale-deletion-repair</div>
-<div id="beta149-marker" style="display:none">beta149-admin-local-authoritative-save</div>
+<div id="beta150-marker" style="display:none">beta150-admin-local-authoritative-save</div>
+
+<script>
+/* ===== BETA 150 — réception des modifications Admin sur un autre appareil ===== */
+(function(){
+  let busy150=false,last150=0;
+  async function receiveAdmin150(reason){
+    try{
+      if(busy150 || typeof cloudClient==="undefined" || !cloudClient || typeof adminBasePull!=="function")return;
+      if(typeof adminBaseLocalDirty!=="undefined" && adminBaseLocalDirty)return;
+      const now=Date.now();
+      if(now-last150<1400)return;
+      last150=now;busy150=true;
+      const ok=await adminBasePull(true);
+      if(ok){
+        try{if(typeof syncAdminCategories==="function")syncAdminCategories()}catch(e){}
+        try{if(typeof render==="function")render()}catch(e){}
+        try{if(typeof window.__refreshAdminPictos145==="function")window.__refreshAdminPictos145()}catch(e){}
+      }
+    }catch(e){console.warn("BETA150 receive",reason,e)}
+    finally{busy150=false}
+  }
+  window.receiveAdmin150=receiveAdmin150;
+  document.addEventListener("click",e=>{
+    if(e.target?.closest?.("button,.cat-btn,.subcat-btn,.admin-nav-btn"))
+      setTimeout(()=>receiveAdmin150("navigation"),180);
+  },true);
+  setInterval(()=>receiveAdmin150("periodic"),30000);
+})();
+</script>
+
+<div id="beta150-marker" style="display:none">beta150-cross-device-admin-receive</div>
 </body></html>

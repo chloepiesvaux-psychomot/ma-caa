@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 134</title>
+<title>Ma CAA v2.0 bêta 135</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 134</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 135</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1266,7 +1266,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error){
-            // BETA134: the synchronized profile stores a portable HTTPS URL.
+            // BETA135: the synchronized profile stores a portable HTTPS URL.
             // The iPhone therefore does not need a Supabase session to render it.
             try{
               const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
@@ -1621,7 +1621,77 @@ function renderProfileBar(){
 }
 
 function readCustomCats(){try{return JSON.parse(localStorage.getItem(profiledKey(CUSTOM_CATS_KEY))||"[]")}catch(e){return []}}
-function writeCustomCats(v){localStorage.setItem(profiledKey(CUSTOM_CATS_KEY),JSON.stringify(v));localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush()}
+
+const GLOBAL_CUSTOM_CATS_CLOUD_KEY_V135="custom_categories_global";
+let globalCustomCatsBusyV135=false;
+let globalCustomCatsPushTimerV135=null;
+
+function normCustomCatV135(v){
+  return String(v||"").trim().normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+}
+function mergeCustomCatsV135(local,remote){
+  const out=Array.isArray(local)?JSON.parse(JSON.stringify(local)):[];
+  const seen=new Set(out.map(c=>normCustomCatV135(c?.name)));
+  for(const c of (Array.isArray(remote)?remote:[])){
+    const k=normCustomCatV135(c?.name);
+    if(k&&!seen.has(k)){out.push(c);seen.add(k);}
+  }
+  return out;
+}
+async function pushGlobalCustomCatsV135(){
+  if(globalCustomCatsBusyV135||!cloudClient)return false;
+  const u=await cloudUser();if(!u)return false;
+  const local=readCustomCats();
+  if(!local.length)return false; // an empty tablet can never erase the richer cloud list
+  globalCustomCatsBusyV135=true;
+  try{
+    const current=await cloudClient.from("app_config").select("data").eq("key",GLOBAL_CUSTOM_CATS_CLOUD_KEY_V135).maybeSingle();
+    if(current.error)throw current.error;
+    const remote=Array.isArray(current.data?.data?.categories)?current.data.data.categories:[];
+    const merged=mergeCustomCatsV135(remote,local);
+    const r=await cloudClient.from("app_config").upsert(
+      {key:GLOBAL_CUSTOM_CATS_CLOUD_KEY_V135,data:{categories:merged},updated_at:new Date().toISOString()},
+      {onConflict:"key"}
+    );
+    if(r.error)throw r.error;
+    return true;
+  }catch(e){
+    console.warn("BETA135 push catégories personnalisées",e);
+    return false;
+  }finally{globalCustomCatsBusyV135=false}
+}
+async function pullGlobalCustomCatsV135(){
+  if(globalCustomCatsBusyV135||!cloudClient)return false;
+  const u=await cloudUser();if(!u)return false;
+  globalCustomCatsBusyV135=true;
+  try{
+    const r=await cloudClient.from("app_config").select("data,updated_at").eq("key",GLOBAL_CUSTOM_CATS_CLOUD_KEY_V135).maybeSingle();
+    if(r.error)throw r.error;
+    const remote=Array.isArray(r.data?.data?.categories)?r.data.data.categories:[];
+    if(!remote.length)return false;
+
+    const local=readCustomCats();
+    const merged=mergeCustomCatsV135(local,remote);
+    if(JSON.stringify(local)!==JSON.stringify(merged)){
+      // Write into the ACTIVE PROFILE'S real category key: this is what syncCustomCategories reads.
+      localStorage.setItem(profiledKey(CUSTOM_CATS_KEY),JSON.stringify(merged));
+      localStorage.setItem("ma-caa-last-save",String(Date.now()));
+      syncCustomCategories();
+      render();
+      renderProfileBar();
+    }
+    return true;
+  }catch(e){
+    console.warn("BETA135 pull catégories personnalisées",e);
+    return false;
+  }finally{globalCustomCatsBusyV135=false}
+}
+function scheduleGlobalCustomCatsPushV135(){
+  clearTimeout(globalCustomCatsPushTimerV135);
+  globalCustomCatsPushTimerV135=setTimeout(pushGlobalCustomCatsV135,500);
+}
+
+function writeCustomCats(v){localStorage.setItem(profiledKey(CUSTOM_CATS_KEY),JSON.stringify(v));localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush();scheduleGlobalCustomCatsPushV135()}
 function customCategoryObjects(){return readCustomCats().map(c=>({icon:c.icon||"📁",name:c.name,items:[],customId:c.id}))}
 function syncCustomCategories(){
   for(let i=categories.length-1;i>=0;i--){if(categories[i].customId)categories.splice(i,1)}
@@ -2889,7 +2959,7 @@ async function syncAdminCategoryManifestV134(reason){
     }
     return true;
   }catch(e){
-    console.warn("BETA134 admin category manifest",reason,e);
+    console.warn("BETA135 admin category manifest",reason,e);
     return false;
   }finally{
     adminCategoryManifestBusyV134=false;
@@ -2960,7 +3030,7 @@ async function forceCloudCategoryMergeV133(reason){
     }catch(e){}
     return true;
   }catch(e){
-    console.warn("BETA134 category cloud merge",reason,e);
+    console.warn("BETA135 category cloud merge",reason,e);
     return false;
   }finally{
     categoryCloudMergeBusyV133=false;
@@ -3044,7 +3114,7 @@ async function bootstrapCanonicalAdminBaseV131(reason){
     }
     return false;
   }catch(e){
-    console.warn("BETA134 canonical bootstrap",reason,e);
+    console.warn("BETA135 canonical bootstrap",reason,e);
     return false;
   }finally{
     canonicalBootstrapBusyV131=false;
@@ -3062,7 +3132,7 @@ async function refreshAdminBaseOnNavigationV130(reason){
   try{
     await adminBasePull(true);
   }catch(e){
-    console.warn("BETA134 navigation refresh", reason, e);
+    console.warn("BETA135 navigation refresh", reason, e);
   }finally{
     adminNavRefreshBusyV130=false;
   }
@@ -3159,7 +3229,7 @@ async function materializeAdminRemoteImagesV128(base){
 }
 async function adminBasePush(){
   if(!canonicalBootstrapDoneV131){
-    console.warn("BETA134: envoi admin_base différé jusqu'au chargement canonique du cloud.");
+    console.warn("BETA135: envoi admin_base différé jusqu'au chargement canonique du cloud.");
     await bootstrapCanonicalAdminBaseV131("before-push");
     if(!canonicalBootstrapDoneV131) return false;
   }
@@ -3203,7 +3273,7 @@ async function adminBasePull(showStatus=false){
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
 
     const remoteDataRaw=r.data.data||{};
-    // BETA134: keep an untouched canonical copy. Rendering gets a separate materialized copy.
+    // BETA135: keep an untouched canonical copy. Rendering gets a separate materialized copy.
     adminBaseRemoteCanonicalV129=cloneV129(remoteDataRaw);
     const remoteData=await materializeAdminBaseV129(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
@@ -3243,7 +3313,7 @@ async function adminBasePull(showStatus=false){
       requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
     }
 
-    // BETA134: authenticated desktop can heal legacy cloud/local image refs
+    // BETA135: authenticated desktop can heal legacy cloud/local image refs
     // into portable signed HTTPS URLs for every other device.
     setTimeout(()=>migrateCurrentAdminImagesV125(),150);
 
@@ -3269,7 +3339,7 @@ function startAdminBaseCloud(){
   setTimeout(adminBasePull,300);
   setTimeout(adminBasePull,1800);
   // BETA123: background sync stays active but no longer hammers the UI.
-  /* BETA134: synchro périodique supprimée; rafraîchissement déclenché par navigation */
+  /* BETA135: synchro périodique supprimée; rafraîchissement déclenché par navigation */
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});
   window.addEventListener("focus",()=>adminBasePull());
 }
@@ -3803,7 +3873,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA134: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA135: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -3928,7 +3998,7 @@ async function migrateCurrentAdminImagesV125(){
 
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
-  // BETA134: keep local copy in IndexedDB (no localStorage quota issue).
+  // BETA135: keep local copy in IndexedDB (no localStorage quota issue).
   // adminBasePush serializes the image bytes into the remote admin_base payload.
   return await saveLocalAdminImage(dataUrlToBlob(dataUrl));
 }
@@ -4620,5 +4690,45 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 })();
 </script>
 
-<div id="beta134-marker" style="display:none">beta134-admin-category-manifest</div>
+<div id="beta135-marker" style="display:none">beta135-admin-category-manifest</div>
+
+<script>
+/* ===== BETA 135 — vraie source des catégories personnalisées ===== */
+(function(){
+  async function syncRealCustomCatsV135(reason){
+    try{
+      // Publish if this device already has categories (Mac/iPhone).
+      if(typeof readCustomCats==="function" && readCustomCats().length){
+        await pushGlobalCustomCatsV135();
+      }
+      // Then always pull the global list into the active profile (tablet included).
+      await pullGlobalCustomCatsV135();
+    }catch(e){console.warn("BETA135 sync",reason,e)}
+  }
+  function start135(){
+    setTimeout(()=>syncRealCustomCatsV135("startup-1"),700);
+    setTimeout(()=>syncRealCustomCatsV135("startup-2"),2200);
+    setTimeout(()=>syncRealCustomCatsV135("startup-3"),5000);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start135,{once:true});
+  else start135();
+
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible")setTimeout(()=>syncRealCustomCatsV135("visible"),250);
+  });
+  window.addEventListener("focus",()=>setTimeout(()=>syncRealCustomCatsV135("focus"),250));
+
+  // User/profile switch: copy the global category structure into the newly active profile.
+  document.addEventListener("click",e=>{
+    const n=e.target&&e.target.closest&&e.target.closest("button,[data-profile],[data-user],.profile-card");
+    if(!n)return;
+    const t=((n.textContent||"")+" "+(n.className||"")).toLowerCase();
+    if(/profil|profile|utilisateur|changer d.utilisateur|utiliser/.test(t)){
+      setTimeout(()=>pullGlobalCustomCatsV135(),350);
+    }
+  },true);
+})();
+</script>
+
+<div id="beta135-marker" style="display:none">beta135-real-custom-cats-sync</div>
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 156</title>
+<title>Ma CAA v2.0 bêta 157</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 156</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 157</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5592,7 +5592,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let old=document.getElementById("diag153");if(old)old.remove();
     const ov=document.createElement("div");ov.id="diag153";ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:15px;overflow:auto";
     const box=document.createElement("div");box.style.cssText="max-width:720px;margin:auto;background:white;border-radius:16px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 156</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 157</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");box.appendChild(pre);
     const refresh=document.createElement("button");refresh.textContent="Actualiser";refresh.style.cssText="padding:10px 16px;margin-right:8px";refresh.onclick=()=>{ov.remove();show153()};box.appendChild(refresh);
     const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:10px 16px";close.onclick=()=>ov.remove();box.appendChild(close);
@@ -5601,7 +5601,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 156";b.onclick=show153;
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 157";b.onclick=show153;
     b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
@@ -5610,7 +5610,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   setTimeout(install,1000);
 })();
 </script>
-<div id="beta156-marker" style="display:none">beta156-local-first-stabilisation</div>
+<div id="beta157-marker" style="display:none">beta157-local-first-stabilisation</div>
 
 
 <script>
@@ -5624,7 +5624,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   const install154=()=>{
     const d=document.getElementById("diag153btn");
     if(d){
-      d.textContent="☁️ Diagnostic 156";
+      d.textContent="☁️ Diagnostic 157";
       d.style.left="50%";
       d.style.right="auto";
       d.style.bottom="88px";
@@ -5704,7 +5704,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Keep diagnostic away from navigation.
   function diag155(){
     const d=document.getElementById("diag153btn");
-    if(d){d.textContent="☁️ Diagnostic 156";d.style.bottom="88px";d.style.zIndex="80";}
+    if(d){d.textContent="☁️ Diagnostic 157";d.style.bottom="88px";d.style.zIndex="80";}
   }
   setTimeout(diag155,100);
   setTimeout(diag155,1000);
@@ -5800,7 +5800,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch";
     const box=document.createElement("div");
     box.style.cssText="max-width:760px;margin:8vh auto 120px;background:#fff;border-radius:18px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 156</h2><p>Lecture seule : comparaison directe de la base Administrateur locale et de Supabase.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 157</h2><p>Lecture seule : comparaison directe de la base Administrateur locale et de Supabase.</p>";
     const pre=document.createElement("pre");
     pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";
     pre.textContent=lines.join("\n");
@@ -5821,7 +5821,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let b=document.getElementById("diag156btn");
     if(!b){
       b=document.createElement("button");
-      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 156";
+      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 157";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -5835,6 +5835,113 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   else install156();
   setTimeout(install156,400);
   setTimeout(install156,1600);
+})();
+</script>
+
+
+<script>
+/* ===== BETA 157 — diagnostic stockage réel Admin =====
+   Lecture seule. Aucun changement de sauvegarde / PUSH / PULL.
+   Cherche où la base Administrateur est réellement stockée localement
+   et quelles clés Supabase existent autour d'admin_base.
+*/
+(function(){
+  function hash157(v){
+    let s="";try{s=JSON.stringify(v)??String(v??"")}catch(e){s=String(v??"")}
+    let h=2166136261;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}
+    return (h>>>0).toString(16).padStart(8,"0")+" / "+s.length+" car.";
+  }
+  function parseMaybe(v){
+    if(v==null)return null;
+    if(typeof v!=="string")return v;
+    try{return JSON.parse(v)}catch(e){return v}
+  }
+  function scanLocal157(){
+    const hits=[];
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i)||"";
+        const raw=localStorage.getItem(k);
+        if(/admin|caa|base|sync/i.test(k)){
+          let parsed=parseMaybe(raw);
+          let score=0;
+          const s=typeof raw==="string"?raw:"";
+          if(/admin_base|addedItems|addedCats|subcategories|hiddenItems|deletedItems|catEdits|quickChoices|adminOrder/i.test(s))score+=3;
+          if(/admin/i.test(k))score+=2;
+          if(/base/i.test(k))score+=1;
+          hits.push({key:k,score,chars:s.length,hash:hash157(parsed),sample:s.slice(0,140)});
+        }
+      }
+    }catch(e){}
+    hits.sort((a,b)=>b.score-a.score||b.chars-a.chars);
+    return hits.slice(0,20);
+  }
+  async function scanCloud157(){
+    if(typeof cloudClient==="undefined"||!cloudClient)return {error:"cloudClient indisponible",rows:[]};
+    try{
+      const r=await cloudClient.from("app_config").select("key,data,updated_at").limit(100);
+      if(r.error)throw r.error;
+      const rows=(r.data||[]).filter(x=>/admin|categor|profile/i.test(String(x.key||"")));
+      return {rows};
+    }catch(e){return {error:String(e),rows:[]}}
+  }
+  async function open157(ev){
+    if(ev){try{ev.preventDefault();ev.stopPropagation()}catch(e){}}
+    const locals=scanLocal157();
+    const cloud=await scanCloud157();
+    let profile="inconnu";
+    try{
+      if(typeof cloudUser==="function"){
+        const u=await cloudUser(); profile=(u&&(u.email||u.id))||"aucun utilisateur cloud";
+      }
+    }catch(e){}
+    const lines=[
+      "PROFIL UTILISÉ : "+profile,
+      "",
+      "=== STOCKAGE LOCAL ==="
+    ];
+    if(!locals.length)lines.push("Aucune clé locale candidate trouvée.");
+    else locals.forEach((x,i)=>{
+      lines.push((i+1)+". "+x.key+" | score "+x.score+" | "+x.chars+" car. | "+x.hash);
+    });
+    lines.push("","=== APP_CONFIG SUPABASE ===");
+    if(cloud.error)lines.push("ERREUR : "+cloud.error);
+    if(!cloud.rows.length)lines.push("Aucune clé admin/catégorie/profil trouvée.");
+    else cloud.rows.forEach((r,i)=>{
+      lines.push((i+1)+". "+r.key+" | "+(r.updated_at||"sans date")+" | "+hash157(r.data));
+    });
+
+    lines.push("","=== FONCTIONS RUNTIME ===");
+    const runtimeNames=["readAdminBase","writeAdminBase","adminBasePush","adminBasePull","syncAdminCategoryManifestV134","pullAdminBase","pushAdminBase"];
+    runtimeNames.forEach(n=>lines.push(n+" : "+(typeof window[n])));
+
+    let old=document.getElementById("diag157");if(old)old.remove();
+    const ov=document.createElement("div");ov.id="diag157";
+    ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch";
+    const box=document.createElement("div");box.style.cssText="max-width:860px;margin:5vh auto 120px;background:#fff;border-radius:18px;padding:18px;color:#172033;font-family:system-ui";
+    box.innerHTML="<h2>☁️ Diagnostic stockage — bêta 157</h2><p>Lecture seule : recherche des vraies clés locales et cloud utilisées par Ma CAA.</p>";
+    const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");
+    box.appendChild(pre);
+    const copy=document.createElement("button");copy.textContent="Copier";copy.style.cssText="padding:11px 16px;margin-right:8px";
+    copy.onclick=async()=>{try{await navigator.clipboard.writeText(pre.textContent);copy.textContent="Copié ✓"}catch(e){}};
+    const refresh=document.createElement("button");refresh.textContent="Actualiser";refresh.style.cssText="padding:11px 16px;margin-right:8px";refresh.onclick=()=>{ov.remove();open157()};
+    const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:11px 16px";close.onclick=()=>ov.remove();
+    box.append(copy,refresh,close);ov.appendChild(box);document.body.appendChild(ov);
+  }
+  function install(){
+    document.querySelectorAll("#diag156btn,#diag153btn,#diag152btn").forEach(b=>b.remove());
+    let b=document.getElementById("diag157btn");
+    if(!b){
+      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 157";
+      b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
+      document.body.appendChild(b);
+    }
+    b.onclick=open157;b.onpointerup=open157;b.ontouchend=open157;
+  }
+  window.showAdminCloudDiag157=open157;
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true}); else install();
+  setTimeout(install,400);setTimeout(install,1600);
 })();
 </script>
 

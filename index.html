@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 121</title>
+<title>Ma CAA v2.0 bêta 122</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -181,6 +181,30 @@ function adminReturnToPictogramsStable(scrollY){
   });
 }
 </script>
+
+<style id="beta122-ecole-stability">
+#grid .pic{
+  contain:layout paint;
+}
+#grid .pic .pic-media{
+  width:96px;
+  height:96px;
+  min-width:96px;
+  min-height:96px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#fff;
+}
+#grid .pic .pic-media img{
+  width:92px;
+  height:92px;
+  object-fit:contain;
+  background:#fff;
+  display:block;
+}
+</style>
+
 </head>
 <body>
 <div class="app">
@@ -190,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 121</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 122</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1273,8 +1297,6 @@ async function hydrateAllCloudPictures(){
 }
 document.addEventListener("DOMContentLoaded",()=>{
   hydrateAllCloudPictures();
-  const obs=new MutationObserver(()=>hydrateAllCloudPictures());
-  obs.observe(document.body,{childList:true,subtree:true});
 });
 
 let autoPushTimer=null,autoPushBusy=false;
@@ -1718,7 +1740,10 @@ function createNormalCard(x,box){
     else if(submenuFor(x).length||expandSubmenuEntries(x).length){ev.stopPropagation();openSubmenuBubble(x,b)}
     else closeSubmenuBubble();
   };box.appendChild(b);
-  if(b.querySelector("img[data-cloud-path],img[data-local-image-key]"))setTimeout(hydrateAllCloudPictures,0);
+  if(b.querySelector("img[data-cloud-path],img[data-local-image-key]")){
+    const cc=categories[current]?.name||"";
+    if(cc!=="École")setTimeout(hydrateAllCloudPictures,0);
+  }
 }
 let parentLazyView=null;
 function renderPersonalize(box){
@@ -2533,7 +2558,17 @@ function expandSubmenuEntries(parent){
  });
  return out
 }
-function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdultBadge();renderProfileBar();setTimeout(hydrateAllCloudPictures,0);setTimeout(hydrateAllCloudPictures,250);
+function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdultBadge();renderProfileBar();
+  const __caaBeforeScroll=window.scrollY||0;
+  const __caaCurrentCat=categories[current]?.name||"";
+  if(__caaCurrentCat==="École"){
+    setTimeout(async()=>{
+      try{await hydrateAllCloudPictures()}catch(e){}
+      requestAnimationFrame(()=>window.scrollTo(0,__caaBeforeScroll));
+    },60);
+  }else{
+    setTimeout(hydrateAllCloudPictures,0);
+  }
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
   if(c.name==="Mode parents"){
@@ -2555,7 +2590,7 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
   items.forEach(x=>createNormalCard(x,box));
 }
 function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
-function render(){const c=categories[current],cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};el("title").textContent=cd.name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase();setTimeout(hydrateAllCloudPictures,0)}
+function render(){const c=categories[current],cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};el("title").textContent=cd.name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase();if(c.name!=="École")setTimeout(hydrateAllCloudPictures,0)}
 starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});
 el("search").oninput=renderGrid;el("speak").onclick=el("speak2").onclick=speak;el("clear").onclick=el("clear2").onclick=()=>{phrase=[];renderPhrase()};el("undo").onclick=()=>{phrase.pop();renderPhrase()};el("cats").onclick=()=>el("drawer").classList.add("open");el("close").onclick=()=>el("drawer").classList.remove("open");
 render();
@@ -3799,65 +3834,5 @@ function installAdminButton(){
 })();
 </script>
 
-
-<style id="beta121-stable-pictos">
-.pic-media{width:96px!important;height:96px!important;min-width:96px!important;min-height:96px!important;background:#fff!important}
-.pic-media img,.admin-picto-card .ap-vis img{
-  width:86px!important;height:86px!important;max-width:86px!important;max-height:86px!important;
-  object-fit:contain!important;background:#fff!important;display:block!important;
-}
-</style>
-<script>
-(function(){
-  const done=new WeakSet();
-
-  function repairEdgeBlackBackground(img){
-    if(!img || done.has(img) || !img.complete || !img.naturalWidth)return;
-    done.add(img);
-    try{
-      const w=img.naturalWidth,h=img.naturalHeight;
-      if(w<2||h<2)return;
-      const c=document.createElement("canvas");c.width=w;c.height=h;
-      const ctx=c.getContext("2d",{willReadFrequently:true});
-      ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
-      const im=ctx.getImageData(0,0,w,h),d=im.data;
-      const seen=new Uint8Array(w*h),q=[],push=(x,y)=>{
-        if(x<0||y<0||x>=w||y>=h)return;
-        const k=y*w+x;if(seen[k])return;
-        const i=k*4,r=d[i],g=d[i+1],b=d[i+2];
-        // dark/near-black only; intended to catch the JPEG background produced by older imports
-        if(r<=65&&g<=65&&b<=65){seen[k]=1;q.push(k)}
-      };
-      for(let x=0;x<w;x++){push(x,0);push(x,h-1)}
-      for(let y=0;y<h;y++){push(0,y);push(w-1,y)}
-      let n=0;
-      for(let p=0;p<q.length;p++){
-        const k=q[p],x=k%w,y=(k/w)|0,i=k*4;
-        d[i]=255;d[i+1]=255;d[i+2]=255;d[i+3]=255;n++;
-        push(x-1,y);push(x+1,y);push(x,y-1);push(x,y+1);
-      }
-      // Only replace if a meaningful edge-connected dark background existed.
-      if(n > w*h*0.06){
-        ctx.putImageData(im,0,0);
-        img.src=c.toDataURL("image/png");
-      }
-    }catch(e){}
-  }
-
-  function repairAll(){
-    document.querySelectorAll(".pic-media img,.admin-picto-card .ap-vis img").forEach(img=>{
-      img.style.background="#fff";
-      if(img.complete&&img.naturalWidth)repairEdgeBlackBackground(img);
-      else img.addEventListener("load",()=>repairEdgeBlackBackground(img),{once:true});
-    });
-  }
-
-  // Fixed-size media boxes prevent the lower grid from jumping while images arrive.
-  window.addEventListener("pageshow",()=>setTimeout(repairAll,180));
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(repairAll,180)});
-  setTimeout(repairAll,300);
-  window.repairArasaacBlackV121=repairAll;
-})();
-</script>
 
 </body></html>

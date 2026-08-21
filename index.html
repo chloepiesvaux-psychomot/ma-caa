@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 128</title>
+<title>Ma CAA v2.0 bêta 129</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 128</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 129</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1266,7 +1266,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error){
-            // BETA128: the synchronized profile stores a portable HTTPS URL.
+            // BETA129: the synchronized profile stores a portable HTTPS URL.
             // The iPhone therefore does not need a Supabase session to render it.
             try{
               const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
@@ -2787,6 +2787,18 @@ function writeAdminBase(next){
 }
 
 let adminBaseCloudBusy=false,adminBasePushTimer=null,adminBaseCloudUpdated=null,adminBaseLocalDirty=false;
+
+let adminBaseRemoteCanonicalV129=null;
+function cloneV129(v){try{return JSON.parse(JSON.stringify(v))}catch(e){return v}}
+async function canonicalizeAdminBaseV129(base){
+  // Build the cloud copy without mutating the local/rendering copy.
+  return await adminBaseForRemoteV128(cloneV129(base||{}));
+}
+async function materializeAdminBaseV129(remote){
+  // Build the local/rendering copy without mutating the canonical cloud copy.
+  return await materializeAdminRemoteImagesV128(cloneV129(remote||{}));
+}
+
 const ADMIN_LAST_SYNC_KEY="ma-caa-admin-last-sync";
 const ADMIN_BASE_UPDATED_KEY="ma-caa-admin-base-updated";
 function formatFrDateTime(raw){
@@ -2876,20 +2888,19 @@ async function adminBasePush(){
   adminBaseCloudBusy=true;
   try{
     const localBase=readAdminBase();
-    // BETA128: remote copy contains the actual image bytes for local IndexedDB images.
-    // This removes any dependency on Supabase Storage permissions on the iPhone.
-    const remoteBase=await adminBaseForRemoteV128(localBase);
+    const remoteBase=await canonicalizeAdminBaseV129(localBase);
     const r=await cloudClient.from("app_config").upsert(
       {key:"admin_base",data:remoteBase,updated_at:new Date().toISOString()},
       {onConflict:"key"}
     ).select("updated_at").single();
     if(r.error)throw r.error;
+    adminBaseRemoteCanonicalV129=cloneV129(remoteBase);
     adminBaseCloudUpdated=r.data?.updated_at||null;
     markAdminBaseSynced(adminBaseCloudUpdated);
     adminBaseLocalDirty=false;
     return true;
   }catch(e){
-    console.error("Admin base push",e);
+    console.error("Admin base push v129",e);
     return false;
   }finally{adminBaseCloudBusy=false}
 }
@@ -2907,7 +2918,9 @@ async function adminBasePull(showStatus=false){
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
 
     const remoteDataRaw=r.data.data||{};
-    const remoteData=await materializeAdminRemoteImagesV128(remoteDataRaw);
+    // BETA129: keep an untouched canonical copy. Rendering gets a separate materialized copy.
+    adminBaseRemoteCanonicalV129=cloneV129(remoteDataRaw);
+    const remoteData=await materializeAdminBaseV129(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
     const localRaw=localStorage.getItem(ADMIN_BASE_KEY)||"";
     const remoteRaw=JSON.stringify(remoteData);
@@ -2925,7 +2938,9 @@ async function adminBasePull(showStatus=false){
         ? activeSubcategoryByCategory[currentCatName]
         : undefined;
 
+      adminBaseLocalDirty=false;
       localStorage.setItem(ADMIN_BASE_KEY,remoteRaw);
+      adminBaseLocalDirty=false;
       ADMIN_LAST_BASE_V113=JSON.parse(remoteRaw);
 
       syncAdminCategories();
@@ -2943,7 +2958,7 @@ async function adminBasePull(showStatus=false){
       requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
     }
 
-    // BETA128: authenticated desktop can heal legacy cloud/local image refs
+    // BETA129: authenticated desktop can heal legacy cloud/local image refs
     // into portable signed HTTPS URLs for every other device.
     setTimeout(()=>migrateCurrentAdminImagesV125(),150);
 
@@ -3503,7 +3518,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA128: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA129: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -3628,7 +3643,7 @@ async function migrateCurrentAdminImagesV125(){
 
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
-  // BETA128: keep local copy in IndexedDB (no localStorage quota issue).
+  // BETA129: keep local copy in IndexedDB (no localStorage quota issue).
   // adminBasePush serializes the image bytes into the remote admin_base payload.
   return await saveLocalAdminImage(dataUrlToBlob(dataUrl));
 }
@@ -4155,6 +4170,24 @@ function installAdminButton(){
 </script>
 
 <div id="beta125-marker" style="display:none">beta125-cloud-admin-images-quickcatalog</div>
-<div id="beta128-marker" style="display:none">beta128-image-sync-build</div>
-<div id="beta128-marker" style="display:none">beta128-admin-image-portable-payload</div>
+<div id="beta129-marker" style="display:none">beta129-image-sync-build</div>
+<div id="beta129-marker" style="display:none">beta129-admin-image-portable-payload</div>
+
+<script>
+/* ===== BETA 129 — stabilité visuelle des pictogrammes ARASAAC ===== */
+(function(){
+  const previous=new WeakMap();
+  const obs=new MutationObserver(()=>{
+    document.querySelectorAll("img").forEach(img=>{
+      if(img.complete && img.naturalWidth>0) previous.set(img,img.src);
+      img.addEventListener("error",()=>{
+        const old=previous.get(img);
+        if(old && img.src!==old) img.src=old;
+      },{once:true});
+    });
+  });
+  obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["src"]});
+})();
+</script>
+<div id="beta129-marker" style="display:none">beta129-image-persistence-canonical</div>
 </body></html>

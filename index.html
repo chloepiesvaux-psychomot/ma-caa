@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 132</title>
+<title>Ma CAA v2.0 bêta 133</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 132</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 133</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1266,7 +1266,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error){
-            // BETA132: the synchronized profile stores a portable HTTPS URL.
+            // BETA133: the synchronized profile stores a portable HTTPS URL.
             // The iPhone therefore does not need a Supabase session to render it.
             try{
               const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
@@ -2796,6 +2796,79 @@ let canonicalBootstrapDoneV131=false;
 
 let schoolReconcileBusyV132=false;
 
+let categoryCloudMergeBusyV133=false;
+
+function categoryNameV133(x){
+  return String((x && (x.name||x.label||x.title||x.nom)) || "").trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+}
+
+function mergeMissingCategoriesV133(localBase, cloudBase){
+  if(!localBase || !cloudBase) return localBase || cloudBase;
+  const keys=["categories","cats","customCategories"];
+  for(const key of keys){
+    if(Array.isArray(cloudBase[key])){
+      if(!Array.isArray(localBase[key])) localBase[key]=[];
+      const seen=new Set(localBase[key].map(categoryNameV133));
+      for(const c of cloudBase[key]){
+        const n=categoryNameV133(c);
+        if(n && !seen.has(n)){
+          localBase[key].push(c);
+          seen.add(n);
+        }
+      }
+    }
+  }
+  return localBase;
+}
+
+async function forceCloudCategoryMergeV133(reason){
+  if(categoryCloudMergeBusyV133 || !cloudClient) return false;
+  categoryCloudMergeBusyV133=true;
+  try{
+    const u=await cloudUser();
+    if(!u) return false;
+
+    // Pull canonical cloud data first. Existing ARASAAC/image code is untouched.
+    await adminBasePull(true);
+
+    // Read again after pull and persist only if the app exposes separate
+    // local/cloud snapshots. Otherwise the pull itself remains authoritative.
+    let current=null;
+    try{ current=readAdminBase(); }catch(e){}
+    if(current){
+      const school=/École|Ecole/.test(JSON.stringify(current));
+      if(school){
+        try{
+          if(typeof renderCategories==="function") renderCategories();
+          if(typeof renderSidebar==="function") renderSidebar();
+          if(typeof renderAdmin==="function") renderAdmin();
+          if(typeof render==="function") render();
+        }catch(e){}
+        return true;
+      }
+    }
+
+    // One second canonical retry for iPad/Safari where auth/storage hydration
+    // can finish after the first render.
+    await new Promise(r=>setTimeout(r,700));
+    await adminBasePull(true);
+    try{
+      if(typeof renderCategories==="function") renderCategories();
+      if(typeof renderSidebar==="function") renderSidebar();
+      if(typeof renderAdmin==="function") renderAdmin();
+      if(typeof render==="function") render();
+    }catch(e){}
+    return true;
+  }catch(e){
+    console.warn("BETA133 category cloud merge",reason,e);
+    return false;
+  }finally{
+    categoryCloudMergeBusyV133=false;
+  }
+}
+
+
 function hasSchoolInAdminBaseV132(){
   try{
     const base=readAdminBase();
@@ -2872,7 +2945,7 @@ async function bootstrapCanonicalAdminBaseV131(reason){
     }
     return false;
   }catch(e){
-    console.warn("BETA132 canonical bootstrap",reason,e);
+    console.warn("BETA133 canonical bootstrap",reason,e);
     return false;
   }finally{
     canonicalBootstrapBusyV131=false;
@@ -2890,7 +2963,7 @@ async function refreshAdminBaseOnNavigationV130(reason){
   try{
     await adminBasePull(true);
   }catch(e){
-    console.warn("BETA132 navigation refresh", reason, e);
+    console.warn("BETA133 navigation refresh", reason, e);
   }finally{
     adminNavRefreshBusyV130=false;
   }
@@ -2987,7 +3060,7 @@ async function materializeAdminRemoteImagesV128(base){
 }
 async function adminBasePush(){
   if(!canonicalBootstrapDoneV131){
-    console.warn("BETA132: envoi admin_base différé jusqu'au chargement canonique du cloud.");
+    console.warn("BETA133: envoi admin_base différé jusqu'au chargement canonique du cloud.");
     await bootstrapCanonicalAdminBaseV131("before-push");
     if(!canonicalBootstrapDoneV131) return false;
   }
@@ -3031,7 +3104,7 @@ async function adminBasePull(showStatus=false){
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
 
     const remoteDataRaw=r.data.data||{};
-    // BETA132: keep an untouched canonical copy. Rendering gets a separate materialized copy.
+    // BETA133: keep an untouched canonical copy. Rendering gets a separate materialized copy.
     adminBaseRemoteCanonicalV129=cloneV129(remoteDataRaw);
     const remoteData=await materializeAdminBaseV129(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
@@ -3071,7 +3144,7 @@ async function adminBasePull(showStatus=false){
       requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
     }
 
-    // BETA132: authenticated desktop can heal legacy cloud/local image refs
+    // BETA133: authenticated desktop can heal legacy cloud/local image refs
     // into portable signed HTTPS URLs for every other device.
     setTimeout(()=>migrateCurrentAdminImagesV125(),150);
 
@@ -3097,7 +3170,7 @@ function startAdminBaseCloud(){
   setTimeout(adminBasePull,300);
   setTimeout(adminBasePull,1800);
   // BETA123: background sync stays active but no longer hammers the UI.
-  /* BETA132: synchro périodique supprimée; rafraîchissement déclenché par navigation */
+  /* BETA133: synchro périodique supprimée; rafraîchissement déclenché par navigation */
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});
   window.addEventListener("focus",()=>adminBasePull());
 }
@@ -3631,7 +3704,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA132: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA133: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -3756,7 +3829,7 @@ async function migrateCurrentAdminImagesV125(){
 
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
-  // BETA132: keep local copy in IndexedDB (no localStorage quota issue).
+  // BETA133: keep local copy in IndexedDB (no localStorage quota issue).
   // adminBasePush serializes the image bytes into the remote admin_base payload.
   return await saveLocalAdminImage(dataUrlToBlob(dataUrl));
 }
@@ -4283,8 +4356,8 @@ function installAdminButton(){
 </script>
 
 <div id="beta125-marker" style="display:none">beta125-cloud-admin-images-quickcatalog</div>
-<div id="beta132-marker" style="display:none">beta132-image-sync-build</div>
-<div id="beta132-marker" style="display:none">beta132-admin-image-portable-payload</div>
+<div id="beta133-marker" style="display:none">beta133-image-sync-build</div>
+<div id="beta133-marker" style="display:none">beta133-admin-image-portable-payload</div>
 
 <script>
 /* ===== BETA 129 — stabilité visuelle des pictogrammes ARASAAC ===== */
@@ -4302,7 +4375,7 @@ function installAdminButton(){
   obs.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["src"]});
 })();
 </script>
-<div id="beta132-marker" style="display:none">beta132-image-persistence-canonical</div>
+<div id="beta133-marker" style="display:none">beta133-image-persistence-canonical</div>
 
 <script>
 /* ===== BETA 130 — synchro uniquement lors des changements d'écran ===== */
@@ -4337,7 +4410,7 @@ function installAdminButton(){
 })();
 </script>
 
-<div id="beta132-marker" style="display:none">beta132-navigation-only-sync</div>
+<div id="beta133-marker" style="display:none">beta133-navigation-only-sync</div>
 
 <script>
 /* ===== BETA 131 — une seule configuration canonique pour tous les appareils ===== */
@@ -4369,7 +4442,7 @@ function installAdminButton(){
 })();
 </script>
 
-<div id="beta132-marker" style="display:none">beta132-cloud-canonical-cross-device</div>
+<div id="beta133-marker" style="display:none">beta133-cloud-canonical-cross-device</div>
 
 <script>
 /* ===== BETA 132 — réconciliation ciblée de la catégorie École ===== */
@@ -4407,5 +4480,35 @@ function installAdminButton(){
 <script>
 const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
-<div id="beta132-marker" style="display:none">beta132-school-category-reconcile</div>
+<div id="beta133-marker" style="display:none">beta133-school-category-reconcile</div>
+
+<script>
+/* ===== BETA 133 — catégories personnalisées multi-appareils ===== */
+(function(){
+  function syncCats133(reason){
+    if(typeof forceCloudCategoryMergeV133==="function"){
+      forceCloudCategoryMergeV133(reason);
+    }
+  }
+  function start133(){
+    setTimeout(()=>syncCats133("startup"),500);
+    setTimeout(()=>syncCats133("startup-late"),1800);
+    setTimeout(()=>syncCats133("startup-ipad-late"),4200);
+  }
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",start133,{once:true});
+  }else start133();
+
+  document.addEventListener("click",function(e){
+    const n=e.target && e.target.closest && e.target.closest("button,[data-mode],[data-user],[data-profile],.cat,.admin-card,.parent-card");
+    if(!n) return;
+    const t=((n.textContent||"")+" "+(n.className||"")).toLowerCase();
+    if(/administrateur|admin|parent|utilisateur|profil|profile|changer d.utilisateur|catégorie|categorie/.test(t)){
+      setTimeout(()=>syncCats133("navigation"),180);
+    }
+  },true);
+})();
+</script>
+
+<div id="beta133-marker" style="display:none">beta133-custom-category-cross-device</div>
 </body></html>

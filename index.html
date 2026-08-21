@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 155</title>
+<title>Ma CAA v2.0 bêta 156</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 155</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 156</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5592,7 +5592,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let old=document.getElementById("diag153");if(old)old.remove();
     const ov=document.createElement("div");ov.id="diag153";ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:15px;overflow:auto";
     const box=document.createElement("div");box.style.cssText="max-width:720px;margin:auto;background:white;border-radius:16px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 155</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 156</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");box.appendChild(pre);
     const refresh=document.createElement("button");refresh.textContent="Actualiser";refresh.style.cssText="padding:10px 16px;margin-right:8px";refresh.onclick=()=>{ov.remove();show153()};box.appendChild(refresh);
     const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:10px 16px";close.onclick=()=>ov.remove();box.appendChild(close);
@@ -5601,7 +5601,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 155";b.onclick=show153;
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 156";b.onclick=show153;
     b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
@@ -5610,7 +5610,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   setTimeout(install,1000);
 })();
 </script>
-<div id="beta155-marker" style="display:none">beta155-local-first-stabilisation</div>
+<div id="beta156-marker" style="display:none">beta156-local-first-stabilisation</div>
 
 
 <script>
@@ -5624,7 +5624,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   const install154=()=>{
     const d=document.getElementById("diag153btn");
     if(d){
-      d.textContent="☁️ Diagnostic 155";
+      d.textContent="☁️ Diagnostic 156";
       d.style.left="50%";
       d.style.right="auto";
       d.style.bottom="88px";
@@ -5704,10 +5704,137 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Keep diagnostic away from navigation.
   function diag155(){
     const d=document.getElementById("diag153btn");
-    if(d){d.textContent="☁️ Diagnostic 155";d.style.bottom="88px";d.style.zIndex="80";}
+    if(d){d.textContent="☁️ Diagnostic 156";d.style.bottom="88px";d.style.zIndex="80";}
   }
   setTimeout(diag155,100);
   setTimeout(diag155,1000);
+})();
+</script>
+
+
+<script>
+/* ===== BETA 156 — diagnostic fiable uniquement =====
+   Aucun changement volontaire de la logique de sauvegarde / PUSH / PULL.
+   Objectif : rendre le diagnostic ouvrable sur iPhone/iPad/Mac et comparer
+   précisément la base locale avec la base Supabase.
+*/
+(function(){
+  function simpleHash156(value){
+    let s="";
+    try{s=JSON.stringify(value)||""}catch(e){s=String(value||"")}
+    let h=2166136261;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}
+    return (h>>>0).toString(16).padStart(8,"0")+" / "+s.length+" car.";
+  }
+
+  function localAdmin156(){
+    let raw=null, parsed=null, keyUsed="";
+    const keys=["ma-caa-admin-base","ma-caa-admin-base-v2","admin_base"];
+    for(const k of keys){
+      try{
+        const v=localStorage.getItem(k);
+        if(v){raw=v;keyUsed=k;try{parsed=JSON.parse(v)}catch(e){parsed=v};break}
+      }catch(e){}
+    }
+    if(!raw){
+      try{
+        if(typeof getAdminBase==="function"){parsed=getAdminBase();keyUsed="getAdminBase()"}
+        else if(typeof adminBase!=="undefined"){parsed=adminBase;keyUsed="adminBase"}
+      }catch(e){}
+    }
+    return {data:parsed,key:keyUsed||"non détectée",hash:simpleHash156(parsed)};
+  }
+
+  async function open156(ev){
+    if(ev){try{ev.preventDefault();ev.stopPropagation()}catch(e){}}
+    let cloud={found:false,error:"non interrogé"};
+    try{
+      if(typeof cloudClient!=="undefined" && cloudClient){
+        const r=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
+        if(r.error) throw r.error;
+        cloud=r.data?{found:true,data:r.data.data,updated_at:r.data.updated_at}:{found:false,error:"Aucune donnée admin_base"};
+      }else cloud.error="Connexion Supabase indisponible";
+    }catch(e){cloud={found:false,error:String(e)}}
+
+    const local=localAdmin156();
+    const same=cloud.found ? simpleHash156(cloud.data)===local.hash : false;
+    let profile="inconnu";
+    try{
+      if(typeof cloudUser==="function"){
+        const u=await cloudUser();
+        profile=(u&&(u.email||u.id))||"aucun utilisateur cloud";
+      }
+    }catch(e){}
+
+    const fr=v=>{
+      if(!v)return "inconnue";
+      try{return new Date(v).toLocaleString("fr-FR")}catch(e){return String(v)}
+    };
+    let localUpdated=null,lastSync=null;
+    try{
+      localUpdated=localStorage.getItem("ma-caa-admin-base-updated");
+      lastSync=localStorage.getItem("ma-caa-admin-last-sync");
+    }catch(e){}
+
+    const state=(window.__adminDiag153State||{});
+    const lines=[
+      "PROFIL UTILISÉ : "+profile,
+      "",
+      "BASE LOCALE : "+local.key,
+      "Empreinte locale : "+local.hash,
+      "Modification locale connue : "+fr(localUpdated),
+      "Dernière synchronisation appareil : "+fr(lastSync),
+      "",
+      "SUPABASE admin_base : "+(cloud.found?"DONNÉE TROUVÉE":"NON TROUVÉE"),
+      "Empreinte Supabase : "+(cloud.found?simpleHash156(cloud.data):"—"),
+      "Modification Supabase : "+(cloud.found?fr(cloud.updated_at):"—"),
+      "",
+      "COMPARAISON : "+(cloud.found?(same?"IDENTIQUES":"DIFFÉRENTES"):"IMPOSSIBLE"),
+      "",
+      "ÉTAT : "+(cloud.error||"Diagnostic effectué.")
+    ];
+
+    const old=document.getElementById("diag156"); if(old)old.remove();
+    const ov=document.createElement("div");
+    ov.id="diag156";
+    ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:14px;overflow:auto;-webkit-overflow-scrolling:touch";
+    const box=document.createElement("div");
+    box.style.cssText="max-width:760px;margin:8vh auto 120px;background:#fff;border-radius:18px;padding:18px;color:#172033;font-family:system-ui";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 156</h2><p>Lecture seule : comparaison directe de la base Administrateur locale et de Supabase.</p>";
+    const pre=document.createElement("pre");
+    pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";
+    pre.textContent=lines.join("\n");
+    box.appendChild(pre);
+    const refresh=document.createElement("button");
+    refresh.type="button"; refresh.textContent="Actualiser";
+    refresh.style.cssText="padding:11px 16px;margin-right:8px";
+    refresh.onclick=()=>{ov.remove();open156()};
+    const close=document.createElement("button");
+    close.type="button"; close.textContent="Fermer";
+    close.style.cssText="padding:11px 16px";
+    close.onclick=()=>ov.remove();
+    box.appendChild(refresh); box.appendChild(close); ov.appendChild(box); document.body.appendChild(ov);
+  }
+
+  function install156(){
+    document.querySelectorAll("#diag153btn,#diag152btn").forEach(b=>b.remove());
+    let b=document.getElementById("diag156btn");
+    if(!b){
+      b=document.createElement("button");
+      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 156";
+      b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
+      document.body.appendChild(b);
+    }
+    b.onclick=open156;
+    b.ontouchend=open156;
+    b.onpointerup=open156;
+  }
+
+  window.showAdminCloudDiag156=open156;
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install156,{once:true});
+  else install156();
+  setTimeout(install156,400);
+  setTimeout(install156,1600);
 })();
 </script>
 

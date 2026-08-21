@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 153</title>
+<title>Ma CAA v2.0 bêta 154</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 153</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 154</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -4347,7 +4347,7 @@ function adminPermanentPictogramForm(existing){
     ev&&ev.stopPropagation();
     if(save.disabled)return;
     const oldText=save.textContent;
-    save.disabled=true;save.textContent="⏳ Enregistrement…";
+    save.disabled=true;save.textContent="⏳ Enregistrement local…";
     try{
       const l=label.value.trim();
       if(!l){alert("Indique le nom du pictogramme.");label.focus();return}
@@ -4391,27 +4391,19 @@ function adminPermanentPictogramForm(existing){
 
       writeAdminBase(base);
 
-      // BETA151: do not report success until the common admin_base has really
-      // accepted this edit. This also prevents a later pull from restoring the
-      // previous cloud value.
+      // BETA154: sauvegarde locale immédiate, interface jamais bloquée par le cloud.
+      // writeAdminBase() a déjà persisté la modification et marqué la base "dirty".
+      // La synchronisation est volontairement différée et indépendante de cette fenêtre.
       clearTimeout(adminBasePushTimer);
-      const pushed=await adminBasePush();
-      if(!pushed){
-        // BETA151: local save is authoritative. A temporary cloud/auth failure
-        // must NEVER cancel the editor save or allow an older cloud snapshot
-        // to overwrite it. Keep the base dirty and retry in the background.
-        adminBaseLocalDirty=true;
-        clearTimeout(adminBasePushTimer);
-        adminBasePushTimer=setTimeout(async function retryAdminSave147(){
-          if(!adminBaseLocalDirty)return;
-          const ok=await adminBasePush();
-          if(!ok && adminBaseLocalDirty){
-            clearTimeout(adminBasePushTimer);
-            adminBasePushTimer=setTimeout(retryAdminSave147,5000);
-          }
-        },1500);
-        console.warn("BETA151: modification conservée localement; synchronisation cloud différée.");
-      }
+      adminBaseLocalDirty=true;
+      adminBasePushTimer=setTimeout(async function retryAdminSave154(){
+        if(!adminBaseLocalDirty)return;
+        const ok=await adminBasePush();
+        if(!ok && adminBaseLocalDirty){
+          clearTimeout(adminBasePushTimer);
+          adminBasePushTimer=setTimeout(retryAdminSave154,5000);
+        }
+      },120);
 
       // BETA145: the diagnostic proved that admin_base contains the new values.
       // The apparent "reset" came from the old Admin cards remaining on screen.
@@ -5581,7 +5573,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let old=document.getElementById("diag153");if(old)old.remove();
     const ov=document.createElement("div");ov.id="diag153";ov.style.cssText="position:fixed;inset:0;background:#0008;z-index:2147483647;padding:15px;overflow:auto";
     const box=document.createElement("div");box.style.cssText="max-width:720px;margin:auto;background:white;border-radius:16px;padding:18px;color:#172033;font-family:system-ui";
-    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 153</h2><p>Diagnostic ciblé de la synchronisation Administrateur.</p>";
+    box.innerHTML="<h2>☁️ Diagnostic cloud — bêta 154</h2><p>Diagnostic ciblé de la synchronisation Administrateur. La sauvegarde locale reste prioritaire.</p>";
     const pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-word;background:#f5f7fa;padding:12px;border-radius:10px;font-size:13px";pre.textContent=lines.join("\n");box.appendChild(pre);
     const refresh=document.createElement("button");refresh.textContent="Actualiser";refresh.style.cssText="padding:10px 16px;margin-right:8px";refresh.onclick=()=>{ov.remove();show153()};box.appendChild(refresh);
     const close=document.createElement("button");close.textContent="Fermer";close.style.cssText="padding:10px 16px";close.onclick=()=>ov.remove();box.appendChild(close);
@@ -5590,8 +5582,8 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic cloud 153";b.onclick=show153;
-    b.style.cssText="position:fixed;right:12px;bottom:12px;z-index:2147483000;padding:10px 13px;border:0;border-radius:12px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004";
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 154";b.onclick=show153;
+    b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
   window.showAdminCloudDiag153=show153;
@@ -5599,6 +5591,37 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   setTimeout(install,1000);
 })();
 </script>
-<div id="beta153-marker" style="display:none">beta153-explicit-cloud-diagnostic</div>
+<div id="beta154-marker" style="display:none">beta154-local-first-stabilisation</div>
+
+
+<script>
+/* BETA 154 — stabilisation locale d'abord
+   - les écrans de modification ne dépendent plus du temps de réponse cloud
+   - les PUSH restent en arrière-plan
+   - un PULL ne peut pas écraser une modification locale en attente
+   - le bouton diagnostic reste sous les overlays et hors des boutons Quitter/Fermer
+*/
+(function(){
+  const install154=()=>{
+    const d=document.getElementById("diag153btn");
+    if(d){
+      d.textContent="☁️ Diagnostic 154";
+      d.style.left="50%";
+      d.style.right="auto";
+      d.style.bottom="88px";
+      d.style.transform="translateX(-50%)";
+      d.style.zIndex="80";
+      d.style.maxWidth="190px";
+    }
+    document.querySelectorAll("button").forEach(b=>{
+      const t=(b.textContent||"").trim();
+      if(/Diagnostic cloud (151|152)$/.test(t)) b.style.display="none";
+    });
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install154);
+  else install154();
+  setTimeout(install154,500);
+})();
+</script>
 
 </body></html>

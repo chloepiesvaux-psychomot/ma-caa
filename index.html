@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 127</title>
+<title>Ma CAA v2.0 bêta 128</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 127</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 128</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1212,7 +1212,7 @@ function initCloud(){try{if(window.supabase){
   setTimeout(startSafeAutoPull,1200);
   setTimeout(startAdminBaseCloud,1400);
   setTimeout(startProfilesDirectorySync,1600);
-  setTimeout(migrateCurrentAdminImagesV125,3200);
+  
 }}catch(e){console.error(e)}}
 async function cloudUser(){if(!cloudClient)return null;const r=await cloudClient.auth.getUser();return r.data?.user||null}
 function profileBundle(id){
@@ -1266,7 +1266,7 @@ async function uploadProfilePhotos(userId,profileId,bundle){
           const filePath=userId+"/"+profileId+"/"+safeBase+"-"+safePath+"."+ext;
           const up=await cloudClient.storage.from("pictograms").upload(filePath,blob,{upsert:true,contentType:blob.type});
           if(!up.error){
-            // BETA127: the synchronized profile stores a portable HTTPS URL.
+            // BETA128: the synchronized profile stores a portable HTTPS URL.
             // The iPhone therefore does not need a Supabase session to render it.
             try{
               const signed=await cloudClient.storage.from("pictograms").createSignedUrl(filePath,31536000);
@@ -2808,6 +2808,64 @@ function adminBaseUpdatedLabel(){
   return updated?"Dernière modification de la base : "+formatFrDateTime(updated):"Dernière modification de la base : inconnue";
 }
 function scheduleAdminBasePush(){adminBaseLocalDirty=true;clearTimeout(adminBasePushTimer);adminBasePushTimer=setTimeout(adminBasePush,250)}
+
+/* ===== BETA 128 — transport d'images administrateur indépendant de Storage ===== */
+function blobToDataUrlV128(blob){
+  return new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(String(r.result||""));
+    r.onerror=()=>reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+async function adminBaseForRemoteV128(base){
+  const out=JSON.parse(JSON.stringify(base||{}));
+  const cache=new Map();
+  async function convert(v){
+    if(v&&typeof v==="object"&&v.__local_image===true&&v.key){
+      if(cache.has(v.key))return cache.get(v.key);
+      const blob=await getLocalAdminImageBlob(v.key);
+      if(!blob)return v;
+      const data=await blobToDataUrlV128(blob);
+      cache.set(v.key,data);
+      return data;
+    }
+    return v;
+  }
+  out.items=out.items||{};
+  for(const item of Object.values(out.items))if(item?.image)item.image=await convert(item.image);
+  out.addedItems=Array.isArray(out.addedItems)?out.addedItems:[];
+  for(const item of out.addedItems)if(item?.image)item.image=await convert(item.image);
+  out.quickChoices=out.quickChoices||{};
+  for(const list of Object.values(out.quickChoices))if(Array.isArray(list))for(const q of list)if(q?.image)q.image=await convert(q.image);
+  out.submenus=out.submenus||{};
+  for(const list of Object.values(out.submenus))if(Array.isArray(list))for(const q of list)if(q?.image)q.image=await convert(q.image);
+  return out;
+}
+async function materializeAdminRemoteImagesV128(base){
+  const out=JSON.parse(JSON.stringify(base||{}));
+  const cache=new Map();
+  async function convert(v){
+    if(typeof v==="string"&&v.startsWith("data:image/")){
+      if(cache.has(v))return cache.get(v);
+      try{
+        const ref=await saveLocalAdminImage(dataUrlToBlob(v));
+        cache.set(v,ref);
+        return ref;
+      }catch(e){console.error("Matérialisation image admin v128",e);return v}
+    }
+    return v;
+  }
+  out.items=out.items||{};
+  for(const item of Object.values(out.items))if(item?.image)item.image=await convert(item.image);
+  out.addedItems=Array.isArray(out.addedItems)?out.addedItems:[];
+  for(const item of out.addedItems)if(item?.image)item.image=await convert(item.image);
+  out.quickChoices=out.quickChoices||{};
+  for(const list of Object.values(out.quickChoices))if(Array.isArray(list))for(const q of list)if(q?.image)q.image=await convert(q.image);
+  out.submenus=out.submenus||{};
+  for(const list of Object.values(out.submenus))if(Array.isArray(list))for(const q of list)if(q?.image)q.image=await convert(q.image);
+  return out;
+}
 async function adminBasePush(){
   if(adminBaseCloudBusy||!cloudClient)return false;
   const u=await cloudUser();
@@ -2817,18 +2875,12 @@ async function adminBasePush(){
   }
   adminBaseCloudBusy=true;
   try{
-    // BETA125 : aucune référence IndexedDB locale ne doit être envoyée aux autres appareils.
-    // On la transforme d'abord en référence Supabase Storage partageable.
-    let base=readAdminBase();
-    const mig=await migrateAdminLocalImagesToCloudV125(base,u.id);
-    base=mig.base;
-    if(mig.changed){
-      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
-      ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base));
-    }
-
+    const localBase=readAdminBase();
+    // BETA128: remote copy contains the actual image bytes for local IndexedDB images.
+    // This removes any dependency on Supabase Storage permissions on the iPhone.
+    const remoteBase=await adminBaseForRemoteV128(localBase);
     const r=await cloudClient.from("app_config").upsert(
-      {key:"admin_base",data:base,updated_at:new Date().toISOString()},
+      {key:"admin_base",data:remoteBase,updated_at:new Date().toISOString()},
       {onConflict:"key"}
     ).select("updated_at").single();
     if(r.error)throw r.error;
@@ -2854,7 +2906,8 @@ async function adminBasePull(showStatus=false){
     if(r.error)throw r.error;
     if(!r.data){if(showStatus)setStatus("❌ Aucune base commune trouvée dans Supabase.");return false}
 
-    const remoteData=r.data.data||{};
+    const remoteDataRaw=r.data.data||{};
+    const remoteData=await materializeAdminRemoteImagesV128(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
     const localRaw=localStorage.getItem(ADMIN_BASE_KEY)||"";
     const remoteRaw=JSON.stringify(remoteData);
@@ -2890,7 +2943,7 @@ async function adminBasePull(showStatus=false){
       requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,scrollBefore)));
     }
 
-    // BETA127: authenticated desktop can heal legacy cloud/local image refs
+    // BETA128: authenticated desktop can heal legacy cloud/local image refs
     // into portable signed HTTPS URLs for every other device.
     setTimeout(()=>migrateCurrentAdminImagesV125(),150);
 
@@ -3021,7 +3074,6 @@ function addAdminCloudConnection(panel){
         if(!r.ok){state.textContent="❌ "+r.message;return}
         state.textContent="✅ Connecté";
         await adminBasePull(true);
-        await migrateCurrentAdminImagesV125();
         await pullProfilesDirectory();
         await recoverProfilesFromProfilesTable();
         await pushProfilesDirectory();
@@ -3451,7 +3503,7 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
   });
   if(up.error)throw up.error;
 
-  // BETA127: store a normal HTTPS URL so iPhone/PWA does not need
+  // BETA128: store a normal HTTPS URL so iPhone/PWA does not need
   // a Supabase login just to display the pictogram.
   try{
     const signed=await cloudClient.storage.from("pictograms").createSignedUrl(path,31536000);
@@ -3576,20 +3628,9 @@ async function migrateCurrentAdminImagesV125(){
 
 async function storeAdminPictogramImage(dataUrl){
   if(!(typeof dataUrl==="string"&&dataUrl.startsWith("data:image/")))return dataUrl;
-  const blob=dataUrlToBlob(dataUrl);
-  try{
-    if(cloudClient){
-      const u=await cloudUser();
-      if(u){
-        const ref=await uploadAdminBlobToCloudV125(blob,u.id,"new");
-        if(ref)return ref;
-      }
-    }
-  }catch(e){console.error("Admin image storage cloud",e)}
-  // Hors connexion : stockage local temporaire.
-  // Dès que le compte cloud Administrateur sera reconnecté,
-  // migrateCurrentAdminImagesV125() l'enverra automatiquement vers Supabase.
-  return await saveLocalAdminImage(blob);
+  // BETA128: keep local copy in IndexedDB (no localStorage quota issue).
+  // adminBasePush serializes the image bytes into the remote admin_base payload.
+  return await saveLocalAdminImage(dataUrlToBlob(dataUrl));
 }
 function safeOpenAdminPermanentPictogramForm(existing){
   try{adminPermanentPictogramForm(existing)}
@@ -4114,5 +4155,6 @@ function installAdminButton(){
 </script>
 
 <div id="beta125-marker" style="display:none">beta125-cloud-admin-images-quickcatalog</div>
-<div id="beta127-marker" style="display:none">beta127-image-sync-build</div>
+<div id="beta128-marker" style="display:none">beta128-image-sync-build</div>
+<div id="beta128-marker" style="display:none">beta128-admin-image-portable-payload</div>
 </body></html>

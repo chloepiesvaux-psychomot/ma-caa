@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 139</title>
+<title>Ma CAA v2.0 bêta 140</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 139</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 140</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -792,7 +792,16 @@ function pictoImageNodeV116(x,size=86){
 function displayImage(x){
   const cu=customFor(x);
 
-  // Explicit custom image wins.
+  // BETA140: for permanent/base pictograms, the Administrator image is the
+  // canonical image. Legacy per-profile custom images must not mask a newer
+  // Administrator edit (this caused J’ai chaud / J’ai froid to differ).
+  if(!isAdded(x)){
+    const ae0=adminOverrideFor(x);
+    if(ae0.image)return normalizeCloudImageRef(ae0.image);
+  }
+
+  // Legacy/profile custom image remains available only when there is no
+  // Administrator image for this permanent pictogram.
   if(cu.visualMode==="image"&&cu.image)return normalizeCloudImageRef(cu.image);
 
   // Added/admin pictogram image wins over emoji.
@@ -809,8 +818,7 @@ function displayImage(x){
 
   const ae=adminOverrideFor(x);
 
-  // STRICT PRIORITY: Administrator image > base/ARASAAC image > custom legacy image.
-  if(ae.image)return normalizeCloudImageRef(ae.image);
+  // BETA140: admin image was already checked above. Then base/ARASAAC, then legacy custom.
   if(x[4])return normalizeCloudImageRef(x[4]);
   if(cu.image)return normalizeCloudImageRef(cu.image);
   if(localPictos[x[1]])return normalizeCloudImageRef(localPictos[x[1]]);
@@ -3179,9 +3187,10 @@ function blobToDataUrlV128(blob){
     r.readAsDataURL(blob);
   });
 }
+const adminRemoteImageDataCacheV140=new Map();
 async function adminBaseForRemoteV128(base){
   const out=JSON.parse(JSON.stringify(base||{}));
-  const cache=new Map();
+  const cache=new Map(adminRemoteImageDataCacheV140);
   async function convert(v){
     if(v&&typeof v==="object"&&v.__local_image===true&&v.key){
       if(cache.has(v.key))return cache.get(v.key);
@@ -3189,6 +3198,7 @@ async function adminBaseForRemoteV128(base){
       if(!blob)return v;
       const data=await blobToDataUrlV128(blob);
       cache.set(v.key,data);
+      adminRemoteImageDataCacheV140.set(v.key,data);
       return data;
     }
     return v;
@@ -4223,6 +4233,7 @@ function adminPermanentPictogramForm(existing){
         setTimeout(hydrateAllCloudPictures,0);
       }else{
         preview.src=String(chosenAdminImage);
+        // BETA140: direct HTTPS/data images need no global hydration pass.
       }
     }else{
       preview.removeAttribute("src");preview.style.display="none";
@@ -4766,7 +4777,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let rawProfileCats="";
     try{rawProfileCats=profKey?localStorage.getItem(profKey)||"":""}catch(e){}
     return {
-      version:"139",
+      version:"140",
       profileId:(typeof activeProfileId!=="undefined"?activeProfileId:"inconnu"),
       profiledCustomCatsKey:profKey,
       customNames:names136(custom),
@@ -5225,4 +5236,5 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
 
 <div id="beta139-marker" style="display:none">beta139-school-stale-deletion-repair</div>
+<div id="beta140-marker" style="display:none">beta140-admin-save-priority-performance</div>
 </body></html>

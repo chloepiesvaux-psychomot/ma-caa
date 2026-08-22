@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 172</title>
+<title>Ma CAA v2.0 bêta 173</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 172</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 173</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -6809,6 +6809,122 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     b.onclick=run172; document.body.appendChild(b);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBtn172,{once:true});else addBtn172();
+})();
+</script>
+
+<script>
+/* ===== BETA 173 — diagnostic ciblé Base64 / contexte pictogrammes =====
+   STRICTEMENT LECTURE SEULE : n'écrit ni localStorage, ni IndexedDB, ni Supabase.
+*/
+(function(){
+  const TARGET_KEYS_173=['ma-caa-custom-v1','ma-caa-profiles-v1','ma-caa-added-v1'];
+
+  function parse173(raw){try{return JSON.parse(raw)}catch(e){return raw}}
+  function short173(v,n=90){
+    v=String(v==null?'':v).replace(/\s+/g,' ').trim();
+    return v.length>n?v.slice(0,n-1)+'…':v;
+  }
+  function objectContext173(obj){
+    if(!obj||typeof obj!=='object'||Array.isArray(obj))return '';
+    const preferred=['label','name','title','speech','text','id','category','cat','subcategory','parent','emoji','icon','visualMode'];
+    const parts=[];
+    for(const k of preferred){
+      const v=obj[k];
+      if(typeof v==='string' && v && !/^data:image\//i.test(v))parts.push(k+'='+short173(v,55));
+    }
+    if(!parts.length){
+      for(const [k,v] of Object.entries(obj)){
+        if(parts.length>=5)break;
+        if(typeof v==='string' && v && !/^data:image\//i.test(v) && v.length<100)parts.push(k+'='+short173(v,55));
+      }
+    }
+    return parts.join(' | ');
+  }
+  function scan173(v,path,parent,found,seen,depth){
+    if(depth>18||v==null)return;
+    if(typeof v==='string'){
+      if(/^data:image\//i.test(v)){
+        const ctx=objectContext173(parent);
+        const sig=v.slice(0,48)+'|'+v.length;
+        found.push({path:path.join('.'),ctx,len:v.length,sig});
+      }
+      return;
+    }
+    if(typeof v!=='object')return;
+    if(seen.has(v))return;seen.add(v);
+    if(Array.isArray(v)){
+      v.forEach((x,i)=>scan173(x,path.concat('['+i+']'),v,found,seen,depth+1));
+    }else{
+      for(const [k,x] of Object.entries(v))scan173(x,path.concat(k),v,found,seen,depth+1);
+    }
+  }
+  function exactFamilyHits173(v,path,hits,seen,depth){
+    if(depth>18||v==null)return;
+    if(typeof v==='string'){
+      if(/famille/i.test(v))hits.push({path:path.join('.'),value:short173(v,120)});
+      return;
+    }
+    if(typeof v!=='object')return;
+    if(seen.has(v))return;seen.add(v);
+    if(Array.isArray(v))v.forEach((x,i)=>exactFamilyHits173(x,path.concat('['+i+']'),hits,seen,depth+1));
+    else for(const [k,x] of Object.entries(v)){
+      if(/famille/i.test(k))hits.push({path:path.concat(k).join('.'),value:'[nom de clé]'});
+      exactFamilyHits173(x,path.concat(k),hits,seen,depth+1);
+    }
+  }
+  async function run173(){
+    const lines=[];
+    lines.push('DIAGNOSTIC BASE64 CIBLÉ — bêta 173');
+    lines.push('Appareil : '+navigator.userAgent);
+    lines.push('LECTURE SEULE — aucune donnée modifiée');
+    lines.push('');
+
+    let total=0;
+    for(const key of TARGET_KEYS_173){
+      lines.push('=== '+key+' ===');
+      const raw=localStorage.getItem(key);
+      if(raw==null){lines.push('Clé absente.');lines.push('');continue}
+      const data=parse173(raw);
+      const found=[];scan173(data,[key],null,found,new WeakSet(),0);
+      const fam=[];exactFamilyHits173(data,[key],fam,new WeakSet(),0);
+      total+=found.length;
+      lines.push('Images Base64 trouvées : '+found.length);
+      lines.push('Occurrences « Famille » : '+fam.length);
+      if(fam.length){
+        lines.push('Chemins « Famille » (max 20) :');
+        fam.slice(0,20).forEach(x=>lines.push('- '+x.path+' => '+x.value));
+      }
+      if(found.length){
+        lines.push('Images Base64 et contexte associé :');
+        found.slice(0,80).forEach((x,i)=>{
+          lines.push((i+1)+'. '+x.path);
+          lines.push('   contexte : '+(x.ctx||'[aucun nom/label lisible dans l’objet parent]'));
+          lines.push('   taille : '+x.len+' caractères');
+        });
+      }
+      lines.push('');
+    }
+    lines.push('TOTAL images Base64 dans ces 3 clés : '+total);
+    lines.push('');
+    lines.push('IMPORTANT : copie-moi ce diagnostic complet. Ne synchronise rien avant analyse.');
+
+    const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:#0008;z-index:100000;display:flex;align-items:center;justify-content:center;padding:12px';
+    const box=document.createElement('div');box.style.cssText='background:#fff;width:min(950px,100%);max-height:94vh;overflow:auto;border-radius:18px;padding:16px';
+    const h=document.createElement('h2');h.textContent='🧬 Diagnostic Base64 ciblé — 173';
+    const ta=document.createElement('textarea');ta.value=lines.join('\n');ta.readOnly=true;ta.style.cssText='width:100%;height:62vh;font-family:monospace;font-size:12px;box-sizing:border-box';
+    const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
+    const cp=document.createElement('button');cp.textContent='📋 Copier';cp.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);cp.textContent='✅ Copié'}catch(e){ta.select();document.execCommand('copy')}};
+    const cl=document.createElement('button');cl.textContent='Fermer';cl.onclick=()=>ov.remove();
+    row.append(cp,cl);box.append(h,ta,row);ov.appendChild(box);document.body.appendChild(ov);
+  }
+  function addBtn173(){
+    if(document.getElementById('diag-base64-173'))return;
+    const b=document.createElement('button');
+    b.id='diag-base64-173';b.type='button';b.textContent='🧬 Images anciennes (173)';
+    b.style.cssText='position:fixed;right:12px;bottom:190px;z-index:96;border:0;border-radius:999px;background:#7a2f8f;color:#fff;padding:10px 14px;font-weight:900;box-shadow:0 4px 14px #0003';
+    b.onclick=run173;document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBtn173,{once:true});else addBtn173();
 })();
 </script>
 </body></html>

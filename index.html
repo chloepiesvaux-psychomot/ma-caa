@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 181</title>
+<title>Ma CAA v2.0 bêta 182</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 181</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 182</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5083,6 +5083,12 @@ function adminPermanentPictogramForm(existing){
 
       writeAdminBase(base);
 
+      // BETA182: l’image est synchronisée séparément de la base Admin générale.
+      // Le pictogramme garde un identifiant stable et son média possède sa propre entrée cloud.
+      try{
+        publishPictoMediaV182(savedItemId,l,speechText,finalImage||null).catch(e=>console.warn("Media V182",e));
+      }catch(e){console.warn("Media V182",e)}
+
       // BETA154: sauvegarde locale immédiate, interface jamais bloquée par le cloud.
       // writeAdminBase() a déjà persisté la modification et marqué la base "dirty".
       // La synchronisation est volontairement différée et indépendante de cette fenêtre.
@@ -7677,3 +7683,149 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 <!-- BETA168 manual cloud publish lock fix -->
 
 <!-- BETA170 additive multi-device recovery merge; based on BETA169 image rescue -->
+
+
+/* ===== BETA 182 — nouvelle base média pictogrammes synchronisée =====
+   Architecture :
+   - la structure Admin reste légère et NE transporte plus les images ;
+   - chaque image est sauvegardée dans app_config sous une clé stable liée au pictogramme ;
+   - les autres appareils récupèrent ces médias et recréent une référence locale ;
+   - aucune dépendance au bucket Storage (évite les erreurs RLS rencontrées en 176).
+*/
+const PICTO_MEDIA_PREFIX_V182='picto_media_v182_';
+let mediaPullBusyV182=false;
+let mediaAutoTimerV182=null;
+let mediaLastStatusV182='Nouvelle synchro images prête';
+
+function hashMediaIdV182(str){
+  let h=2166136261>>>0;
+  str=String(str||'');
+  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)}
+  return (h>>>0).toString(36);
+}
+function mediaKeyV182(id){return PICTO_MEDIA_PREFIX_V182+hashMediaIdV182(id)}
+function cloneV182(v){return JSON.parse(JSON.stringify(v))}
+function writeAdminBaseLocalV182(base){
+  localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+  try{ADMIN_LAST_BASE_V113=cloneV182(base)}catch(e){}
+  localStorage.setItem('ma-caa-last-save',String(Date.now()));
+}
+async function imageToDataUrlV182(v){
+  if(!v)return '';
+  if(typeof v==='string'&&v.startsWith('data:image/'))return v;
+  if(v&&typeof v==='object'&&v.__local_image===true&&v.key){
+    const blob=await getLocalAdminImageBlob(v.key);
+    if(!blob)throw new Error('Fichier image local introuvable');
+    return await blobToDataUrlV128(blob);
+  }
+  if(typeof v==='string'&&/^https?:/i.test(v)){
+    // Les anciennes URL distantes restent utilisables directement, sans les recopier.
+    return v;
+  }
+  if(v&&typeof v==='object'&&v.__cloud_image&&v.path){
+    throw new Error('Ancienne référence Storage non portable : remets cette image une fois dans la nouvelle base 182.');
+  }
+  return '';
+}
+async function publishPictoMediaV182(stableId,label,speech,imageValue){
+  if(!stableId||!cloudClient)return false;
+  const u=await cloudUser();if(!u)return false;
+  let image='';
+  if(imageValue)image=await imageToDataUrlV182(imageValue);
+  const payload={
+    schema:2,
+    picto_id:String(stableId),
+    label:String(label||''),
+    speech:String(speech||''),
+    image:image||'',
+    deleted:!image,
+    updated_at:new Date().toISOString()
+  };
+  const r=await cloudClient.from('app_config').upsert({key:mediaKeyV182(stableId),data:payload,updated_at:payload.updated_at},{onConflict:'key'});
+  if(r.error)throw r.error;
+  mediaLastStatusV182='✓ Image publiée : '+(label||stableId);
+  updateMediaStatusV182();
+  return true;
+}
+function stripAdminImagesForCloudV182(base){
+  const out=cloneV182(base||{});
+  out.items=out.items||{};
+  for(const item of Object.values(out.items))if(item&&typeof item==='object')delete item.image;
+  out.addedItems=Array.isArray(out.addedItems)?out.addedItems:[];
+  for(const item of out.addedItems)if(item&&typeof item==='object')delete item.image;
+  out.quickChoices=out.quickChoices||{};
+  for(const list of Object.values(out.quickChoices))if(Array.isArray(list))for(const q of list)if(q&&typeof q==='object')delete q.image;
+  out.submenus=out.submenus||{};
+  for(const list of Object.values(out.submenus))if(Array.isArray(list))for(const q of list)if(q&&typeof q==='object')delete q.image;
+  out.media_schema=2;
+  return out;
+}
+// Remplace la canonicalisation précédente : les images ne sont plus placées dans admin_base.
+async function canonicalizeAdminBaseV129(base){return stripAdminImagesForCloudV182(base)}
+
+async function applyMediaRecordV182(rec){
+  if(!rec||!rec.picto_id)return false;
+  const base=readAdminBase();
+  let target=null;
+  if(base.items&&base.items[rec.picto_id])target=base.items[rec.picto_id];
+  if(!target&&Array.isArray(base.addedItems))target=base.addedItems.find(x=>x&&x.id===rec.picto_id);
+  if(!target)return false;
+  if(rec.deleted||!rec.image){delete target.image;writeAdminBaseLocalV182(base);return true}
+  let localRef=rec.image;
+  if(typeof rec.image==='string'&&rec.image.startsWith('data:image/')){
+    localRef=await storeAdminPictogramImage(rec.image);
+  }
+  target.image=localRef;
+  writeAdminBaseLocalV182(base);
+  return true;
+}
+async function pullPictoMediaV182(show=false){
+  if(mediaPullBusyV182||!cloudClient)return false;
+  const u=await cloudUser();if(!u){if(show)alert('Connecte d’abord la synchronisation sur cet appareil.');return false}
+  mediaPullBusyV182=true;
+  try{
+    if(show){mediaLastStatusV182='Récupération des images…';updateMediaStatusV182()}
+    const r=await cloudClient.from('app_config').select('key,data,updated_at').like('key',PICTO_MEDIA_PREFIX_V182+'%').order('updated_at',{ascending:true});
+    if(r.error)throw r.error;
+    let applied=0,missing=0;
+    for(const row of r.data||[]){
+      try{if(await applyMediaRecordV182(row.data||{}))applied++;else missing++}catch(e){console.warn('Apply media 182',row.key,e)}
+    }
+    try{syncAdminCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,0)}catch(e){}
+    mediaLastStatusV182='✓ '+applied+' média(s) appliqué(s)'+(missing?' · '+missing+' sans pictogramme local':'');
+    updateMediaStatusV182();
+    if(show)alert('SYNCHRONISATION IMAGES 182\n\nImages appliquées : '+applied+'\nEntrées sans pictogramme local : '+missing+'\n\nAucune image n’a été lue depuis l’ancienne base de fichiers orphelins.');
+    return true;
+  }catch(e){
+    mediaLastStatusV182='❌ '+(e?.message||String(e));updateMediaStatusV182();
+    if(show)alert('Synchronisation images 182 impossible : '+(e?.message||String(e)));
+    return false;
+  }finally{mediaPullBusyV182=false}
+}
+function updateMediaStatusV182(){
+  const x=document.getElementById('media-status-v182');if(x)x.textContent=mediaLastStatusV182;
+}
+function startMediaAutoSyncV182(){
+  setTimeout(()=>pullPictoMediaV182(false),1800);
+  setTimeout(()=>pullPictoMediaV182(false),5000);
+  clearInterval(mediaAutoTimerV182);
+  mediaAutoTimerV182=setInterval(()=>{if(document.visibilityState==='visible')pullPictoMediaV182(false)},7000);
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>pullPictoMediaV182(false),400)});
+window.addEventListener('focus',()=>setTimeout(()=>pullPictoMediaV182(false),400));
+
+function openMediaTestV182(){
+  const ov=document.createElement('div');ov.className='editor-overlay';
+  const p=document.createElement('div');p.className='editor';
+  p.innerHTML='<h2>🧪 Nouvelle synchronisation images — 182</h2><p>Cette branche associe chaque image à l’identifiant stable de son pictogramme. Pour le test, modifie normalement l’image de <b>3 pictogrammes</b> dans Administrateur → Pictogrammes permanents. L’image est publiée automatiquement dans la nouvelle base média.</p><div class="syncbox"><b>État</b><div id="media-status-v182" class="syncstatus"></div></div><p><b>Test conseillé :</b> choisis trois pictogrammes faciles à reconnaître, mets une image différente sur le Mac, attends quelques secondes, puis ouvre la 182 sur le téléphone et la tablette. Elles doivent apparaître automatiquement.</p>';
+  const pull=document.createElement('button');pull.className='saveedit';pull.textContent='⬇️ Récupérer les nouvelles images maintenant';pull.onclick=()=>pullPictoMediaV182(true);
+  const close=document.createElement('button');close.className='canceledit';close.textContent='Fermer';close.onclick=()=>ov.remove();
+  const row=document.createElement('div');row.className='editor-row';row.append(pull,close);p.appendChild(row);ov.appendChild(p);document.body.appendChild(ov);updateMediaStatusV182();
+}
+function addMedia182Button(){
+  if(document.getElementById('media-test-182'))return;
+  const b=document.createElement('button');b.id='media-test-182';b.type='button';b.textContent='🧪 Test synchro images 182';
+  b.style.cssText='position:fixed;right:12px;bottom:280px;z-index:88;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#234b91;color:white;box-shadow:0 6px 18px #0003';
+  b.onclick=openMediaTestV182;document.body.appendChild(b);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{addMedia182Button();startMediaAutoSyncV182()},{once:true});else{addMedia182Button();startMediaAutoSyncV182()}

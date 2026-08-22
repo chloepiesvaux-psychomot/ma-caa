@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 189</title>
+<title>Ma CAA v2.0 bêta 190</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 189</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 190</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8206,6 +8206,152 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   // Réappliquer une fois au retour au premier plan, sans bloquer l'interface.
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isInstalledMac189()&&bootDone189)setTimeout(()=>bootstrapAll189(false),500)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start189,{once:true});else start189();
+})();
+</script>
+
+
+<script>
+/* ===== BETA 190 — catalogue Admin moderne + stabilité du mode Administrateur =====
+   - catalogue léger séparé de admin_base : pictogrammes ajoutés, catégories,
+     sous-catégories et structure ;
+   - fusion additive : aucun appareil incomplet ne supprime les données d'un autre ;
+   - les anciens PULL admin_base sont suspendus pendant que le panneau Admin est ouvert ;
+   - médias 182/186 et métadonnées 187 restent inchangés. */
+(function(){
+  const CATALOG_KEY_190='admin_catalog_v190';
+  let catalogBusy190=false;
+
+  function clone190(v){try{return JSON.parse(JSON.stringify(v))}catch(e){return v}}
+  function stripImages190(v){
+    const out=clone190(v||{});
+    function clean(o){if(o&&typeof o==='object'){delete o.image;delete o.avatar}}
+    for(const x of Object.values(out.items||{}))clean(x);
+    for(const x of (out.addedItems||[]))clean(x);
+    return out;
+  }
+  function localCatalog190(){
+    const b=readAdminBase();
+    return stripImages190({
+      version:190,
+      addedItems:Array.isArray(b.addedItems)?b.addedItems:[],
+      addedCats:Array.isArray(b.addedCats)?b.addedCats:[],
+      subcategories:Array.isArray(b.subcategories)?b.subcategories:[],
+      catEdits:b.catEdits||{},
+      items:b.items||{},
+      submenus:b.submenus||{},
+      quickChoices:b.quickChoices||{},
+      adminOrder:b.adminOrder||{},
+      updated_at:new Date().toISOString()
+    });
+  }
+  function mergeArray190(a,b,match){
+    const out=(Array.isArray(a)?a:[]).map(clone190);
+    for(const x0 of (Array.isArray(b)?b:[])){
+      const x=clone190(x0); if(!x)continue;
+      const i=out.findIndex(y=>match(y,x));
+      if(i<0)out.push(x); else out[i]={...out[i],...x};
+    }
+    return out;
+  }
+  function mergeCatalog190(a,b){
+    a=a||{};b=b||{};
+    const out={...clone190(a),...clone190(b)};
+    out.addedItems=mergeArray190(a.addedItems,b.addedItems,(x,y)=>!!(x&&y&&((x.id&&y.id&&x.id===y.id)||(!x.id&&!y.id&&x.label===y.label&&x.speech===y.speech))));
+    out.addedCats=mergeArray190(a.addedCats,b.addedCats,(x,y)=>!!(x&&y&&((x.id&&y.id&&x.id===y.id)||x.name===y.name)));
+    out.subcategories=mergeArray190(a.subcategories,b.subcategories,(x,y)=>!!(x&&y&&((x.id&&y.id&&x.id===y.id)||(x.name===y.name&&x.category===y.category&&(x.parentId||'')===(y.parentId||'')))));
+    out.catEdits={...(a.catEdits||{}),...(b.catEdits||{})};
+    out.items={...(a.items||{}),...(b.items||{})};
+    out.submenus={...(a.submenus||{}),...(b.submenus||{})};
+    out.quickChoices={...(a.quickChoices||{}),...(b.quickChoices||{})};
+    out.adminOrder={...(a.adminOrder||{}),...(b.adminOrder||{})};
+    out.version=190;out.updated_at=new Date().toISOString();
+    return stripImages190(out);
+  }
+  function writeLocalCatalog190(cat){
+    const b=readAdminBase();
+    const merged={...b};
+    merged.addedItems=mergeArray190(b.addedItems,cat.addedItems,(x,y)=>!!(x&&y&&((x.id&&y.id&&x.id===y.id)||(!x.id&&!y.id&&x.label===y.label&&x.speech===y.speech))));
+    merged.addedCats=mergeArray190(b.addedCats,cat.addedCats,(x,y)=>!!(x&&y&&((x.id&&y.id&&x.id===y.id)||x.name===y.name)));
+    merged.subcategories=mergeArray190(b.subcategories,cat.subcategories,(x,y)=>!!(x&&y&&((x.id&&y.id&&x.id===y.id)||(x.name===y.name&&x.category===y.category&&(x.parentId||'')===(y.parentId||'')))));
+    merged.catEdits={...(b.catEdits||{}),...(cat.catEdits||{})};
+    merged.items={...(b.items||{}),...(cat.items||{})};
+    merged.submenus={...(b.submenus||{}),...(cat.submenus||{})};
+    merged.quickChoices={...(b.quickChoices||{}),...(cat.quickChoices||{})};
+    merged.adminOrder={...(b.adminOrder||{}),...(cat.adminOrder||{})};
+    try{
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(merged));
+      if(typeof ADMIN_LAST_BASE_V113!=='undefined')ADMIN_LAST_BASE_V113=clone190(merged);
+      syncAdminCategories();syncCustomCategories();render();renderProfileBar();
+      return true;
+    }catch(e){console.warn('Catalogue 190 local',e);return false}
+  }
+  async function publishCatalog190(){
+    if(catalogBusy190||!cloudClient)return false;
+    const u=await cloudUser();if(!u)return false;
+    catalogBusy190=true;
+    try{
+      const rr=await cloudClient.from('app_config').select('data').eq('key',CATALOG_KEY_190).maybeSingle();
+      if(rr.error)throw rr.error;
+      const merged=mergeCatalog190(rr.data?.data||{},localCatalog190());
+      const wr=await cloudClient.from('app_config').upsert({key:CATALOG_KEY_190,data:merged,updated_at:new Date().toISOString()},{onConflict:'key'});
+      if(wr.error)throw wr.error;
+      return true;
+    }catch(e){console.warn('Catalogue 190 publication',e);return false}
+    finally{catalogBusy190=false}
+  }
+  async function pullCatalog190(){
+    if(catalogBusy190||!cloudClient)return false;
+    const u=await cloudUser();if(!u)return false;
+    catalogBusy190=true;
+    try{
+      const r=await cloudClient.from('app_config').select('data,updated_at').eq('key',CATALOG_KEY_190).maybeSingle();
+      if(r.error)throw r.error;if(!r.data?.data)return false;
+      writeLocalCatalog190(r.data.data);
+      return true;
+    }catch(e){console.warn('Catalogue 190 réception',e);return false}
+    finally{catalogBusy190=false}
+  }
+  async function reconcileCatalog190(){
+    if(catalogBusy190)return false;
+    await publishCatalog190();
+    await pullCatalog190();
+    try{if(typeof pullMeta187==='function')await pullMeta187()}catch(e){}
+    try{if(typeof pullPictoMediaV182==='function')await pullPictoMediaV182(false)}catch(e){}
+    return true;
+  }
+  window.publishCatalog190=publishCatalog190;
+  window.pullCatalog190=pullCatalog190;
+  window.reconcileCatalog190=reconcileCatalog190;
+
+  // Stabilise le mode Admin : pas de vieux refresh global pendant qu'il est ouvert.
+  try{
+    const prevPull190=adminBasePull;
+    adminBasePull=async function(){
+      if(document.getElementById('admin-panel-beta25'))return false;
+      return await prevPull190.apply(this,arguments);
+    };
+    window.adminBasePull=adminBasePull;
+  }catch(e){console.warn('190 garde adminBasePull',e)}
+
+  // À l'ouverture Admin, affichage immédiat ; le catalogue se consolide sans refaire l'overlay.
+  try{
+    const prevOpenAdmin190=openAdminPanel;
+    openAdminPanel=function(view){
+      const r=prevOpenAdmin190.apply(this,arguments);
+      setTimeout(()=>{publishCatalog190();},250);
+      return r;
+    };
+    window.openAdminPanel=openAdminPanel;
+  }catch(e){console.warn('190 openAdminPanel',e)}
+
+  async function start190(){
+    await new Promise(r=>setTimeout(r,2200));
+    await reconcileCatalog190();
+    // deuxième passe après que les autres couches ont fini de démarrer
+    setTimeout(reconcileCatalog190,3500);
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(reconcileCatalog190,700)});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start190,{once:true});else start190();
 })();
 </script>
 

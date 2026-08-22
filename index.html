@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 163</title>
+<title>Ma CAA v2.0 bêta 164</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 163</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 164</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1579,6 +1579,63 @@ async function syncPullAll(){
     }
   }
   writeProfiles(ps);syncCustomCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,100);showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome();
+}
+
+async function pictogramSyncDiagnosticV164(){
+  const lines=[];
+  const norm=x=>String(x||"").trim();
+  const labelsOfProfileStorage=(storage)=>{
+    try{
+      const raw=storage&&storage[ADDED_KEY];
+      const arr=typeof raw==="string"?JSON.parse(raw):(Array.isArray(raw)?raw:[]);
+      return Array.isArray(arr)?arr.map(x=>norm(x&&x.label)).filter(Boolean):[];
+    }catch(e){return []}
+  };
+  const localAdmin=readAdminBase();
+  const localAdminLabels=(localAdmin.addedItems||[]).filter(x=>x&&!x.deleted).map(x=>norm(x.label)).filter(Boolean);
+  const activeId=activeProfile();
+  const active=readProfiles().find(x=>x.id===activeId)||null;
+  const localProfileLabels=readAdded().map(x=>norm(x.label)).filter(Boolean);
+  lines.push("DIAGNOSTIC PICTOGRAMMES — bêta 164");
+  lines.push("Appareil : "+navigator.userAgent);
+  lines.push("Profil actif : "+(active?active.name:"inconnu")+" ["+activeId+"]");
+  lines.push("Admin local — pictos ajoutés : "+localAdminLabels.length);
+  lines.push("Profil local — pictos ajoutés : "+localProfileLabels.length);
+  lines.push("Famille local Admin : "+(localAdminLabels.some(x=>/famille/i.test(x))?"OUI":"NON"));
+  lines.push("Famille local Profil : "+(localProfileLabels.some(x=>/famille/i.test(x))?"OUI":"NON"));
+  try{
+    const u=await cloudUser();
+    if(!u)throw new Error("compte cloud non connecté");
+    const ar=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
+    if(ar.error)throw ar.error;
+    const cloudAdmin=ar.data&&ar.data.data||{};
+    const cloudAdminLabels=(cloudAdmin.addedItems||[]).filter(x=>x&&!x.deleted).map(x=>norm(x.label)).filter(Boolean);
+    lines.push("Admin cloud — pictos ajoutés : "+cloudAdminLabels.length+" ("+(ar.data?.updated_at||"date inconnue")+")");
+    lines.push("Famille cloud Admin : "+(cloudAdminLabels.some(x=>/famille/i.test(x))?"OUI":"NON"));
+    const missingAdmin=localAdminLabels.filter(x=>!cloudAdminLabels.includes(x));
+    if(missingAdmin.length)lines.push("Présents local Admin mais absents cloud : "+missingAdmin.join(", "));
+
+    const pr=await cloudClient.from("profiles").select("name,data,updated_at").eq("user_id",u.id);
+    if(pr.error)throw pr.error;
+    const same=(pr.data||[]).filter(r=>active&&r.name===active.name).sort((a,b)=>(Date.parse(b.updated_at||"")||0)-(Date.parse(a.updated_at||"")||0));
+    const newest=same[0]||null;
+    const cloudProfileLabels=newest?labelsOfProfileStorage(newest.data&&newest.data.storage||{}):[];
+    lines.push("Profil cloud correspondant : "+(newest?"OUI":"NON")+(newest?" ("+newest.updated_at+")":""));
+    lines.push("Profil cloud — pictos ajoutés : "+cloudProfileLabels.length);
+    lines.push("Famille cloud Profil : "+(cloudProfileLabels.some(x=>/famille/i.test(x))?"OUI":"NON"));
+    const missingProfile=localProfileLabels.filter(x=>!cloudProfileLabels.includes(x));
+    if(missingProfile.length)lines.push("Présents local Profil mais absents cloud : "+missingProfile.join(", "));
+  }catch(e){
+    lines.push("ERREUR CLOUD : "+(e?.message||String(e)));
+  }
+
+  const ov=document.createElement("div");ov.className="editor-overlay";
+  const pan=document.createElement("div");pan.className="editor";pan.innerHTML="<h2>🔎 Diagnostic des pictogrammes</h2><p>Envoie-moi le texte ci-dessous ou une capture d’écran.</p>";
+  const ta=document.createElement("textarea");ta.value=lines.join("\n");ta.readOnly=true;ta.style.cssText="width:100%;min-height:330px;border:2px solid #d9dee8;border-radius:12px;padding:12px;font:14px monospace;box-sizing:border-box";
+  const row=document.createElement("div");row.className="editor-row";
+  const copy=document.createElement("button");copy.className="saveedit";copy.textContent="📋 Copier le diagnostic";copy.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);showFeedback("Diagnostic copié")}catch(e){ta.select();document.execCommand("copy")}};
+  const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
+  row.append(copy,close);pan.append(ta,row);ov.appendChild(pan);document.body.appendChild(ov);
 }
 
 async function publishThisDeviceV162(showFeedbackAtEnd=false){
@@ -3939,7 +3996,8 @@ function openAdminPanel(initialView="home"){
       const sync=mkSection();sync.innerHTML="<h2>☁️ Synchronisation</h2><p>"+adminBaseUpdatedLabel()+"<br>"+adminSyncLabel()+"</p>";
       const syncNow=document.createElement("button");syncNow.textContent="🔄 Synchroniser complètement";syncNow.onclick=async()=>{syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation complète…";await fullCloudRefreshV161(true);syncNow.disabled=false;syncNow.textContent="✅ Synchronisation complète"};
       const publish=document.createElement("button");publish.style.marginTop="10px";publish.textContent="☁️ Publier CET appareil comme référence";publish.onclick=async()=>{if(!confirm("Utilise ce bouton uniquement sur l’appareil où Ma CAA est la plus complète (par exemple le Mac). Sa base actuelle remplacera la copie cloud utilisée par les autres appareils. Continuer ?"))return;publish.disabled=true;publish.textContent="☁️ Publication en cours…";const ok=await publishThisDeviceV162(true);publish.disabled=false;publish.textContent=ok?"✅ Appareil publié comme référence":"☁️ Publier CET appareil comme référence"};
-      sync.append(syncNow,publish);content.appendChild(sync);addAdminCloudConnection(content);
+      const diag=document.createElement("button");diag.style.marginTop="10px";diag.textContent="🔎 Diagnostiquer les pictogrammes";diag.onclick=async()=>{diag.disabled=true;diag.textContent="🔎 Diagnostic…";await pictogramSyncDiagnosticV164();diag.disabled=false;diag.textContent="🔎 Diagnostiquer les pictogrammes"};
+      sync.append(syncNow,publish,diag);content.appendChild(sync);addAdminCloudConnection(content);
       const security=mkSection();security.innerHTML="<h2>🔐 Sécurité</h2>";
       const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.")};
       security.appendChild(change);content.appendChild(security);return

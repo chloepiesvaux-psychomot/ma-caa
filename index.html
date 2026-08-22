@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 196</title>
+<title>Ma CAA v2.0 bêta 197</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 196</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 197</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1005,10 +1005,16 @@ async function recoverProfilesFromProfilesTable(){
   }
 }
 function startProfilesDirectorySync(){
-  setTimeout(pullProfilesDirectory,700);
-  setTimeout(pullProfilesDirectory,2400);
-  setInterval(()=>{if(document.visibilityState==="visible")pullProfilesDirectory()},10000);
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pullProfilesDirectory()});
+  const K="ma-caa-profiles-dir-check-v197";
+  const check=()=>{
+    const now=Date.now(),last=Number(localStorage.getItem(K)||0);
+    if(now-last<10*60*1000)return;
+    localStorage.setItem(K,String(now));
+    pullProfilesDirectory();
+  };
+  setTimeout(check,1100);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(check,450)});
+  window.addEventListener("focus",()=>setTimeout(check,450));
 }
 
 function repairDoubleProfileKeys(){
@@ -1511,8 +1517,16 @@ async function safeAutoPullCurrent(){
   }
 }
 function startSafeAutoPull(){
-  setInterval(()=>{if(document.visibilityState==="visible")safeAutoPullCurrent()},5000);
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(safeAutoPullCurrent,500)});
+  const K="ma-caa-profile-check-v197";
+  const check=()=>{
+    const now=Date.now(),last=Number(localStorage.getItem(K)||0);
+    if(now-last<60000)return;
+    localStorage.setItem(K,String(now));
+    safeAutoPullCurrent();
+  };
+  setInterval(()=>{if(document.visibilityState==="visible")check()},60000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(check,450)});
+  window.addEventListener("focus",()=>setTimeout(check,450));
 }
 
 async function syncPullOneByName(name,silent=false,preserveActive=false){
@@ -2037,9 +2051,13 @@ async function fullCloudRefreshV161(showFeedbackAtEnd=false){
 }
 
 function startFullCloudRefreshV161(){
-  // Allow Supabase auth/session restoration first, then do two passes for iOS/PWA.
-  setTimeout(()=>fullCloudRefreshV161(false),2200);
-  setTimeout(()=>{if(!initialFullCloudPullDoneV161)fullCloudRefreshV161(false)},5200);
+  // BETA197: la synchro complète est coûteuse. On ne la lance automatiquement
+  // que sur un appareil réellement vide. Les appareils déjà configurés utilisent
+  // les couches différentielles catalogue / métadonnées / médias.
+  const hasAdmin=!!localStorage.getItem(ADMIN_BASE_KEY);
+  const hasProfiles=!!localStorage.getItem(PROFILES_KEY);
+  if(hasAdmin&&hasProfiles)return;
+  setTimeout(()=>fullCloudRefreshV161(false),2600);
 }
 async function cloudLogin(email,password){const r=await cloudClient.auth.signInWithPassword({email,password});if(r.error)alert("Connexion impossible : "+r.error.message);else openProfiles()}
 async function cloudLogout(){await cloudClient?.auth.signOut();openProfiles()}
@@ -4087,12 +4105,16 @@ function updateAdminSyncStatusInPlace(){
 
 function startAdminBaseCloud(){
   syncAdminCategories();render();
-  setTimeout(adminBasePull,300);
-  setTimeout(adminBasePull,1800);
-  // BETA123: background sync stays active but no longer hammers the UI.
-  /* BETA139: synchro périodique supprimée; rafraîchissement déclenché par navigation */
-  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")adminBasePull()});
-  window.addEventListener("focus",()=>adminBasePull());
+  const K='ma-caa-admin-base-check-v197';
+  const check=()=>{
+    const now=Date.now(),last=Number(localStorage.getItem(K)||0);
+    if(now-last<15*60*1000)return;
+    localStorage.setItem(K,String(now));
+    adminBasePull();
+  };
+  setTimeout(check,900);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(check,650)});
+  window.addEventListener("focus",()=>setTimeout(check,650));
 }
 
 function adminItemId(cat,x){return cat.name+"||"+x[1]+"||"+x[2]}
@@ -5456,22 +5478,13 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     }
   }
   function start133(){
-    setTimeout(()=>syncCats133("startup"),500);
-    setTimeout(()=>syncCats133("startup-late"),1800);
-    setTimeout(()=>syncCats133("startup-ipad-late"),4200);
+    // BETA197: ancien canal remplacé par admin_catalog_v190.
   }
   if(document.readyState==="loading"){
     document.addEventListener("DOMContentLoaded",start133,{once:true});
   }else start133();
 
-  document.addEventListener("click",function(e){
-    const n=e.target && e.target.closest && e.target.closest("button,[data-mode],[data-user],[data-profile],.cat,.admin-card,.parent-card");
-    if(!n) return;
-    const t=((n.textContent||"")+" "+(n.className||"")).toLowerCase();
-    if(/administrateur|admin|parent|utilisateur|profil|profile|changer d.utilisateur|catégorie|categorie/.test(t)){
-      setTimeout(()=>syncCats133("navigation"),180);
-    }
-  },true);
+  // BETA197: plus de lecture cloud sur chaque clic/navigation.
 })();
 </script>
 
@@ -5482,18 +5495,13 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     if(typeof syncAdminCategoryManifestV134==="function")syncAdminCategoryManifestV134(reason);
   }
   function start134(){
-    // Mac publie sa structure riche; tablette/iPhone la récupèrent.
-    setTimeout(()=>run134("startup-1"),700);
-    setTimeout(()=>run134("startup-2"),2200);
-    setTimeout(()=>run134("startup-3"),5000);
+    // BETA197: une seule passe de compatibilité au démarrage.
+    setTimeout(()=>run134("startup-v197"),1800);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start134,{once:true});
   else start134();
 
-  window.addEventListener("focus",()=>setTimeout(()=>run134("focus"),250));
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState==="visible")setTimeout(()=>run134("visible"),250);
-  });
+  // BETA197: les retours au premier plan passent par le catalogue moderne.
 })();
 </script>
 
@@ -5513,17 +5521,12 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     }catch(e){console.warn("BETA139 sync",reason,e)}
   }
   function start135(){
-    setTimeout(()=>syncRealCustomCatsV135("startup-1"),700);
-    setTimeout(()=>syncRealCustomCatsV135("startup-2"),2200);
-    setTimeout(()=>syncRealCustomCatsV135("startup-3"),5000);
+    setTimeout(()=>syncRealCustomCatsV135("startup-v197"),2300);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start135,{once:true});
   else start135();
 
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState==="visible")setTimeout(()=>syncRealCustomCatsV135("visible"),250);
-  });
-  window.addEventListener("focus",()=>setTimeout(()=>syncRealCustomCatsV135("focus"),250));
+  // BETA197: pas de resynchronisation globale à chaque focus.
 
   // User/profile switch: copy the global category structure into the newly active profile.
   document.addEventListener("click",e=>{
@@ -6055,11 +6058,8 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     finally{busy150=false}
   }
   window.receiveAdmin150=receiveAdmin150;
-  document.addEventListener("click",e=>{
-    if(e.target?.closest?.("button,.cat-btn,.subcat-btn,.admin-nav-btn"))
-      setTimeout(()=>receiveAdmin150("navigation"),180);
-  },true);
-  setInterval(()=>receiveAdmin150("periodic"),30000);
+  // BETA197: ancien PULL admin_base périodique/navigation désactivé.
+  // Le nouveau modèle utilise catalog/meta/media + contrôle admin_base espacé.
 })();
 </script>
 
@@ -6362,32 +6362,16 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 
   // A second device must not wait for a manual action to receive Admin changes.
   function start155(){
-    setTimeout(()=>pullAdmin155("startup-1"),700);
-    setTimeout(()=>pullAdmin155("startup-2"),2600);
-    setTimeout(()=>pullAdmin155("startup-3"),6500);
-    setInterval(()=>{
-      if(document.visibilityState==="visible" && !window.adminBaseLocalDirty){
-        pullAdmin155("periodic");
-      }
-    },12000);
+    // BETA197: une seule passe de compatibilité.
+    setTimeout(()=>pullAdmin155("startup-v197"),4200);
   }
 
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start155,{once:true});
   else start155();
 
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState==="visible")setTimeout(()=>pullAdmin155("foreground"),180);
-  });
-  window.addEventListener("focus",()=>setTimeout(()=>pullAdmin155("focus"),180));
+  // BETA197: pas de PULL global au focus/foreground.
 
-  document.addEventListener("click",e=>{
-    const n=e.target&&e.target.closest&&e.target.closest("button,.cat,[data-category],[data-mode],[data-user],[data-profile]");
-    if(!n)return;
-    const t=((n.textContent||"")+" "+(n.className||"")).toLowerCase();
-    if(/administrateur|parent|utilisateur|accueil|catégorie|categorie|changer d.utilisateur/.test(t)){
-      setTimeout(()=>pullAdmin155("navigation"),250);
-    }
-  },true);
+  // BETA197: navigation ne déclenche plus de PULL admin_base.
 
   // Keep diagnostic away from navigation.
   function diag155(){
@@ -6674,15 +6658,10 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   }
 
   function start158(){
-    setTimeout(()=>pull158("startup-1"),900);
-    setTimeout(()=>pull158("startup-2"),3000);
-    schedule158(5000);
+    // BETA197: boucle 5 s désactivée.
   }
 
-  document.addEventListener("visibilitychange",()=>{
-    if(document.visibilityState==="visible") setTimeout(()=>pull158("foreground"),250);
-  });
-  window.addEventListener("focus",()=>setTimeout(()=>pull158("focus"),250));
+  // BETA197: plus de PULL global au focus/foreground.
 
   if(document.readyState==="loading"){
     document.addEventListener("DOMContentLoaded",start158,{once:true});
@@ -7830,12 +7809,18 @@ async function pullPictoMediaV182(show=false){
   mediaPullBusyV182=true;
   try{
     if(show){mediaLastStatusV182='Récupération des images…';updateMediaStatusV182()}
-    const r=await cloudClient.from('app_config').select('key,data,updated_at').like('key',PICTO_MEDIA_PREFIX_V182+'%').order('updated_at',{ascending:true});
+    const cursorKey='ma-caa-media-cursor-v197';
+    const cursor=localStorage.getItem(cursorKey)||'';
+    let q=cloudClient.from('app_config').select('key,data,updated_at').like('key',PICTO_MEDIA_PREFIX_V182+'%').order('updated_at',{ascending:true});
+    if(cursor)q=q.gt('updated_at',cursor);
+    const r=await q;
     if(r.error)throw r.error;
-    let applied=0,missing=0;
+    let applied=0,missing=0,maxUpdated=cursor;
     for(const row of r.data||[]){
       try{if(await applyMediaRecordV182(row.data||{}))applied++;else missing++}catch(e){console.warn('Apply media 182',row.key,e)}
+      if(row.updated_at && (!maxUpdated || row.updated_at>maxUpdated))maxUpdated=row.updated_at;
     }
+    if(maxUpdated)localStorage.setItem(cursorKey,maxUpdated);
     try{syncAdminCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,0)}catch(e){}
     mediaLastStatusV182='✓ '+applied+' média(s) appliqué(s)'+(missing?' · '+missing+' sans pictogramme local':'');
     updateMediaStatusV182();
@@ -7852,12 +7837,11 @@ function updateMediaStatusV182(){
 }
 function startMediaAutoSyncV182(){
   setTimeout(()=>pullPictoMediaV182(false),1800);
-  setTimeout(()=>pullPictoMediaV182(false),5000);
   clearInterval(mediaAutoTimerV182);
-  mediaAutoTimerV182=setInterval(()=>{if(document.visibilityState==='visible')pullPictoMediaV182(false)},7000);
+  mediaAutoTimerV182=setInterval(()=>{if(document.visibilityState==='visible')pullPictoMediaV182(false)},60000);
 }
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>pullPictoMediaV182(false),400)});
-window.addEventListener('focus',()=>setTimeout(()=>pullPictoMediaV182(false),400));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>pullPictoMediaV182(false),500)});
+window.addEventListener('focus',()=>setTimeout(()=>pullPictoMediaV182(false),500));
 
 function openMediaTestV182(){
   const ov=document.createElement('div');ov.className='editor-overlay';
@@ -7937,7 +7921,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (188)';
     b.style.cssText='position:fixed;right:12px;bottom:88px;z-index:87;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#245fb5;color:white;box-shadow:0 6px 18px #0003';
     b.onclick=publishCurrentMedia184;document.body.appendChild(b);
-    setTimeout(flushMedia184,1800);setInterval(()=>{if(document.visibilityState==='visible')flushMedia184()},6000);
+    setTimeout(flushMedia184,1800);setInterval(()=>{if(document.visibilityState==='visible')flushMedia184()},60000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add184,{once:true});else add184();
 })();
@@ -7999,9 +7983,13 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const u=await cloudUser();if(!u)return false;
     metaBusy187=true;
     try{
-      const r=await cloudClient.from('app_config').select('key,data,updated_at').like('key',META_PREFIX_187+'%').order('updated_at',{ascending:true});
+      const cursorKey='ma-caa-meta-cursor-v197';
+      const cursor=localStorage.getItem(cursorKey)||'';
+      let q=cloudClient.from('app_config').select('key,data,updated_at').like('key',META_PREFIX_187+'%').order('updated_at',{ascending:true});
+      if(cursor)q=q.gt('updated_at',cursor);
+      const r=await q;
       if(r.error)throw r.error;
-      const base=readAdminBase();let changed=false;
+      const base=readAdminBase();let changed=false,maxUpdated=cursor;
       applyingMeta187=true;
       for(const row of r.data||[]){
         const rec=row.data||{};if(!rec.id)continue;
@@ -8018,7 +8006,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           Object.assign(x,{label:rec.label||'',speech:rec.speech||rec.label||'',emoji:rec.emoji||'',category:rec.category||'',categories:Array.isArray(rec.categories)?rec.categories:[],action:rec.action||'phrase'});
           base.items[rec.id]=x;if(before!==sig187(x,'base',rec.id))changed=true;
         }
+        if(row.updated_at && (!maxUpdated || row.updated_at>maxUpdated))maxUpdated=row.updated_at;
       }
+      if(maxUpdated)localStorage.setItem(cursorKey,maxUpdated);
       if(changed){
         localWriteMetaBase187(base);
         try{syncAdminCategories();render();if(typeof window.__refreshAdminPictos145==='function')window.__refreshAdminPictos145()}catch(e){}
@@ -8060,8 +8050,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   window.adminBasePull=adminBasePull;
 
   setTimeout(flushMeta187,1200);setTimeout(pullMeta187,2200);
-  setInterval(()=>{if(document.visibilityState==='visible'){flushMeta187();pullMeta187()}},6000);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(flushMeta187,250);setTimeout(pullMeta187,500)}});
+  setInterval(()=>{if(document.visibilityState==='visible'){flushMeta187();pullMeta187()}},60000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(flushMeta187,350);setTimeout(pullMeta187,650)}});
 })();
 
 </script>
@@ -8204,7 +8194,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
   }
   // Réappliquer une fois au retour au premier plan, sans bloquer l'interface.
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isInstalledMac189()&&bootDone189)setTimeout(()=>bootstrapAll189(false),500)});
+  let lastMacRefresh197=0;
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState!=='visible'||!isInstalledMac189()||!bootDone189)return;
+    const now=Date.now();if(now-lastMacRefresh197<15*60*1000)return;lastMacRefresh197=now;
+    setTimeout(()=>bootstrapAll189(false),700);
+  });
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start189,{once:true});else start189();
 })();
 </script>
@@ -8313,7 +8308,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   async function reconcileCatalog190(){
     if(catalogBusy190)return false;
-    await publishCatalog190();
     await pullCatalog190();
     try{if(typeof pullMeta187==='function')await pullMeta187()}catch(e){}
     try{if(typeof pullPictoMediaV182==='function')await pullPictoMediaV182(false)}catch(e){}
@@ -8345,12 +8339,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }catch(e){console.warn('190 openAdminPanel',e)}
 
   async function start190(){
-    await new Promise(r=>setTimeout(r,2200));
+    await new Promise(r=>setTimeout(r,2600));
     await reconcileCatalog190();
-    // deuxième passe après que les autres couches ont fini de démarrer
-    setTimeout(reconcileCatalog190,3500);
   }
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(reconcileCatalog190,700)});
+  let lastCatalogCheck197=0;
+  const foregroundCatalog197=()=>{
+    const now=Date.now();if(now-lastCatalogCheck197<60000)return;lastCatalogCheck197=now;
+    setTimeout(reconcileCatalog190,800);
+  };
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')foregroundCatalog197()});
+  window.addEventListener('focus',foregroundCatalog197);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start190,{once:true});else start190();
 })();
 </script>
@@ -8578,6 +8576,37 @@ body > [role="dialog"]{
       });
     });
   },true);
+})();
+</script>
+
+
+<script>
+/* ===== BETA 197 — économie de données =====
+   Les PUSH restent immédiats. Les PULL sont différentiels et espacés.
+   Le catalogue est publié uniquement après une vraie écriture Admin. */
+(function(){
+  let catTimer197=null;
+  try{
+    const prevWrite197=writeAdminBase;
+    writeAdminBase=function(next){
+      const r=prevWrite197.apply(this,arguments);
+      clearTimeout(catTimer197);
+      catTimer197=setTimeout(()=>{try{if(typeof window.publishCatalog190==='function')window.publishCatalog190()}catch(e){}},1200);
+      return r;
+    };
+    window.writeAdminBase=writeAdminBase;
+  }catch(e){console.warn('BETA197 write wrapper',e)}
+  // Ne jamais lancer l'ancienne grosse réception admin_base pendant le nouvel Admin 195.
+  try{
+    const prevPull197=adminBasePull;
+    adminBasePull=async function(){
+      if(document.getElementById('admin195'))return false;
+      return await prevPull197.apply(this,arguments);
+    };
+    window.adminBasePull=adminBasePull;
+  }catch(e){console.warn('BETA197 admin guard',e)}
+
+  window.__MA_CAA_EGRESS_MODE='delta-pull-v197';
 })();
 </script>
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 185</title>
+<title>Ma CAA v2.0 bêta 186</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -209,11 +209,11 @@ function adminReturnToPictogramsStable(scrollY){
 <style id="beta183-clean-debug-ui">
 /* BETA183 — nettoyage de l’interface : anciens boutons de diagnostic masqués */
 #diagBtn136,#diagBtn137,#diag152btn,#diag153btn,#diag156btn,#diag157btn,#diag158btn,
-#diag-old-backups-172,#diag-base64-173,#restore-local-174,#publish-recovery-176,#pull-recovery-176,
+#diag-old-backups-172,#diag-base64-173,#restore-local-174,#restore-local-175,#publish-recovery-176,#pull-recovery-176,
 #publish-recovery-177,#pull-recovery-177,#diag-batches-178,#diag-match-179,#preview-match-181,
 #media-test-182{display:none !important;}
 </style>
-<style>#media-publish-184{display:block!important}</style>
+
 </head>
 <body>
 <div class="app">
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 185</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 186</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7690,7 +7690,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 (function(){
   const legacyIds=[
     'diagBtn136','diagBtn137','diag152btn','diag153btn','diag156btn','diag157btn','diag158btn',
-    'diag-old-backups-172','diag-base64-173','restore-local-174','publish-recovery-176','pull-recovery-176',
+    'diag-old-backups-172','diag-base64-173','restore-local-174','restore-local-175','publish-recovery-176','pull-recovery-176',
     'publish-recovery-177','pull-recovery-177','diag-batches-178','diag-match-179','preview-match-181','media-test-182'
   ];
   function clean183(){
@@ -7702,16 +7702,13 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   try{mo.observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
 })();
 </script>
-</body></html>
-<!-- BETA166: migrate legacy Base64 + IndexedDB images to Storage before admin_base push -->
 
-<!-- BETA167: non-blocking image migration; metadata sync continues if individual image upload fails -->
+<style id="beta186-clean-ui">
+#restore-local-175{display:none!important;}
+#media-publish-184{display:block!important;}
+</style>
 
-<!-- BETA168 manual cloud publish lock fix -->
-
-<!-- BETA170 additive multi-device recovery merge; based on BETA169 image rescue -->
-
-
+<script>
 /* ===== BETA 182 — nouvelle base média pictogrammes synchronisée =====
    Architecture :
    - la structure Admin reste légère et NE transporte plus les images ;
@@ -7932,15 +7929,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     for(const x of jobs){
       try{await oldPublish184(x.id,x.label,x.speech,x.image);ok++}catch(e){fail.push((x.label||x.id)+': '+(e?.message||e));queueMedia184(x.id,x.label,x.speech,x.image)}
     }
-    alert('PUBLICATION MÉDIAS 185\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
+    alert('PUBLICATION MÉDIAS 186\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
   }
 
   function add184(){
     if(document.getElementById('media-publish-184'))return;
-    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (185)';
+    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (186)';
     b.style.cssText='position:fixed;right:12px;bottom:88px;z-index:87;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#245fb5;color:white;box-shadow:0 6px 18px #0003';
     b.onclick=publishCurrentMedia184;document.body.appendChild(b);
     setTimeout(flushMedia184,1800);setInterval(()=>{if(document.visibilityState==='visible')flushMedia184()},6000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add184,{once:true});else add184();
 })();
+
+</script>
+</body></html>

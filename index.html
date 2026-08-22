@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 177</title>
+<title>Ma CAA v2.0 bêta 178</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 177</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 178</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7407,6 +7407,96 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add177,{once:true});else add177();
+})();
+</script>
+
+<script>
+/* ===== BETA 178 — diagnostic des lots d’images orphelines =====
+   LECTURE SEULE : aucune écriture locale/cloud, aucune synchronisation. */
+(function(){
+  function parseTs178(key){
+    const m=String(key||'').match(/^admin-(\d{12,})-/);
+    return m?Number(m[1]):0;
+  }
+  function fmt178(ts){
+    if(!ts)return '—';
+    try{return new Date(ts).toLocaleString('fr-FR')}catch(e){return String(ts)}
+  }
+  async function imageKeys178(){
+    const db=await openLocalImageDB();
+    const keys=await new Promise((resolve,reject)=>{
+      const tx=db.transaction('images','readonly');
+      const r=tx.objectStore('images').getAllKeys();
+      r.onsuccess=()=>resolve(r.result||[]);r.onerror=()=>reject(r.error);
+    });
+    db.close();
+    return keys.map(String);
+  }
+  function group178(keys,gapMs=2500){
+    const rows=keys.map(k=>({k,ts:parseTs178(k)})).filter(x=>x.ts).sort((a,b)=>a.ts-b.ts);
+    const groups=[];let g=[];let prev=0;
+    for(const x of rows){
+      if(g.length && x.ts-prev>gapMs){groups.push(g);g=[]}
+      g.push(x);prev=x.ts;
+    }
+    if(g.length)groups.push(g);
+    return groups.map((a,i)=>({
+      index:i+1,count:a.length,start:a[0].ts,end:a[a.length-1].ts,duration:a[a.length-1].ts-a[0].ts,
+      first:a[0].k,last:a[a.length-1].k
+    }));
+  }
+  function hasImg178(v){return !!(v && (typeof v==='string' ? v.trim() : (v.__local_image||v.__cloud_image)))}
+  async function run178(){
+    const lines=[];
+    lines.push('DIAGNOSTIC LOTS IMAGES — bêta 178');
+    lines.push('Appareil : '+navigator.userAgent);
+    lines.push('LECTURE SEULE — aucune donnée modifiée');
+    lines.push('');
+    try{
+      const base=readAdminBase();
+      const items=Object.values(base.items||{}).filter(x=>x&&typeof x==='object');
+      const added=(base.addedItems||[]).filter(x=>x&&!x.deleted);
+      const itemWith=items.filter(x=>hasImg178(x.image)).length;
+      const addWith=added.filter(x=>hasImg178(x.image)).length;
+      lines.push('=== BASE ADMIN ACTUELLE ===');
+      lines.push('Overrides pictogrammes permanents : '+items.length);
+      lines.push('  avec image : '+itemWith);
+      lines.push('  sans image : '+(items.length-itemWith));
+      lines.push('Pictogrammes ajoutés actifs : '+added.length);
+      lines.push('  avec image : '+addWith);
+      lines.push('  sans image : '+(added.length-addWith));
+      lines.push('');
+
+      const keys=await imageKeys178();
+      lines.push('=== INDEXEDDB IMAGES ===');
+      lines.push('Images physiques : '+keys.length);
+      const groups=group178(keys,2500);
+      lines.push('Lots détectés (écart > 2,5 s = nouveau lot) : '+groups.length);
+      lines.push('');
+
+      const largest=[...groups].sort((a,b)=>b.count-a.count).slice(0,20);
+      lines.push('=== 20 PLUS GROS LOTS ===');
+      largest.forEach((g,i)=>lines.push((i+1)+'. '+g.count+' images | '+fmt178(g.start)+' → '+fmt178(g.end)+' | durée '+Math.round(g.duration/1000)+' s'));
+      lines.push('');
+
+      const recent=groups.slice(-25).reverse();
+      lines.push('=== 25 LOTS LES PLUS RÉCENTS ===');
+      recent.forEach((g,i)=>lines.push((i+1)+'. '+g.count+' images | '+fmt178(g.start)+' → '+fmt178(g.end)+' | durée '+Math.round(g.duration/1000)+' s'));
+      lines.push('');
+      lines.push('IMPORTANT : copie-moi ce diagnostic complet. Ne synchronise rien.');
+      alert(lines.join('\n'));
+    }catch(e){
+      console.error('BETA178 diagnostic',e);
+      alert('Diagnostic 178 impossible : '+(e?.message||String(e)));
+    }
+  }
+  function add178(){
+    if(document.getElementById('diag-batches-178'))return;
+    const b=document.createElement('button');b.id='diag-batches-178';b.type='button';b.textContent='🧩 Lots images orphelines (178)';
+    b.style.cssText='position:fixed;left:12px;bottom:12px;z-index:95;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#7a4b12;color:white;box-shadow:0 6px 18px #0003';
+    b.onclick=run178;document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add178,{once:true});else add178();
 })();
 </script>
 </body></html>

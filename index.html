@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 192</title>
+<title>Ma CAA v2.0 bêta 193</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 192</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 193</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8356,122 +8356,165 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
-<style id="beta192-admin-access-style">
-#admin-access-192{
-  position:fixed;inset:0;z-index:250000;background:rgba(244,246,251,.96);
-  display:flex;align-items:center;justify-content:center;padding:20px;
+<style id="beta193-admin-access">
+#admin-pin-gate-193{
+  position:fixed;inset:0;z-index:999998;background:rgba(244,246,251,.98);
+  display:flex;align-items:center;justify-content:center;padding:18px;
+  pointer-events:auto!important;
 }
-#admin-access-192 .box{
-  width:min(430px,100%);background:#fff;border-radius:22px;padding:24px;
-  box-shadow:0 18px 55px rgba(0,0,0,.18);border:1px solid #dfe4ec;
+#admin-pin-gate-193 .box{
+  width:min(420px,100%);background:white;border-radius:22px;padding:22px;
+  box-shadow:0 18px 55px rgba(0,0,0,.2);border:1px solid #dfe4ec;
 }
-#admin-access-192 h2{margin:0 0 8px;color:#243b6b}
-#admin-access-192 p{color:#667085;line-height:1.4}
-#admin-access-192 input{
-  width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;
-  padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900;
+#admin-pin-gate-193 input{
+  width:100%;box-sizing:border-box;padding:14px;border:2px solid #d9dee8;
+  border-radius:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900;
 }
-#admin-access-192 .row{display:flex;gap:9px;margin-top:14px}
-#admin-access-192 button{
-  flex:1;border:0;border-radius:12px;padding:12px;font-weight:900;min-height:46px;
-}
-#admin-access-192 .open{background:#243b6b;color:white}
-#admin-access-192 .cancel{background:#eef1f5;color:#344054}
-#admin-access-192 .status{margin-top:10px;font-size:13px;font-weight:800;min-height:18px}
+#admin-pin-gate-193 .row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+#admin-pin-gate-193 button{border:0;border-radius:12px;padding:12px;font-weight:900;min-height:46px}
+#admin-pin-gate-193 .go{background:#243b6b;color:#fff}
+#admin-pin-gate-193 .cancel{background:#eef1f5;color:#344054}
+#admin-pin-gate-193 .status{min-height:20px;margin-top:9px;font-size:13px;font-weight:800}
 </style>
+
 <script>
-/* ===== BETA 192 — accès Administrateur reconstruit =====
-   Repart de la 190, sans la couche 191.
-   Remplace le prompt navigateur par une fenêtre interne fiable.
-*/
+/* ===== BETA 193 — accès Admin sans couche fantôme ===== */
 (function(){
-  let opening192=false;
+  let opening193=false;
 
-  function close192(){
-    const x=document.getElementById("admin-access-192");
-    if(x)x.remove();
-  }
-
-  function setStatus192(t,bad=false){
-    const s=document.getElementById("admin-access-status-192");
-    if(!s)return;
-    s.textContent=t||"";
-    s.style.color=bad?"#b42318":"#176b34";
-  }
-
-  async function openPanel192(){
-    if(opening192)return;
-    opening192=true;
+  function restoreClicks193(){
     try{
-      adminUnlocked=true;
-      close192();
+      document.documentElement.style.pointerEvents="auto";
+      document.body.style.pointerEvents="auto";
+      document.body.style.userSelect="";
+      document.body.removeAttribute("inert");
+      document.documentElement.removeAttribute("inert");
+      document.querySelectorAll("[inert]").forEach(el=>el.removeAttribute("inert"));
+    }catch(e){}
+  }
 
-      // Give Safari/iOS one paint cycle after removing the PIN overlay.
-      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  function cleanupGhosts193(keep){
+    try{
+      document.querySelectorAll(".adult-overlay,.editor-overlay,#adult-gate,#admin-access-192,#admin-pin-gate-193").forEach(el=>{
+        if(keep && (el===keep || keep.contains(el) || el.contains(keep)))return;
+        el.remove();
+      });
+    }catch(e){}
+    restoreClicks193();
+  }
 
+  async function launchAdmin193(){
+    if(opening193)return;
+    opening193=true;
+    try{
+      cleanupGhosts193(null);
+      restoreClicks193();
+      if(typeof adminUnlocked!=="undefined")adminUnlocked=true;
+
+      // Prevent a background cloud refresh from fighting the opening animation.
+      window.__MA_CAA_ADMIN_OPEN_193=true;
+
+      let err=null;
       try{
         openAdminPanel("home");
-      }catch(err){
-        console.error("BETA192 openAdminPanel",err);
-        adminUnlocked=false;
-        alert("Erreur ouverture Administrateur : "+(err && err.message ? err.message : String(err)));
+      }catch(e){
+        err=e;
+        console.error("BETA193 openAdminPanel",e);
+      }
+
+      await new Promise(r=>setTimeout(r,120));
+      const panel=document.getElementById("admin-panel-beta25");
+
+      if(err || !panel){
+        if(typeof adminUnlocked!=="undefined")adminUnlocked=false;
+        restoreClicks193();
+        alert("Ouverture Administrateur impossible : "+(err?.message||"le panneau n'a pas été créé."));
         return;
       }
 
-      // Verify the real panel exists and is visible.
-      await new Promise(r=>setTimeout(r,120));
-      const panel=document.getElementById("admin-panel-beta25");
-      if(!panel){
-        adminUnlocked=false;
-        alert("Le code est correct, mais le panneau Administrateur n'a pas pu être créé.");
-        return;
-      }
-      panel.style.display="block";
-      panel.style.visibility="visible";
-      panel.style.opacity="1";
+      // Force the real Admin panel above every legacy layer.
+      Object.assign(panel.style,{
+        display:"block",
+        visibility:"visible",
+        opacity:"1",
+        pointerEvents:"auto",
+        zIndex:"999999"
+      });
+      panel.removeAttribute("inert");
+      panel.querySelectorAll("*").forEach(el=>el.removeAttribute("inert"));
+
+      // Remove only legacy overlays that may appear immediately after opening.
+      const until=Date.now()+1800;
+      const obs=new MutationObserver(()=>{
+        if(Date.now()>until){obs.disconnect();return}
+        document.querySelectorAll(".adult-overlay").forEach(el=>{
+          if(!panel.contains(el))el.remove();
+        });
+        restoreClicks193();
+      });
+      obs.observe(document.body,{childList:true,subtree:false});
+      setTimeout(()=>obs.disconnect(),1900);
+
+      restoreClicks193();
     }finally{
-      opening192=false;
+      setTimeout(()=>{window.__MA_CAA_ADMIN_OPEN_193=false;},2200);
+      opening193=false;
     }
   }
 
-  function showAdminAccess192(){
-    if(document.getElementById("admin-access-192"))return;
+  function showGate193(){
+    cleanupGhosts193(null);
+    restoreClicks193();
+
     const ov=document.createElement("div");
-    ov.id="admin-access-192";
-    ov.innerHTML=
-      '<div class="box">'+
-        '<h2>🛡️ Mode Administrateur</h2>'+
-        '<p>Entre le code administrateur pour ouvrir les réglages avancés.</p>'+
-        '<input id="admin-pin-192" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••">'+
-        '<div class="row">'+
-          '<button class="cancel" id="admin-cancel-192">Annuler</button>'+
-          '<button class="open" id="admin-open-192">Ouvrir</button>'+
-        '</div>'+
-        '<div class="status" id="admin-access-status-192"></div>'+
-      '</div>';
+    ov.id="admin-pin-gate-193";
+    const box=document.createElement("form");
+    box.className="box";
+    box.innerHTML=
+      '<h2 style="margin:0 0 8px;color:#243b6b">🛡️ Mode Administrateur</h2>'+
+      '<p style="margin:0 0 14px;color:#667085">Entre le code administrateur.</p>'+
+      '<input id="admin-pin-input-193" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••">'+
+      '<div class="row"><button type="button" class="cancel">Annuler</button><button type="submit" class="go">Ouvrir</button></div>'+
+      '<div class="status"></div>';
+    ov.appendChild(box);
     document.body.appendChild(ov);
 
-    const input=document.getElementById("admin-pin-192");
-    const validate=async()=>{
-      const entered=input.value;
-      if(entered!==getAdminPin()){
+    const input=box.querySelector("input");
+    const status=box.querySelector(".status");
+    box.querySelector(".cancel").onclick=()=>{ov.remove();restoreClicks193()};
+    box.onsubmit=async e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      if(input.value!==getAdminPin()){
+        status.textContent="Code incorrect.";
+        status.style.color="#b42318";
         input.value="";
-        setStatus192("Code incorrect.",true);
         input.focus();
-        return;
+        return false;
       }
-      setStatus192("Code correct — ouverture…");
-      await openPanel192();
+      status.textContent="Code correct — ouverture…";
+      status.style.color="#176b34";
+      ov.remove();
+      await launchAdmin193();
+      return false;
     };
-    document.getElementById("admin-open-192").onclick=validate;
-    document.getElementById("admin-cancel-192").onclick=close192;
-    input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();validate();}});
     setTimeout(()=>input.focus(),80);
   }
 
-  // Replace the old prompt-based function everywhere.
-  openAdminAccess=showAdminAccess192;
-  window.openAdminAccess=showAdminAccess192;
+  // Replace all normal Administrator entry points.
+  openAdminAccess=showGate193;
+  window.openAdminAccess=showGate193;
+
+  // Final failsafe: when an "Administrateur" nav button is clicked, route here.
+  document.addEventListener("click",function(e){
+    const b=e.target&&e.target.closest?e.target.closest("button"):null;
+    if(!b)return;
+    const t=(b.textContent||"").trim();
+    if(!/^🛡️?\s*Administrateur$/i.test(t) && !/^Administrateur$/i.test(t))return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    showGate193();
+  },true);
 })();
 </script>
 

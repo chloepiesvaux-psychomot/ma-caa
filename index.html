@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 174</title>
+<title>Ma CAA v2.0 bêta 175</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 174</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 175</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7039,6 +7039,115 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     document.body.appendChild(b);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBtn174,{once:true});else addBtn174();
+})();
+</script>
+
+<script>
+/* ===== BETA 175 — restauration locale dans la base Admin réellement affichée =====
+   Aucune écriture cloud. Les images legacy Base64 sont recopiées dans les overrides
+   Admin des pictogrammes permanents. Doudou est promu localement dans addedItems. */
+(function(){
+  const RECOVERY_LOCK_175='ma-caa-recovery-lock-v175';
+  const LEGACY_CUSTOM_175='ma-caa-custom-v1';
+  const LEGACY_ADDED_175='ma-caa-added-v1';
+
+  function parse175(raw,fallback){try{return JSON.parse(raw)}catch(e){return fallback}}
+  function isImg175(v){return typeof v==='string'&&/^data:image\//i.test(v)}
+  function saveAdminLocalOnly175(base){
+    localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+    localStorage.setItem(RECOVERY_LOCK_175,'1');
+    localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
+    localStorage.setItem('ma-caa-last-save',String(Date.now()));
+    try{ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base))}catch(e){}
+    try{adminBaseLocalDirty=true}catch(e){}
+  }
+  function activateRecoveryLock175(){
+    if(localStorage.getItem(RECOVERY_LOCK_175)!=='1')return;
+    try{adminBaseLocalDirty=true}catch(e){}
+    try{localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString())}catch(e){}
+  }
+  activateRecoveryLock175();
+  document.addEventListener('visibilitychange',activateRecoveryLock175);
+  window.addEventListener('focus',activateRecoveryLock175);
+
+  function permanentMatches175(){
+    const legacy=parse175(localStorage.getItem(LEGACY_CUSTOM_175)||'{}',{});
+    const out=[];
+    for(const source of categories){
+      if(source.name==='Favoris'||source.name==='Mode parents')continue;
+      for(const x of (source.items||[])){
+        const key=x[1]+'|'+x[2];
+        const v=legacy&&legacy[key];
+        if(v&&isImg175(v.image))out.push({source,x,key,v});
+      }
+    }
+    return out;
+  }
+
+  function restorePermanentAdmin175(base){
+    base.items=base.items||{};
+    const restored=[];
+    for(const m of permanentMatches175()){
+      const id=adminItemId(m.source,m.x);
+      const prev=base.items[id]&&typeof base.items[id]==='object'?base.items[id]:{};
+      base.items[id]={...prev,image:m.v.image};
+      restored.push(m.v.label||m.x[1]);
+    }
+    return restored;
+  }
+
+  function restoreDoudouAdmin175(base){
+    const legacy=parse175(localStorage.getItem(LEGACY_ADDED_175)||'[]',[]);
+    const found=(Array.isArray(legacy)?legacy:[]).find(x=>x&&(/doudou/i.test(String(x.label||''))||/doudou/i.test(String(x.speech||'')))&&isImg175(x.image));
+    if(!found)return null;
+    base.addedItems=Array.isArray(base.addedItems)?base.addedItems:[];
+    let idx=base.addedItems.findIndex(x=>x&&x.id===found.id);
+    if(idx<0)idx=base.addedItems.findIndex(x=>x&&x.label===found.label&&x.speech===found.speech);
+    const restored={...found,hidden:false,deleted:false};
+    if(idx>=0)base.addedItems[idx]={...base.addedItems[idx],...restored};
+    else base.addedItems.push(restored);
+    base.hiddenItems=Array.isArray(base.hiddenItems)?base.hiddenItems.filter(id=>id!==found.id):[];
+    base.deletedItems=Array.isArray(base.deletedItems)?base.deletedItems.filter(id=>id!==found.id):[];
+    return found.label||'Doudou';
+  }
+
+  async function run175(){
+    if(!confirm("Restauration 175 sur CET appareil uniquement.\n\nElle va remettre les images retrouvées directement dans la base Administrateur locale réellement affichée, et restaurer Doudou dans cette base.\n\nAUCUNE synchronisation cloud ne sera lancée. Continuer ?"))return;
+    try{
+      const base=readAdminBase();
+      const pics=restorePermanentAdmin175(base);
+      const doudou=restoreDoudouAdmin175(base);
+      saveAdminLocalOnly175(base);
+      try{syncAdminCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{renderProfileBar()}catch(e){}
+      try{setTimeout(hydrateAllCloudPictures,0)}catch(e){}
+      const msg=[
+        'RESTAURATION ADMIN LOCALE — bêta 175',
+        'AUCUNE synchronisation cloud lancée',
+        '',
+        'Images permanentes remises dans la base Admin : '+pics.length,
+        'Liste : '+(pics.length?pics.join(', '):'—'),
+        'Doudou restauré dans la base Admin : '+(doudou?'OUI ('+doudou+')':'NON'),
+        '',
+        'Vérifie maintenant visuellement Restaurant, J’ai chaud, J’ai froid, Médecin, Manger, Boire et Doudou.',
+        'Famille n’est pas restauré par cette étape.'
+      ].join('\n');
+      alert(msg);
+    }catch(e){
+      console.error('BETA175 restore',e);
+      alert('Restauration 175 impossible : '+(e?.message||String(e)));
+    }
+  }
+
+  function add175(){
+    if(document.getElementById('restore-admin-175'))return;
+    const b=document.createElement('button');
+    b.id='restore-admin-175';b.type='button';b.textContent='🩹 Restaurer affichage (175)';
+    b.style.cssText='position:fixed;right:12px;bottom:286px;z-index:88;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#0f7b4f;color:white;box-shadow:0 6px 18px #0003';
+    b.onclick=run175;document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add175,{once:true});else add175();
 })();
 </script>
 </body></html>

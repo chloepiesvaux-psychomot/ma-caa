@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 179</title>
+<title>Ma CAA v2.0 bêta 180</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 179</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 180</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7508,14 +7508,17 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function fmt179(ts){try{return new Date(ts).toLocaleString('fr-FR')}catch(e){return String(ts)}}
   function hasImg179(v){return !!(v && (typeof v==='string'?v.trim():(v.__local_image||v.__cloud_image)))}
   async function rows179(){
+    // BETA180: ne charge JAMAIS les 83k blobs en mémoire. Safari pouvait se figer
+    // avant même l'affichage du diagnostic. Les clés suffisent pour l'analyse temporelle.
     const db=await openLocalImageDB();
-    const rows=await new Promise((resolve,reject)=>{
-      const out=[];const tx=db.transaction('images','readonly');const store=tx.objectStore('images');
-      const req=store.openCursor();
-      req.onsuccess=()=>{const c=req.result;if(!c){resolve(out);return}out.push({key:String(c.key),blob:c.value});c.continue()};
+    const keys=await new Promise((resolve,reject)=>{
+      const tx=db.transaction('images','readonly');
+      const req=tx.objectStore('images').getAllKeys();
+      req.onsuccess=()=>resolve(req.result||[]);
       req.onerror=()=>reject(req.error);
     });
-    db.close();return rows.filter(r=>parseTs179(r.key)).sort((a,b)=>parseTs179(a.key)-parseTs179(b.key));
+    db.close();
+    return keys.map(k=>({key:String(k)})).filter(r=>parseTs179(r.key)).sort((a,b)=>parseTs179(a.key)-parseTs179(b.key));
   }
   function groups179(rows,gapMs=2500){
     const groups=[];let g=[];let prev=0;
@@ -7558,7 +7561,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
       const candAdded=candidate179(gs,t.added.length).slice(0,10);
       const candPerm=candidate179(gs,t.permanent.length).slice(0,10);
       const lines=[];
-      lines.push('DIAGNOSTIC CORRESPONDANCE — bêta 179');
+      lines.push('DIAGNOSTIC CORRESPONDANCE — bêta 180');
       lines.push('Appareil : '+navigator.userAgent);
       lines.push('LECTURE SEULE — aucune donnée modifiée');
       lines.push('');
@@ -7589,9 +7592,9 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   }
   function add179(){
     if(document.getElementById('diag-match-179'))return;
-    const b=document.createElement('button');b.id='diag-match-179';b.type='button';b.textContent='🧭 Correspondances images (179)';
+    const b=document.createElement('button');b.id='diag-match-179';b.type='button';b.textContent='🧭 Correspondances images (180)';
     b.style.cssText='position:fixed;left:12px;bottom:62px;z-index:96;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#3656a8;color:white;box-shadow:0 6px 18px #0003';
-    b.onclick=run179;document.body.appendChild(b);
+    b.onclick=async()=>{const old=b.textContent;b.disabled=true;b.textContent='⏳ Analyse en cours…';try{await run179()}finally{b.disabled=false;b.textContent=old}};document.body.appendChild(b);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add179,{once:true});else add179();
 })();

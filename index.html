@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 176</title>
+<title>Ma CAA v2.0 bêta 177</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 176</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 177</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7270,6 +7270,143 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add176,{once:true});else add176();
+})();
+
+
+/* ===== BETA 177 — récupération images sans Supabase Storage =====
+   Chaque image est stockée dans une petite ligne app_config séparée.
+   Aucun upload dans le bucket pictograms : contourne RLS Storage et noms invalides. */
+(function(){
+  const MANIFEST_177='recovery_manifest_v177';
+  const PREFIX_177='recovery_img_v177_';
+  const LEGACY_CUSTOM_177='ma-caa-custom-v1';
+  const LEGACY_ADDED_177='ma-caa-added-v1';
+
+  function parse177(raw,fallback){try{return JSON.parse(raw)}catch(e){return fallback}}
+  function isData177(v){return typeof v==='string'&&/^data:image\//i.test(v)}
+  function hash177(s){
+    let h=2166136261>>>0;
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}
+    return (h>>>0).toString(36);
+  }
+  function permanentTargets177(){
+    const legacy=parse177(localStorage.getItem(LEGACY_CUSTOM_177)||'{}',{});
+    const out=[];
+    for(const cat of categories){
+      if(cat.name==='Favoris'||cat.name==='Mode parents')continue;
+      for(const x of (cat.items||[])){
+        const legacyKey=x[1]+'|'+x[2], old=legacy&&legacy[legacyKey];
+        if(!old||!isData177(old.image))continue;
+        const id=adminItemId(cat,x), current=readAdminBase().items?.[id]?.image;
+        const image=isData177(current)?current:old.image;
+        out.push({id,label:old.label||x[1],speech:old.speech||x[2],image});
+      }
+    }
+    return out;
+  }
+  function doudou177(){
+    const base=readAdminBase();
+    let d=(base.addedItems||[]).find(x=>x&&/doudou/i.test(String(x.label||'')+' '+String(x.speech||'')));
+    if(d&&isData177(d.image))return {...d};
+    const legacy=parse177(localStorage.getItem(LEGACY_ADDED_177)||'[]',[]);
+    d=(Array.isArray(legacy)?legacy:[]).find(x=>x&&/doudou/i.test(String(x.label||'')+' '+String(x.speech||''))&&isData177(x.image));
+    return d?{...d}:null;
+  }
+  async function writeRow177(key,data){
+    const r=await cloudClient.from('app_config').upsert({key,data,updated_at:new Date().toISOString()},{onConflict:'key'});
+    if(r.error)throw r.error;
+  }
+  async function publish177(){
+    if(!confirm("Publier les images réparées SANS utiliser le stockage d'images ?\n\nChaque image sera enregistrée séparément. La base Admin générale ne sera pas remplacée."))return;
+    const btn=document.getElementById('publish-recovery-177');
+    if(btn){btn.disabled=true;btn.textContent='☁️ Publication 177…'}
+    try{
+      if(!cloudClient)throw new Error('Connexion Supabase indisponible.');
+      const u=await cloudUser();if(!u)throw new Error('Connecte d’abord la synchronisation sur ce Mac.');
+      const targets=permanentTargets177();
+      const manifest={version:177,created_at:new Date().toISOString(),items:[],addedItems:[]};
+      const failures=[];
+      let done=0;
+      for(const t of targets){
+        if(!isData177(t.image)){failures.push(t.label+': image Base64 absente');continue}
+        const rowKey=PREFIX_177+'p_'+hash177(t.id);
+        try{
+          await writeRow177(rowKey,{kind:'permanent',id:t.id,label:t.label,speech:t.speech,image:t.image});
+          manifest.items.push({id:t.id,label:t.label,key:rowKey});done++;
+        }catch(e){failures.push(t.label+': '+(e?.message||e))}
+      }
+      const d=doudou177();
+      if(d&&isData177(d.image)){
+        const rowKey=PREFIX_177+'a_'+hash177(d.id||((d.label||'')+'|'+(d.speech||'')));
+        try{
+          await writeRow177(rowKey,{kind:'added',item:d});
+          manifest.addedItems.push({id:d.id||'',label:d.label||'Doudou',key:rowKey});done++;
+        }catch(e){failures.push('Doudou: '+(e?.message||e))}
+      }else failures.push('Doudou: image Base64 absente');
+      await writeRow177(MANIFEST_177,manifest);
+      alert('PAQUET IMAGES 177 PUBLIÉ\n\nImages publiées : '+done+'\nPictogrammes permanents : '+manifest.items.length+'\nDoudou : '+(manifest.addedItems.length?'OUI':'NON')+(failures.length?'\n\nÉchecs :\n- '+failures.join('\n- '):'')+'\n\nAucune base Admin générale remplacée.');
+    }catch(e){
+      console.error('BETA177 publish',e);
+      alert('Publication images 177 impossible : '+(e?.message||String(e)));
+    }finally{if(btn){btn.disabled=false;btn.textContent='☁️ Publier images réparées (177)'}}
+  }
+  async function readRow177(key){
+    const r=await cloudClient.from('app_config').select('data').eq('key',key).maybeSingle();
+    if(r.error)throw r.error;
+    return r.data?.data||null;
+  }
+  async function pull177(){
+    if(!confirm("Récupérer UNIQUEMENT les images du paquet 177 ?\n\nLa base Admin générale de cet appareil ne sera pas remplacée."))return;
+    const btn=document.getElementById('pull-recovery-177');
+    if(btn){btn.disabled=true;btn.textContent='⬇️ Récupération 177…'}
+    try{
+      if(!cloudClient)throw new Error('Connexion Supabase indisponible.');
+      const manifest=await readRow177(MANIFEST_177);
+      if(!manifest)throw new Error('Aucun paquet images 177 publié.');
+      const base=readAdminBase();base.items=base.items||{};base.addedItems=Array.isArray(base.addedItems)?base.addedItems:[];
+      let n=0,dn=0;const failures=[];
+      for(const ref of (manifest.items||[])){
+        try{
+          const row=await readRow177(ref.key);
+          if(!row||!isData177(row.image))throw new Error('image absente');
+          const prev=base.items[ref.id]&&typeof base.items[ref.id]==='object'?base.items[ref.id]:{};
+          base.items[ref.id]={...prev,image:row.image};n++;
+        }catch(e){failures.push((ref.label||ref.id)+': '+(e?.message||e))}
+      }
+      for(const ref of (manifest.addedItems||[])){
+        try{
+          const row=await readRow177(ref.key),incoming=row&&row.item;
+          if(!incoming||!isData177(incoming.image))throw new Error('image absente');
+          let i=base.addedItems.findIndex(x=>x&&incoming.id&&x.id===incoming.id);
+          if(i<0)i=base.addedItems.findIndex(x=>x&&x.label===incoming.label&&x.speech===incoming.speech);
+          if(i>=0)base.addedItems[i]={...base.addedItems[i],...incoming,hidden:false,deleted:false};
+          else base.addedItems.push({...incoming,hidden:false,deleted:false});
+          dn++;
+        }catch(e){failures.push((ref.label||'Doudou')+': '+(e?.message||e))}
+      }
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+      try{ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base))}catch(e){}
+      localStorage.setItem('ma-caa-last-save',String(Date.now()));
+      try{syncAdminCategories()}catch(e){};try{render()}catch(e){};try{setTimeout(hydrateAllCloudPictures,0)}catch(e){}
+      alert('IMAGES 177 RÉCUPÉRÉES\n\nImages permanentes appliquées : '+n+'\nDoudou appliqué : '+(dn?'OUI':'NON')+(failures.length?'\n\nÉchecs :\n- '+failures.join('\n- '):'')+'\n\nAucune synchronisation générale lancée.');
+    }catch(e){
+      console.error('BETA177 pull',e);
+      alert('Récupération images 177 impossible : '+(e?.message||String(e)));
+    }finally{if(btn){btn.disabled=false;btn.textContent='⬇️ Récupérer images réparées (177)'}}
+  }
+  function add177(){
+    // Masquer les boutons 176 pour éviter toute confusion.
+    ['publish-recovery-176','pull-recovery-176'].forEach(id=>{const x=document.getElementById(id);if(x)x.remove()});
+    if(!document.getElementById('publish-recovery-177')){
+      const b=document.createElement('button');b.id='publish-recovery-177';b.type='button';b.textContent='☁️ Publier images réparées (177)';
+      b.style.cssText='position:fixed;right:12px;bottom:340px;z-index:92;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#2459a8;color:white;box-shadow:0 6px 18px #0003';b.onclick=publish177;document.body.appendChild(b);
+    }
+    if(!document.getElementById('pull-recovery-177')){
+      const b=document.createElement('button');b.id='pull-recovery-177';b.type='button';b.textContent='⬇️ Récupérer images réparées (177)';
+      b.style.cssText='position:fixed;right:12px;bottom:394px;z-index:92;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#7042c1;color:white;box-shadow:0 6px 18px #0003';b.onclick=pull177;document.body.appendChild(b);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add177,{once:true});else add177();
 })();
 </script>
 </body></html>

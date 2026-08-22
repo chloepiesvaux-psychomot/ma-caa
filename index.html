@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 178</title>
+<title>Ma CAA v2.0 bêta 179</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 178</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 179</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7498,6 +7498,104 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add178,{once:true});else add178();
 })();
+
+/* ===== BETA 179 — diagnostic de correspondance lots ↔ pictogrammes manquants =====
+   STRICTEMENT LECTURE SEULE : aucune écriture locale/cloud, aucune synchronisation. */
+(function(){
+  function parseTs179(key){
+    const m=String(key||'').match(/^admin-(\d{12,})-/);return m?Number(m[1]):0;
+  }
+  function fmt179(ts){try{return new Date(ts).toLocaleString('fr-FR')}catch(e){return String(ts)}}
+  function hasImg179(v){return !!(v && (typeof v==='string'?v.trim():(v.__local_image||v.__cloud_image)))}
+  async function rows179(){
+    const db=await openLocalImageDB();
+    const rows=await new Promise((resolve,reject)=>{
+      const out=[];const tx=db.transaction('images','readonly');const store=tx.objectStore('images');
+      const req=store.openCursor();
+      req.onsuccess=()=>{const c=req.result;if(!c){resolve(out);return}out.push({key:String(c.key),blob:c.value});c.continue()};
+      req.onerror=()=>reject(req.error);
+    });
+    db.close();return rows.filter(r=>parseTs179(r.key)).sort((a,b)=>parseTs179(a.key)-parseTs179(b.key));
+  }
+  function groups179(rows,gapMs=2500){
+    const groups=[];let g=[];let prev=0;
+    for(const r of rows){const ts=parseTs179(r.key);if(g.length&&ts-prev>gapMs){groups.push(g);g=[]}g.push(r);prev=ts}
+    if(g.length)groups.push(g);return groups;
+  }
+  function label179(id,obj){
+    if(obj&&obj.label)return obj.label;
+    const s=String(id||'');const parts=s.split('||');return parts.length>1?parts[1]:s;
+  }
+  function targets179(){
+    const base=readAdminBase();
+    const permanent=[];
+    for(const [id,it] of Object.entries(base.items||{})){
+      if(it&&typeof it==='object'&&!hasImg179(it.image)) permanent.push({kind:'permanent',id,label:label179(id,it)});
+    }
+    const added=(base.addedItems||[]).filter(x=>x&&!x.deleted&&!hasImg179(x.image)).map(x=>({kind:'added',id:x.id||'',label:x.label||x.speech||x.id||'Sans nom'}));
+    return {permanent,added,all:[...permanent,...added]};
+  }
+  function score179(n,t){
+    const d=Math.abs(n-t);return {d,ratio:t?d/t:999};
+  }
+  function candidate179(groups,targetCount){
+    return groups.map((g,i)=>{
+      const start=parseTs179(g[0].key),end=parseTs179(g[g.length-1].key),n=g.length;
+      const exact=score179(n,targetCount);
+      let bestMult={k:1,d:exact.d};
+      for(let k=2;k<=6;k++){const d=Math.abs(n-targetCount*k);if(d<bestMult.d)bestMult={k,d}}
+      const recentBonus=(Date.now()-end)/(1000*3600*24);
+      const score=bestMult.d + Math.min(recentBonus,30)*0.15;
+      return {i,n,start,end,duration:end-start,k:bestMult.k,d:bestMult.d,score};
+    }).sort((a,b)=>a.score-b.score);
+  }
+  async function run179(){
+    try{
+      const t=targets179();
+      const rows=await rows179();
+      const gs=groups179(rows,2500);
+      const candAll=candidate179(gs,t.all.length).slice(0,20);
+      const candAdded=candidate179(gs,t.added.length).slice(0,10);
+      const candPerm=candidate179(gs,t.permanent.length).slice(0,10);
+      const lines=[];
+      lines.push('DIAGNOSTIC CORRESPONDANCE — bêta 179');
+      lines.push('Appareil : '+navigator.userAgent);
+      lines.push('LECTURE SEULE — aucune donnée modifiée');
+      lines.push('');
+      lines.push('=== PICTOGRAMMES ACTUELS SANS IMAGE ===');
+      lines.push('Permanents : '+t.permanent.length);
+      lines.push('Ajoutés : '+t.added.length);
+      lines.push('TOTAL : '+t.all.length);
+      lines.push('');
+      lines.push('Premiers permanents sans image :');
+      t.permanent.slice(0,30).forEach((x,i)=>lines.push((i+1)+'. '+x.label));
+      lines.push('');
+      lines.push('Premiers ajoutés sans image :');
+      t.added.slice(0,40).forEach((x,i)=>lines.push((i+1)+'. '+x.label));
+      lines.push('');
+      lines.push('=== LOTS CANDIDATS POUR LE TOTAL ('+t.all.length+') ===');
+      candAll.forEach((c,i)=>lines.push((i+1)+'. '+c.n+' images | '+fmt179(c.start)+' → '+fmt179(c.end)+' | écart '+c.d+(c.k>1?' vs '+c.k+'×'+t.all.length:'')));
+      lines.push('');
+      lines.push('=== LOTS CANDIDATS POUR LES AJOUTÉS ('+t.added.length+') ===');
+      candAdded.forEach((c,i)=>lines.push((i+1)+'. '+c.n+' images | '+fmt179(c.start)+' | écart '+c.d+(c.k>1?' vs '+c.k+'×'+t.added.length:'')));
+      lines.push('');
+      lines.push('=== LOTS CANDIDATS POUR LES PERMANENTS ('+t.permanent.length+') ===');
+      candPerm.forEach((c,i)=>lines.push((i+1)+'. '+c.n+' images | '+fmt179(c.start)+' | écart '+c.d+(c.k>1?' vs '+c.k+'×'+t.permanent.length:'')));
+      lines.push('');
+      lines.push('NOTE : un lot proche de 159, 112 ou 47 (ou d’un multiple exact) est particulièrement intéressant.');
+      lines.push('IMPORTANT : copie-moi ce diagnostic complet. Ne synchronise rien.');
+      alert(lines.join('\n'));
+    }catch(e){console.error('BETA179 diagnostic',e);alert('Diagnostic 179 impossible : '+(e?.message||String(e)))}
+  }
+  function add179(){
+    if(document.getElementById('diag-match-179'))return;
+    const b=document.createElement('button');b.id='diag-match-179';b.type='button';b.textContent='🧭 Correspondances images (179)';
+    b.style.cssText='position:fixed;left:12px;bottom:62px;z-index:96;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#3656a8;color:white;box-shadow:0 6px 18px #0003';
+    b.onclick=run179;document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add179,{once:true});else add179();
+})();
+
 </script>
 </body></html>
 <!-- BETA166: migrate legacy Base64 + IndexedDB images to Storage before admin_base push -->

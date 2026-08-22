@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 191</title>
+<title>Ma CAA v2.0 bêta 192</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 191</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 192</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8356,124 +8356,122 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
+<style id="beta192-admin-access-style">
+#admin-access-192{
+  position:fixed;inset:0;z-index:250000;background:rgba(244,246,251,.96);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+#admin-access-192 .box{
+  width:min(430px,100%);background:#fff;border-radius:22px;padding:24px;
+  box-shadow:0 18px 55px rgba(0,0,0,.18);border:1px solid #dfe4ec;
+}
+#admin-access-192 h2{margin:0 0 8px;color:#243b6b}
+#admin-access-192 p{color:#667085;line-height:1.4}
+#admin-access-192 input{
+  width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;
+  padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900;
+}
+#admin-access-192 .row{display:flex;gap:9px;margin-top:14px}
+#admin-access-192 button{
+  flex:1;border:0;border-radius:12px;padding:12px;font-weight:900;min-height:46px;
+}
+#admin-access-192 .open{background:#243b6b;color:white}
+#admin-access-192 .cancel{background:#eef1f5;color:#344054}
+#admin-access-192 .status{margin-top:10px;font-size:13px;font-weight:800;min-height:18px}
+</style>
 <script>
-/* ===== BETA 191 — stabilisation accès Administrateur =====
-   Ne touche pas aux synchros 186/187/190.
-   Objectif: après validation du code Admin, ouvrir le panneau une seule fois
-   et empêcher qu'un rafraîchissement de synchro l'écrase immédiatement.
+/* ===== BETA 192 — accès Administrateur reconstruit =====
+   Repart de la 190, sans la couche 191.
+   Remplace le prompt navigateur par une fenêtre interne fiable.
 */
 (function(){
-  let adminOpening191=false;
-  let adminOpenedAt191=0;
+  let opening192=false;
 
-  function findVisibleAdminPanel191(){
-    try{
-      return [...document.querySelectorAll(".editor-overlay,.adult-overlay,[id*='admin'],[class*='admin']")]
-        .some(el=>{
-          const st=getComputedStyle(el);
-          if(st.display==="none"||st.visibility==="hidden"||st.opacity==="0")return false;
-          const txt=(el.textContent||"").toLowerCase();
-          return /administrateur|pictogrammes permanents|catégories|paramètres/.test(txt);
-        });
-    }catch(e){ return false; }
+  function close192(){
+    const x=document.getElementById("admin-access-192");
+    if(x)x.remove();
   }
 
-  async function forceOpenAdmin191(reason){
-    if(adminOpening191)return false;
-    adminOpening191=true;
+  function setStatus192(t,bad=false){
+    const s=document.getElementById("admin-access-status-192");
+    if(!s)return;
+    s.textContent=t||"";
+    s.style.color=bad?"#b42318":"#176b34";
+  }
+
+  async function openPanel192(){
+    if(opening192)return;
+    opening192=true;
     try{
-      // Freeze legacy background pulls briefly while Admin is opening.
-      window.__MA_CAA_ADMIN_OPENING_191=true;
-      if(typeof adminUnlocked!=="undefined") adminUnlocked=true;
+      adminUnlocked=true;
+      close192();
 
-      // Remove stale adult gate overlays that can trap clicks.
+      // Give Safari/iOS one paint cycle after removing the PIN overlay.
+      await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+
       try{
-        document.querySelectorAll(".adult-overlay").forEach(el=>{
-          const txt=(el.textContent||"").toLowerCase();
-          if(/administrateur|code|maintenir|parent/.test(txt)) el.remove();
-        });
-      }catch(e){}
-
-      // Try the known entry points in order.
-      let opened=false;
-      const fns=["openAdminPanel","adminRefresh","openAdminHome","renderAdminHome"];
-      for(const name of fns){
-        try{
-          const fn=window[name];
-          if(typeof fn==="function"){
-            fn();
-            await new Promise(r=>setTimeout(r,90));
-            if(findVisibleAdminPanel191()){ opened=true; break; }
-          }
-        }catch(e){ console.warn("BETA191",name,e); }
+        openAdminPanel("home");
+      }catch(err){
+        console.error("BETA192 openAdminPanel",err);
+        adminUnlocked=false;
+        alert("Erreur ouverture Administrateur : "+(err && err.message ? err.message : String(err)));
+        return;
       }
 
-      // Last resort: click the existing Administrator nav button.
-      if(!opened){
-        try{
-          const btn=[...document.querySelectorAll("button")].find(b=>/administrateur/i.test((b.textContent||"").trim()));
-          if(btn){
-            btn.click();
-            await new Promise(r=>setTimeout(r,120));
-            opened=findVisibleAdminPanel191();
-          }
-        }catch(e){}
+      // Verify the real panel exists and is visible.
+      await new Promise(r=>setTimeout(r,120));
+      const panel=document.getElementById("admin-panel-beta25");
+      if(!panel){
+        adminUnlocked=false;
+        alert("Le code est correct, mais le panneau Administrateur n'a pas pu être créé.");
+        return;
       }
-
-      if(opened){
-        adminOpenedAt191=Date.now();
-        try{ showFeedback("Mode Administrateur"); }catch(e){}
-      }else{
-        console.warn("BETA191: panneau Administrateur non détecté après",reason);
-      }
-      return opened;
+      panel.style.display="block";
+      panel.style.visibility="visible";
+      panel.style.opacity="1";
     }finally{
-      setTimeout(()=>{window.__MA_CAA_ADMIN_OPENING_191=false;},2500);
-      adminOpening191=false;
+      opening192=false;
     }
   }
 
-  // Intercept successful PIN/code validation paths by observing the unlock flag
-  // and the disappearance of a code overlay, then force the panel open.
-  let lastUnlocked191=false;
-  setInterval(()=>{
-    try{
-      const unlocked = (typeof adminUnlocked!=="undefined" && !!adminUnlocked);
-      if(unlocked && !lastUnlocked191 && !findVisibleAdminPanel191()){
-        setTimeout(()=>forceOpenAdmin191("unlock-transition"),80);
-      }
-      lastUnlocked191=unlocked;
-    }catch(e){}
-  },180);
+  function showAdminAccess192(){
+    if(document.getElementById("admin-access-192"))return;
+    const ov=document.createElement("div");
+    ov.id="admin-access-192";
+    ov.innerHTML=
+      '<div class="box">'+
+        '<h2>🛡️ Mode Administrateur</h2>'+
+        '<p>Entre le code administrateur pour ouvrir les réglages avancés.</p>'+
+        '<input id="admin-pin-192" type="password" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="••••">'+
+        '<div class="row">'+
+          '<button class="cancel" id="admin-cancel-192">Annuler</button>'+
+          '<button class="open" id="admin-open-192">Ouvrir</button>'+
+        '</div>'+
+        '<div class="status" id="admin-access-status-192"></div>'+
+      '</div>';
+    document.body.appendChild(ov);
 
-  // If user presses a validation button in an admin/code overlay and unlock becomes true,
-  // force opening even if the original callback stops early.
-  document.addEventListener("click",e=>{
-    const b=e.target&&e.target.closest?e.target.closest("button"):null;
-    if(!b)return;
-    const txt=(b.textContent||"").trim().toLowerCase();
-    if(!/valider|entrer|ouvrir|administrateur|connexion/.test(txt))return;
-    const inGate=!!b.closest(".adult-overlay,.editor-overlay");
-    if(!inGate)return;
-    setTimeout(()=>{
-      try{
-        if(typeof adminUnlocked!=="undefined" && adminUnlocked && !findVisibleAdminPanel191()){
-          forceOpenAdmin191("post-button");
-        }
-      }catch(e){}
-    },180);
-  },true);
-
-  // During first seconds after opening Admin, suppress automatic heavy refreshes.
-  const originalPull = window.adminBasePull;
-  if(typeof originalPull==="function"){
-    window.adminBasePull = async function(...args){
-      if(window.__MA_CAA_ADMIN_OPENING_191 || (adminOpenedAt191 && Date.now()-adminOpenedAt191<5000)){
-        return false;
+    const input=document.getElementById("admin-pin-192");
+    const validate=async()=>{
+      const entered=input.value;
+      if(entered!==getAdminPin()){
+        input.value="";
+        setStatus192("Code incorrect.",true);
+        input.focus();
+        return;
       }
-      return originalPull.apply(this,args);
+      setStatus192("Code correct — ouverture…");
+      await openPanel192();
     };
+    document.getElementById("admin-open-192").onclick=validate;
+    document.getElementById("admin-cancel-192").onclick=close192;
+    input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();validate();}});
+    setTimeout(()=>input.focus(),80);
   }
+
+  // Replace the old prompt-based function everywhere.
+  openAdminAccess=showAdminAccess192;
+  window.openAdminAccess=showAdminAccess192;
 })();
 </script>
 

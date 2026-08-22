@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 186</title>
+<title>Ma CAA v2.0 bêta 187</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 186</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 187</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7929,17 +7929,139 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     for(const x of jobs){
       try{await oldPublish184(x.id,x.label,x.speech,x.image);ok++}catch(e){fail.push((x.label||x.id)+': '+(e?.message||e));queueMedia184(x.id,x.label,x.speech,x.image)}
     }
-    alert('PUBLICATION MÉDIAS 186\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
+    alert('PUBLICATION MÉDIAS 187\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
   }
 
   function add184(){
     if(document.getElementById('media-publish-184'))return;
-    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (186)';
+    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (187)';
     b.style.cssText='position:fixed;right:12px;bottom:88px;z-index:87;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#245fb5;color:white;box-shadow:0 6px 18px #0003';
     b.onclick=publishCurrentMedia184;document.body.appendChild(b);
     setTimeout(flushMedia184,1800);setInterval(()=>{if(document.visibilityState==='visible')flushMedia184()},6000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add184,{once:true});else add184();
+})();
+
+
+/* ===== BETA 187 — synchronisation légère des métadonnées pictogrammes =====
+   Nom, phrase, catégorie, emoji et action sont synchronisés par petite fiche
+   indépendante de la grosse admin_base. Une modification locale est protégée
+   des anciens PULL pendant 15 s, afin qu'elle reste visible immédiatement. */
+(function(){
+  const META_PREFIX_187='picto_meta_v187::';
+  const META_PENDING_187='ma-caa-meta-pending-v187';
+  let applyingMeta187=false, metaBusy187=false, metaProtectUntil187=0;
+
+  function metaFields187(x,kind,id){
+    x=x||{};
+    return {
+      id:String(id||x.id||''), kind:kind||'base',
+      label:x.label||'', speech:x.speech||'', emoji:x.emoji||'',
+      category:x.category||'', categories:Array.isArray(x.categories)?x.categories:[],
+      action:x.action||'phrase', hidden:!!x.hidden, deleted:!!x.deleted
+    };
+  }
+  function sig187(x,kind,id){try{return JSON.stringify(metaFields187(x,kind,id))}catch(e){return ''}}
+  function readPending187(){try{return JSON.parse(localStorage.getItem(META_PENDING_187)||'[]')}catch(e){return []}}
+  function writePending187(v){try{localStorage.setItem(META_PENDING_187,JSON.stringify(v||[]))}catch(e){}}
+  function queueMeta187(rec){
+    if(!rec||!rec.id)return;
+    const q=readPending187().filter(x=>x&&x.id!==rec.id);
+    q.push({...rec,t:Date.now()});writePending187(q);setTimeout(flushMeta187,350);
+  }
+  async function publishMeta187(rec){
+    if(!cloudClient)throw new Error('cloud indisponible');
+    const u=await cloudUser();if(!u)throw new Error('compte cloud non connecté');
+    const key=META_PREFIX_187+encodeURIComponent(rec.id);
+    const r=await cloudClient.from('app_config').upsert({key,data:{...rec,updated_at:new Date().toISOString()},updated_at:new Date().toISOString()},{onConflict:'key'});
+    if(r.error)throw r.error;return true;
+  }
+  async function flushMeta187(){
+    if(metaBusy187||!cloudClient)return false;
+    const u=await cloudUser();if(!u)return false;
+    metaBusy187=true;
+    try{
+      const q=readPending187(),remain=[];
+      for(const rec of q){try{await publishMeta187(rec)}catch(e){console.warn('Meta 187 push',rec.label,e);remain.push(rec)}}
+      writePending187(remain);return remain.length===0;
+    }finally{metaBusy187=false}
+  }
+  function localWriteMetaBase187(base){
+    try{
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+      if(typeof ADMIN_LAST_BASE_V113!=='undefined')ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base));
+      localStorage.setItem('ma-caa-last-save',String(Date.now()));
+      return true;
+    }catch(e){console.error('Meta local 187',e);return false}
+  }
+  async function pullMeta187(){
+    if(metaBusy187||!cloudClient||Date.now()<metaProtectUntil187)return false;
+    const u=await cloudUser();if(!u)return false;
+    metaBusy187=true;
+    try{
+      const r=await cloudClient.from('app_config').select('key,data,updated_at').like('key',META_PREFIX_187+'%').order('updated_at',{ascending:true});
+      if(r.error)throw r.error;
+      const base=readAdminBase();let changed=false;
+      applyingMeta187=true;
+      for(const row of r.data||[]){
+        const rec=row.data||{};if(!rec.id)continue;
+        if(rec.kind==='added'){
+          base.addedItems=Array.isArray(base.addedItems)?base.addedItems:[];
+          let x=base.addedItems.find(v=>v&&v.id===rec.id);
+          if(!x){x={id:rec.id};base.addedItems.push(x)}
+          const before=sig187(x,'added',rec.id);
+          Object.assign(x,{label:rec.label||'',speech:rec.speech||rec.label||'',emoji:rec.emoji||'🖼️',category:rec.category||'',categories:Array.isArray(rec.categories)?rec.categories:[],action:rec.action||'phrase',hidden:!!rec.hidden,deleted:!!rec.deleted});
+          if(before!==sig187(x,'added',rec.id))changed=true;
+        }else{
+          base.items=base.items||{};const x=base.items[rec.id]||{};
+          const before=sig187(x,'base',rec.id);
+          Object.assign(x,{label:rec.label||'',speech:rec.speech||rec.label||'',emoji:rec.emoji||'',category:rec.category||'',categories:Array.isArray(rec.categories)?rec.categories:[],action:rec.action||'phrase'});
+          base.items[rec.id]=x;if(before!==sig187(x,'base',rec.id))changed=true;
+        }
+      }
+      if(changed){
+        localWriteMetaBase187(base);
+        try{syncAdminCategories();render();if(typeof window.__refreshAdminPictos145==='function')window.__refreshAdminPictos145()}catch(e){}
+      }
+      return true;
+    }catch(e){console.warn('Meta 187 pull',e);return false}
+    finally{applyingMeta187=false;metaBusy187=false}
+  }
+
+  // Sur chaque écriture Admin, détecter uniquement les fiches pictogrammes modifiées.
+  const oldWriteAdmin187=writeAdminBase;
+  writeAdminBase=function(next){
+    const before=readAdminBase();
+    const result=oldWriteAdmin187(next);
+    if(applyingMeta187)return result;
+    metaProtectUntil187=Date.now()+15000;
+    const after=readAdminBase();
+    try{
+      const ids=new Set([...Object.keys(before.items||{}),...Object.keys(after.items||{})]);
+      for(const id of ids){
+        const a=(after.items||{})[id],b=(before.items||{})[id];
+        if(a&&sig187(a,'base',id)!==sig187(b,'base',id))queueMeta187(metaFields187(a,'base',id));
+      }
+      const bm=new Map((before.addedItems||[]).filter(Boolean).map(x=>[x.id,x]));
+      for(const a of (after.addedItems||[]))if(a&&a.id&&sig187(a,'added',a.id)!==sig187(bm.get(a.id),'added',a.id))queueMeta187(metaFields187(a,'added',a.id));
+    }catch(e){console.warn('Meta 187 detect',e)}
+    return result;
+  };
+  window.writeAdminBase=writeAdminBase;
+
+  // Empêcher une ancienne réception globale d'écraser immédiatement une saisie locale.
+  const oldPull187=adminBasePull;
+  adminBasePull=async function(){
+    if(Date.now()<metaProtectUntil187)return false;
+    const r=await oldPull187.apply(this,arguments);
+    setTimeout(()=>pullMeta187(),80);
+    return r;
+  };
+  window.adminBasePull=adminBasePull;
+
+  setTimeout(flushMeta187,1200);setTimeout(pullMeta187,2200);
+  setInterval(()=>{if(document.visibilityState==='visible'){flushMeta187();pullMeta187()}},6000);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(flushMeta187,250);setTimeout(pullMeta187,500)}});
 })();
 
 </script>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 183</title>
+<title>Ma CAA v2.0 bêta 184</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -213,6 +213,7 @@ function adminReturnToPictogramsStable(scrollY){
 #publish-recovery-177,#pull-recovery-177,#diag-batches-178,#diag-match-179,#preview-match-181,
 #media-test-182{display:none !important;}
 </style>
+<style>@media(max-width:900px){#media-publish-184{display:none!important}}</style>
 </head>
 <body>
 <div class="app">
@@ -222,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 183</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 184</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7795,6 +7796,27 @@ async function applyMediaRecordV182(rec){
   let target=null;
   if(base.items&&base.items[rec.picto_id])target=base.items[rec.picto_id];
   if(!target&&Array.isArray(base.addedItems))target=base.addedItems.find(x=>x&&x.id===rec.picto_id);
+
+  // BETA184: secours inter-appareils. Certains anciens pictogrammes permanents
+  // ont acquis des IDs différents au fil des migrations. Le couple libellé + parole
+  // est utilisé uniquement si l'ID exact n'existe pas sur cet appareil.
+  if(!target){
+    const norm=v=>String(v||'').trim().toLocaleLowerCase('fr-FR');
+    const wantLabel=norm(rec.label), wantSpeech=norm(rec.speech);
+    if(base.items&&typeof base.items==='object'){
+      target=Object.values(base.items).find(x=>x&&norm(x.label)===wantLabel&&norm(x.speech)===wantSpeech)||null;
+    }
+    if(!target&&Array.isArray(base.addedItems)){
+      target=base.addedItems.find(x=>x&&!x.deleted&&norm(x.label)===wantLabel&&norm(x.speech)===wantSpeech)||null;
+    }
+    // Dernier recours : libellé unique, utile pour les anciens ajouts dont la phrase a changé.
+    if(!target&&wantLabel){
+      const candidates=[];
+      if(base.items&&typeof base.items==='object')for(const x of Object.values(base.items))if(x&&norm(x.label)===wantLabel)candidates.push(x);
+      if(Array.isArray(base.addedItems))for(const x of base.addedItems)if(x&&!x.deleted&&norm(x.label)===wantLabel)candidates.push(x);
+      if(candidates.length===1)target=candidates[0];
+    }
+  }
   if(!target)return false;
   if(rec.deleted||!rec.image){delete target.image;writeAdminBaseLocalV182(base);return true}
   let localRef=rec.image;
@@ -7855,3 +7877,70 @@ function addMedia182Button(){
   b.onclick=openMediaTestV182;document.body.appendChild(b);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{addMedia182Button();startMediaAutoSyncV182()},{once:true});else{addMedia182Button();startMediaAutoSyncV182()}
+
+
+/* ===== BETA 184 — fiabilisation nouvelle synchro médias =====
+   - publication manuelle de toutes les images ACTUELLEMENT reliées sur l'appareil
+   - retry automatique des publications si le cloud n'est pas encore prêt
+   - aucune synchronisation générale de la base Admin */
+(function(){
+  const MEDIA_PENDING_184='ma-caa-media-pending-v184';
+  let retryBusy184=false;
+
+  function readPending184(){try{return JSON.parse(localStorage.getItem(MEDIA_PENDING_184)||'[]')}catch(e){return []}}
+  function writePending184(v){try{localStorage.setItem(MEDIA_PENDING_184,JSON.stringify(v||[]))}catch(e){}}
+  function queueMedia184(id,label,speech,image){
+    if(!id)return;
+    const q=readPending184().filter(x=>x&&x.id!==id);
+    q.push({id,label:label||'',speech:speech||'',image:image||null,t:Date.now()});
+    writePending184(q);
+    setTimeout(flushMedia184,500);
+  }
+  async function flushMedia184(){
+    if(retryBusy184||!cloudClient)return false;
+    const u=await cloudUser(); if(!u)return false;
+    retryBusy184=true;
+    try{
+      const q=readPending184(),remain=[];
+      for(const x of q){
+        try{await publishPictoMediaV182(x.id,x.label,x.speech,x.image)}catch(e){console.warn('Media retry 184',x.label,e);remain.push(x)}
+      }
+      writePending184(remain);
+      return remain.length===0;
+    }finally{retryBusy184=false}
+  }
+
+  // Enveloppe la publication 182 : si elle ne peut pas partir, elle reste en attente.
+  const oldPublish184=window.publishPictoMediaV182 || publishPictoMediaV182;
+  window.publishPictoMediaV182=async function(stableId,label,speech,imageValue){
+    try{
+      if(!cloudClient || !(await cloudUser())){queueMedia184(stableId,label,speech,imageValue);return false}
+      return await oldPublish184(stableId,label,speech,imageValue);
+    }catch(e){queueMedia184(stableId,label,speech,imageValue);throw e}
+  };
+  // Les appels lexicaux existants continuent à viser le binding global dans Safari,
+  // mais on ajoute aussi une reprise explicite de toutes les images actuelles.
+
+  async function publishCurrentMedia184(){
+    const u=await cloudUser();
+    if(!u)return alert('Connecte d’abord la synchronisation sur le Mac.');
+    const base=readAdminBase();
+    const jobs=[];
+    for(const [id,x] of Object.entries(base.items||{}))if(x&&x.image)jobs.push({id,label:x.label||'',speech:x.speech||'',image:x.image});
+    for(const x of (base.addedItems||[]))if(x&&!x.deleted&&x.image)jobs.push({id:x.id,label:x.label||'',speech:x.speech||'',image:x.image});
+    let ok=0,fail=[];
+    for(const x of jobs){
+      try{await oldPublish184(x.id,x.label,x.speech,x.image);ok++}catch(e){fail.push((x.label||x.id)+': '+(e?.message||e));queueMedia184(x.id,x.label,x.speech,x.image)}
+    }
+    alert('PUBLICATION MÉDIAS 184\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
+  }
+
+  function add184(){
+    if(document.getElementById('media-publish-184'))return;
+    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (184)';
+    b.style.cssText='position:fixed;right:12px;bottom:88px;z-index:87;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#245fb5;color:white;box-shadow:0 6px 18px #0003';
+    b.onclick=publishCurrentMedia184;document.body.appendChild(b);
+    setTimeout(flushMedia184,1800);setInterval(()=>{if(document.visibilityState==='visible')flushMedia184()},6000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add184,{once:true});else add184();
+})();

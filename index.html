@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 175</title>
+<title>Ma CAA v2.0 bêta 176</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 175</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 176</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7148,6 +7148,128 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     b.onclick=run175;document.body.appendChild(b);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add175,{once:true});else add175();
+})();
+
+
+/* ===== BETA 176 — paquet cloud ciblé des images réparées =====
+   Ne remplace JAMAIS admin_base. Publie/récupère seulement un petit paquet
+   recovery_images_v176 contenant les images validées de la 175 + Doudou. */
+(function(){
+  const RECOVERY_KEY_176='recovery_images_v176';
+  const LEGACY_CUSTOM_176='ma-caa-custom-v1';
+  const LEGACY_ADDED_176='ma-caa-added-v1';
+
+  function parse176(raw,fallback){try{return JSON.parse(raw)}catch(e){return fallback}}
+  function isData176(v){return typeof v==='string'&&/^data:image\//i.test(v)}
+  function permanentTargets176(){
+    const legacy=parse176(localStorage.getItem(LEGACY_CUSTOM_176)||'{}',{});
+    const out=[];
+    for(const cat of categories){
+      if(cat.name==='Favoris'||cat.name==='Mode parents')continue;
+      for(const x of (cat.items||[])){
+        const key=x[1]+'|'+x[2], old=legacy&&legacy[key];
+        if(old&&isData176(old.image))out.push({cat,x,id:adminItemId(cat,x),label:old.label||x[1]});
+      }
+    }
+    return out;
+  }
+  async function uploadImage176(value,userId,tag){
+    if(typeof value==='string'&&(value.startsWith('https://')||value.startsWith('http://')))return value;
+    if(value&&typeof value==='object'&&value.__cloud_image&&value.path)return value;
+    if(isData176(value)){
+      const blob=dataUrlToBlob(value);
+      return await uploadAdminBlobToCloudV125(blob,userId,'recovery176-'+tag);
+    }
+    if(value&&typeof value==='object'&&value.__local_image&&value.key){
+      const blob=await getLocalAdminImageBlob(value.key);
+      if(!blob)throw new Error('Image locale introuvable : '+tag);
+      return await uploadAdminBlobToCloudV125(blob,userId,'recovery176-'+tag);
+    }
+    throw new Error('Format image non publiable : '+tag);
+  }
+
+  async function publish176(){
+    if(!confirm("Publier UNIQUEMENT les images réparées de la 175 ?\n\nCette opération ne remplace pas la base Admin et ne touche ni aux catégories ni aux autres pictogrammes."))return;
+    const btn=document.getElementById('publish-recovery-176');
+    if(btn){btn.disabled=true;btn.textContent='☁️ Publication images…'}
+    try{
+      if(!cloudClient)throw new Error('Connexion Supabase indisponible.');
+      const u=await cloudUser();if(!u)throw new Error('Connecte d’abord la synchronisation sur ce Mac.');
+      const base=readAdminBase();
+      const payload={items:{},addedItems:[],created_at:new Date().toISOString(),source:'beta176'};
+      const failed=[];
+      for(const t of permanentTargets176()){
+        const image=base.items?.[t.id]?.image;
+        if(!image)continue;
+        try{payload.items[t.id]={label:t.label,image:await uploadImage176(image,u.id,t.label)}}
+        catch(e){failed.push(t.label+': '+(e?.message||e))}
+      }
+      const d=(base.addedItems||[]).find(x=>x&&/doudou/i.test(String(x.label||'')+' '+String(x.speech||'')));
+      if(d&&d.image){
+        try{payload.addedItems.push({...d,image:await uploadImage176(d.image,u.id,'Doudou')})}
+        catch(e){failed.push('Doudou: '+(e?.message||e))}
+      }
+      const r=await cloudClient.from('app_config').upsert({key:RECOVERY_KEY_176,data:payload,updated_at:new Date().toISOString()},{onConflict:'key'});
+      if(r.error)throw r.error;
+      alert('PAQUET IMAGES 176 PUBLIÉ\n\nImages permanentes : '+Object.keys(payload.items).length+'\nDoudou : '+(payload.addedItems.length?'OUI':'NON')+(failed.length?'\n\nÉchecs ignorés :\n- '+failed.join('\n- '):'')+'\n\nLa base Admin générale n’a pas été remplacée.');
+    }catch(e){
+      console.error('BETA176 publish',e);
+      alert('Publication images 176 impossible : '+(e?.message||String(e)));
+    }finally{if(btn){btn.disabled=false;btn.textContent='☁️ Publier images réparées (176)'}}
+  }
+
+  async function pull176(){
+    if(!confirm("Récupérer UNIQUEMENT le paquet d’images réparées ?\n\nCette opération ne remplace pas la base Admin de cet appareil."))return;
+    const btn=document.getElementById('pull-recovery-176');
+    if(btn){btn.disabled=true;btn.textContent='⬇️ Récupération images…'}
+    try{
+      if(!cloudClient)throw new Error('Connexion Supabase indisponible.');
+      const r=await cloudClient.from('app_config').select('data,updated_at').eq('key',RECOVERY_KEY_176).maybeSingle();
+      if(r.error)throw r.error;
+      if(!r.data?.data)throw new Error('Aucun paquet images 176 publié pour le moment.');
+      const pack=r.data.data||{}, base=readAdminBase();
+      base.items=base.items||{};
+      let n=0;
+      for(const [id,v] of Object.entries(pack.items||{})){
+        if(!v||!v.image)continue;
+        const prev=base.items[id]&&typeof base.items[id]==='object'?base.items[id]:{};
+        base.items[id]={...prev,image:v.image};n++;
+      }
+      base.addedItems=Array.isArray(base.addedItems)?base.addedItems:[];
+      let doudou=0;
+      for(const incoming of (pack.addedItems||[])){
+        if(!incoming)continue;
+        let i=base.addedItems.findIndex(x=>x&&x.id===incoming.id);
+        if(i<0)i=base.addedItems.findIndex(x=>x&&x.label===incoming.label&&x.speech===incoming.speech);
+        if(i>=0)base.addedItems[i]={...base.addedItems[i],...incoming,hidden:false,deleted:false};
+        else base.addedItems.push({...incoming,hidden:false,deleted:false});
+        doudou++;
+      }
+      // Écriture STRICTEMENT locale : surtout ne pas déclencher le push global Admin.
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+      try{ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base))}catch(e){}
+      localStorage.setItem('ma-caa-last-save',String(Date.now()));
+      try{syncAdminCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{setTimeout(hydrateAllCloudPictures,0)}catch(e){}
+      alert('IMAGES 176 RÉCUPÉRÉES SUR CET APPAREIL\n\nImages permanentes appliquées : '+n+'\nDoudou appliqué : '+(doudou?'OUI':'NON')+'\n\nAucune synchronisation générale lancée.');
+    }catch(e){
+      console.error('BETA176 pull',e);
+      alert('Récupération images 176 impossible : '+(e?.message||String(e)));
+    }finally{if(btn){btn.disabled=false;btn.textContent='⬇️ Récupérer images réparées (176)'}}
+  }
+
+  function add176(){
+    if(!document.getElementById('publish-recovery-176')){
+      const p=document.createElement('button');p.id='publish-recovery-176';p.type='button';p.textContent='☁️ Publier images réparées (176)';
+      p.style.cssText='position:fixed;right:12px;bottom:340px;z-index:89;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#2459a8;color:white;box-shadow:0 6px 18px #0003';p.onclick=publish176;document.body.appendChild(p);
+    }
+    if(!document.getElementById('pull-recovery-176')){
+      const p=document.createElement('button');p.id='pull-recovery-176';p.type='button';p.textContent='⬇️ Récupérer images réparées (176)';
+      p.style.cssText='position:fixed;right:12px;bottom:394px;z-index:89;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#7042c1;color:white;box-shadow:0 6px 18px #0003';p.onclick=pull176;document.body.appendChild(p);
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add176,{once:true});else add176();
 })();
 </script>
 </body></html>

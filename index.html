@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 166</title>
+<title>Ma CAA v2.0 bêta 167</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 166</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 167</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3558,6 +3558,7 @@ async function repairLocalAdminImageRefsV160(remoteCanonical){
 let adminBasePushLastErrorV166="";
 async function adminBasePush(){
   adminBasePushLastErrorV166="";
+  window.__adminImageFailuresV167=0;
   if(!canonicalBootstrapDoneV131){
     // BETA151: an explicit Administrator save is authoritative. If local data
     // is dirty, never pull the older cloud snapshot before pushing it: that
@@ -3590,11 +3591,15 @@ async function adminBasePush(){
       portableBase=migrated.base||portableBase;
       // Keep the Mac itself on the same portable representation so future
       // saves stay lightweight and do not re-upload the same images.
-      if(migrated.changed){
+      if(migrated.changed && !migrated.failures){
         localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(portableBase));
         ADMIN_LAST_BASE_V113=cloneV129(portableBase);
       }
-      if(migrated.missing)console.warn("BETA165 images locales manquantes :",migrated.missing);
+      if(migrated.missing)console.warn("BETA167 images locales manquantes :",migrated.missing);
+      if(migrated.failures){
+        window.__adminImageFailuresV167=migrated.failures;
+        console.warn("BETA167 images non publiées :",migrated.failures,migrated.failedTags);
+      }
     }catch(e){
       console.error("BETA165 préparation images cloud",e);
       throw new Error("Impossible de préparer les images pour la synchronisation.");
@@ -4273,7 +4278,8 @@ async function uploadAdminBlobToCloudV125(blob,userId,tag="picto"){
 
 async function migrateAdminLocalImagesToCloudV125(base,userId){
   if(!base||!userId||!cloudClient)return {base,changed:false,missing:0};
-  let changed=false,missing=0;
+  let changed=false,missing=0,failures=0;
+  const failedTags=[];
   const cache=new Map();
 
   async function signedFromPath(path){
@@ -4306,8 +4312,12 @@ async function migrateAdminLocalImagesToCloudV125(base,userId){
           cache.set(cacheKey,portable);
           return portable;
         }catch(e){
-          console.error("Migration Base64 admin vers cloud",e);
-          throw new Error("Impossible d'envoyer une image de pictogramme vers le stockage cloud : "+(e?.message||e));
+          // BETA167: one bad image must never block the whole Admin publication.
+          // Keep the Mac's original local data untouched; omit only this image
+          // from the REMOTE lightweight copy so categories/items still synchronize.
+          failures++; failedTags.push(tag);
+          console.error("Migration Base64 admin vers cloud (ignorée pour publication)",e);
+          return "";
         }
       }
       try{
@@ -4334,8 +4344,10 @@ async function migrateAdminLocalImagesToCloudV125(base,userId){
         cache.set("local:"+v.key,portable);
         return portable;
       }catch(e){
-        console.error("Migration image admin vers cloud",e);
-        throw new Error("Impossible d'envoyer une image locale de pictogramme vers le stockage cloud : "+(e?.message||e));
+        // BETA167: publish the pictogram metadata even if this one image upload fails.
+        failures++; failedTags.push(tag);
+        console.error("Migration image admin vers cloud (ignorée pour publication)",e);
+        return "";
       }
     }
 
@@ -4368,7 +4380,7 @@ async function migrateAdminLocalImagesToCloudV125(base,userId){
     }
   }
 
-  return {base,changed,missing};
+  return {base,changed,missing,failures,failedTags};
 }
 
 let adminImageMigrationV125Busy=false;
@@ -6350,3 +6362,5 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 
 </body></html>
 <!-- BETA166: migrate legacy Base64 + IndexedDB images to Storage before admin_base push -->
+
+<!-- BETA167: non-blocking image migration; metadata sync continues if individual image upload fails -->

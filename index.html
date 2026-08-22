@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 161</title>
+<title>Ma CAA v2.0 bêta 162</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 161</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 162</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1531,6 +1531,33 @@ async function syncPullOneByName(name,silent=false,preserveActive=false){
 
 async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
 async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;for(const [base,raw] of Object.entries(bundle.storage||{})){if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);else if(raw&&typeof raw==="object")localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));}}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,100);showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome()}
+
+async function publishThisDeviceV162(showFeedbackAtEnd=false){
+  if(!cloudClient)return false;
+  const u=await cloudUser();
+  if(!u){alert("Connecte d'abord la synchronisation sur cet appareil.");return false}
+  try{
+    // This action is intentionally one-way: CURRENT DEVICE -> cloud.
+    // Use it only on the device whose Ma CAA data is known to be complete.
+    canonicalBootstrapDoneV131=true;
+    adminBaseLocalDirty=true;
+    localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
+
+    const adminOk=await adminBasePush();
+    if(!adminOk)throw new Error("La base Administrateur n'a pas pu être publiée.");
+
+    await pushProfilesDirectory();
+    await syncPushAll();
+
+    try{await migrateCurrentAdminImagesV125()}catch(e){console.warn("V162 publication images",e)}
+    if(showFeedbackAtEnd)showFeedback("Cet appareil est maintenant la référence cloud");
+    return true;
+  }catch(e){
+    console.error("Publication appareil référence V162",e);
+    alert("Publication impossible : "+(e?.message||e));
+    return false;
+  }
+}
 
 async function fullCloudRefreshV161(showFeedbackAtEnd=false){
   if(initialFullCloudPullBusyV161||!cloudClient)return false;
@@ -3862,7 +3889,8 @@ function openAdminPanel(initialView="home"){
     if(view==="settings"){
       const sync=mkSection();sync.innerHTML="<h2>☁️ Synchronisation</h2><p>"+adminBaseUpdatedLabel()+"<br>"+adminSyncLabel()+"</p>";
       const syncNow=document.createElement("button");syncNow.textContent="🔄 Synchroniser complètement";syncNow.onclick=async()=>{syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation complète…";await fullCloudRefreshV161(true);syncNow.disabled=false;syncNow.textContent="✅ Synchronisation complète"};
-      sync.appendChild(syncNow);content.appendChild(sync);addAdminCloudConnection(content);
+      const publish=document.createElement("button");publish.style.marginTop="10px";publish.textContent="☁️ Publier CET appareil comme référence";publish.onclick=async()=>{if(!confirm("Utilise ce bouton uniquement sur l’appareil où Ma CAA est la plus complète (par exemple le Mac). Sa base actuelle remplacera la copie cloud utilisée par les autres appareils. Continuer ?"))return;publish.disabled=true;publish.textContent="☁️ Publication en cours…";const ok=await publishThisDeviceV162(true);publish.disabled=false;publish.textContent=ok?"✅ Appareil publié comme référence":"☁️ Publier CET appareil comme référence"};
+      sync.append(syncNow,publish);content.appendChild(sync);addAdminCloudConnection(content);
       const security=mkSection();security.innerHTML="<h2>🔐 Sécurité</h2>";
       const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.")};
       security.appendChild(change);content.appendChild(security);return
@@ -5720,7 +5748,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 161";b.onclick=show153;
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 162";b.onclick=show153;
     b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
@@ -5743,7 +5771,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   const install154=()=>{
     const d=document.getElementById("diag153btn");
     if(d){
-      d.textContent="☁️ Diagnostic 161";
+      d.textContent="☁️ Diagnostic 162";
       d.style.left="50%";
       d.style.right="auto";
       d.style.bottom="88px";
@@ -5823,7 +5851,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Keep diagnostic away from navigation.
   function diag155(){
     const d=document.getElementById("diag153btn");
-    if(d){d.textContent="☁️ Diagnostic 161";d.style.bottom="88px";d.style.zIndex="80";}
+    if(d){d.textContent="☁️ Diagnostic 162";d.style.bottom="88px";d.style.zIndex="80";}
   }
   setTimeout(diag155,100);
   setTimeout(diag155,1000);
@@ -5940,7 +5968,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let b=document.getElementById("diag156btn");
     if(!b){
       b=document.createElement("button");
-      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 161";
+      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 162";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -6052,7 +6080,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     document.querySelectorAll("#diag156btn,#diag153btn,#diag152btn").forEach(b=>b.remove());
     let b=document.getElementById("diag157btn");
     if(!b){
-      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 161";
+      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 162";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -6124,7 +6152,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Diagnostic button label
   function relabel(){
     const b=document.getElementById("diag157btn");
-    if(b){ b.id="diag158btn"; b.textContent="☁️ Diagnostic 161"; }
+    if(b){ b.id="diag158btn"; b.textContent="☁️ Diagnostic 162"; }
   }
   setTimeout(relabel,100);
   setTimeout(relabel,900);
@@ -6158,7 +6186,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start159,{once:true});
   else start159();
   setTimeout(()=>{
-    document.querySelectorAll("#diag158btn,#diag157btn,#diag156btn,#diag153btn").forEach(b=>{b.textContent="☁️ Diagnostic 161"});
+    document.querySelectorAll("#diag158btn,#diag157btn,#diag156btn,#diag153btn").forEach(b=>{b.textContent="☁️ Diagnostic 162"});
   },700);
 })();
 </script>

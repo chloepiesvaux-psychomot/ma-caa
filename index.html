@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 173</title>
+<title>Ma CAA v2.0 bêta 174</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 173</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 174</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -6925,6 +6925,120 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     b.onclick=run173;document.body.appendChild(b);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBtn173,{once:true});else addBtn173();
+})();
+
+
+/* ===== BETA 174 — restauration locale ciblée des images retrouvées =====
+   Objectif: sur CET appareil uniquement, rebrancher les anciennes images Base64
+   encore présentes dans les clés legacy vers la base active actuelle.
+   AUCUNE synchronisation cloud n'est lancée ici. */
+(function(){
+  const LEGACY_CUSTOM_KEY_174='ma-caa-custom-v1';
+  const LEGACY_PROFILES_KEY_174='ma-caa-profiles-v1';
+  const LEGACY_ADDED_KEY_174='ma-caa-added-v1';
+
+  function parse174(raw,fallback){
+    try{return JSON.parse(raw)}catch(e){return fallback}
+  }
+  function isDataImage174(v){return typeof v==='string' && /^data:image\//i.test(v)}
+  function localSet174(key,val){
+    localStorage.setItem(key,JSON.stringify(val));
+    localStorage.setItem('ma-caa-last-save',String(Date.now()));
+  }
+  function summarizeList174(list,max=12){
+    if(!list.length)return '—';
+    return list.slice(0,max).join(', ')+(list.length>max?' …':'');
+  }
+
+  function restoreCustom174(){
+    const legacy=parse174(localStorage.getItem(LEGACY_CUSTOM_KEY_174)||'{}',{});
+    const current=readCustom();
+    const restored=[];
+    for(const [id,val] of Object.entries(legacy||{})){
+      if(!val || typeof val!=='object' || !isDataImage174(val.image))continue;
+      const prev=current[id] && typeof current[id]==='object' ? current[id] : {};
+      current[id]={...prev,...val,image:val.image,visualMode:'image'};
+      restored.push((val.label||id).trim());
+    }
+    if(restored.length)localSet174(profiledKey(CUSTOM_KEY),current);
+    return restored;
+  }
+
+  function restoreAdded174(){
+    const legacy=parse174(localStorage.getItem(LEGACY_ADDED_KEY_174)||'[]',[]);
+    const current=Array.isArray(readAdded())?readAdded():[];
+    const restored=[];
+    for(const raw of Array.isArray(legacy)?legacy:[]){
+      if(!raw || typeof raw!=='object' || !isDataImage174(raw.image))continue;
+      let idx=current.findIndex(x=>x && x.id===raw.id);
+      if(idx<0)idx=current.findIndex(x=>x && x.label===raw.label && x.speech===raw.speech && x.category===raw.category);
+      if(idx>=0){
+        current[idx]={...current[idx],...raw,image:raw.image};
+      }else{
+        current.push({...raw});
+      }
+      restored.push((raw.label||raw.id||'pictogramme ajouté').trim());
+    }
+    if(restored.length)localSet174(profiledKey(ADDED_KEY),current);
+    return restored;
+  }
+
+  function restoreAvatar174(){
+    const legacy=parse174(localStorage.getItem(LEGACY_PROFILES_KEY_174)||'[]',[]);
+    const profiles=readProfiles();
+    const activeId=activeProfile();
+    const activeName=profileName();
+    const candidate=(Array.isArray(legacy)?legacy:[]).find(p=>p && isDataImage174(p.avatar) && (p.id===activeId || p.name===activeName))
+      || (Array.isArray(legacy)?legacy:[]).find(p=>p && isDataImage174(p.avatar));
+    if(!candidate)return null;
+    const idx=profiles.findIndex(p=>p && (p.id===candidate.id || p.name===candidate.name || p.id===activeId));
+    if(idx<0)return null;
+    profiles[idx]={...profiles[idx],avatar:candidate.avatar};
+    localSet174(PROFILES_KEY,profiles);
+    return profiles[idx].name||profiles[idx].id||'profil actif';
+  }
+
+  async function run174(){
+    if(!confirm("Cette restauration 174 agit UNIQUEMENT sur CET appareil.\n\nElle va tenter de restaurer localement :\n- les images personnalisées retrouvées dans l'ancienne clé custom ;\n- les pictogrammes ajoutés retrouvés ;\n- l'avatar du profil.\n\nAucune synchronisation cloud ne sera lancée. Continuer ?"))return;
+    const lines=[];
+    lines.push('RESTAURATION LOCALE CIBLÉE — bêta 174');
+    lines.push('Appareil : '+navigator.userAgent);
+    lines.push('Profil actif : '+profileName()+' ['+activeProfile()+']');
+    lines.push('AUCUNE synchronisation cloud lancée');
+    lines.push('');
+    try{
+      const restoredCustom=restoreCustom174();
+      const restoredAdded=restoreAdded174();
+      const restoredAvatar=restoreAvatar174();
+      try{syncCustomCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{renderProfileBar()}catch(e){}
+      try{setTimeout(hydrateAllCloudPictures,0)}catch(e){}
+      lines.push('Images personnalisées restaurées : '+restoredCustom.length);
+      lines.push('Liste : '+summarizeList174(restoredCustom));
+      lines.push('Pictogrammes ajoutés restaurés : '+restoredAdded.length);
+      lines.push('Liste : '+summarizeList174(restoredAdded));
+      lines.push('Avatar restauré : '+(restoredAvatar||'NON'));
+      lines.push('');
+      lines.push('Conseil : vérifie maintenant visuellement sur CET appareil des pictogrammes comme Restaurant, Médecin, J’ai chaud, J’ai froid, etc.');
+      alert(lines.join('\n'));
+    }catch(e){
+      console.error('Restauration 174',e);
+      alert('Restauration 174 impossible : '+(e && e.message ? e.message : String(e)));
+    }
+  }
+
+  function addBtn174(){
+    if(document.getElementById('restore-local-174'))return;
+    const b=document.createElement('button');
+    b.id='restore-local-174';
+    b.type='button';
+    b.textContent='🩹 Restaurer images (174)';
+    b.style.cssText='position:fixed;right:12px;bottom:232px;z-index:86;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#176b34;color:#fff;box-shadow:0 6px 18px #0003';
+    b.onclick=run174;
+    document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBtn174,{once:true});else addBtn174();
 })();
 </script>
 </body></html>

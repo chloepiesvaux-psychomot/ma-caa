@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 170</title>
+<title>Ma CAA v2.0 bêta 171</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 170</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 171</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1896,6 +1896,69 @@ async function contributeThisDeviceV170(){
     adminBaseCloudBusy=false;
     if(btn){btn.disabled=false;btn.textContent="🧩 Fusionner CET appareil sans supprimer"}
   }
+}
+
+
+
+/* ===== BETA 171 — diagnostic local NON DESTRUCTIF des images ===== */
+async function inventoryLocalImagesV171(){
+  const lines=[];
+  lines.push("DIAGNOSTIC RÉCUPÉRATION IMAGES — bêta 171");
+  lines.push("Appareil : "+navigator.userAgent);
+  lines.push("Profil actif : "+profileName()+" ["+activeProfile()+"]");
+  const base=readAdminBase();
+  const refs=new Set();
+  const missingRefs=[];
+  const labels=[];
+  function collectImage(v,label){
+    if(v&&typeof v==="object"&&v.__local_image===true&&v.key){refs.add(v.key);labels.push([label||"?",v.key]);}
+  }
+  for(const [id,it] of Object.entries(base.items||{}))if(it?.image)collectImage(it.image,it.label||id);
+  for(const it of (base.addedItems||[]))if(it?.image)collectImage(it.image,it.label||it.id||"ajout");
+  for(const list of Object.values(base.quickChoices||{}))if(Array.isArray(list))for(const it of list)if(it?.image)collectImage(it.image,it.label||it.id||"choix");
+  for(const list of Object.values(base.submenus||{}))if(Array.isArray(list))for(const it of list)if(it?.image)collectImage(it.image,it.label||it.id||"sous-menu");
+
+  let dbKeys=[];
+  try{
+    const db=await openLocalImageDB();
+    dbKeys=await new Promise((resolve,reject)=>{
+      const tx=db.transaction("images","readonly");
+      const store=tx.objectStore("images");
+      const req=store.getAllKeys();
+      req.onsuccess=()=>resolve((req.result||[]).map(String));
+      req.onerror=()=>reject(req.error);
+    });
+    db.close();
+  }catch(e){lines.push("ERREUR IndexedDB : "+(e?.message||String(e)));}
+
+  for(const [label,key] of labels){
+    if(!dbKeys.includes(String(key)))missingRefs.push(label+" → "+key);
+  }
+  const orphan=dbKeys.filter(k=>!refs.has(String(k)));
+  lines.push("Base Admin — pictogrammes ajoutés : "+(base.addedItems||[]).length);
+  lines.push("Références d’images locales encore reliées : "+refs.size);
+  lines.push("Images physiquement présentes dans l’appareil : "+dbKeys.length);
+  lines.push("Images présentes mais ORPHELINES (plus reliées à un picto) : "+orphan.length);
+  lines.push("Références reliées mais fichier local manquant : "+missingRefs.length);
+  lines.push("Famille local Admin : "+((base.addedItems||[]).some(x=>/famille/i.test(String(x?.label||"")))?"OUI":"NON"));
+  if(missingRefs.length){
+    lines.push(""); lines.push("Références manquantes (20 premières) :");
+    missingRefs.slice(0,20).forEach(x=>lines.push("- "+x));
+  }
+  if(orphan.length){
+    lines.push(""); lines.push("Clés d’images orphelines (20 premières) :");
+    orphan.slice(0,20).forEach(x=>lines.push("- "+x));
+  }
+  const report=lines.join("\n");
+  const ov=document.createElement("div");ov.className="editor-overlay";
+  const box=document.createElement("div");box.className="editor";
+  box.innerHTML="<h2>🛟 Diagnostic récupération — 171</h2><p><b>Aucune donnée n’est modifiée ni envoyée.</b></p>";
+  const ta=document.createElement("textarea");ta.style.cssText="width:100%;height:380px;box-sizing:border-box;font-family:monospace;font-size:12px";ta.value=report;box.appendChild(ta);
+  const row=document.createElement("div");row.className="editor-row";
+  const copy=document.createElement("button");copy.textContent="📋 Copier le diagnostic";copy.onclick=async()=>{try{await navigator.clipboard.writeText(report);copy.textContent="✅ Copié"}catch(e){ta.select();document.execCommand("copy")}};
+  const close=document.createElement("button");close.textContent="Fermer";close.onclick=()=>ov.remove();
+  row.append(copy,close);box.appendChild(row);ov.appendChild(box);document.body.appendChild(ov);
+  return report;
 }
 
 async function publishThisDeviceV162(showFeedbackAtEnd=false){
@@ -4324,12 +4387,13 @@ function openAdminPanel(initialView="home"){
 
     if(view==="settings"){
       const sync=mkSection();sync.innerHTML="<h2>☁️ Synchronisation</h2><p>"+adminBaseUpdatedLabel()+"<br>"+adminSyncLabel()+"</p>";
-      const syncNow=document.createElement("button");syncNow.textContent="🔄 Synchroniser complètement (APRÈS les 3 fusions)";syncNow.onclick=async()=>{if(IMAGE_RESCUE_PENDING_V169){if(!confirm("⚠️ Pendant la récupération bêta 170, commence par « Fusionner CET appareil sans supprimer » sur le Mac, le téléphone ET la tablette. Ne synchronise complètement qu'après les trois fusions. Continuer quand même ?"))return;IMAGE_RESCUE_PENDING_V169=false;}syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation complète…";await fullCloudRefreshV161(true);syncNow.disabled=false;syncNow.textContent="✅ Synchronisation complète"};
+      const syncNow=document.createElement("button");syncNow.textContent="⛔ Synchronisation complète désactivée pendant diagnostic 171";syncNow.disabled=true;syncNow.onclick=async()=>{if(IMAGE_RESCUE_PENDING_V169){if(!confirm("⚠️ Pendant la récupération bêta 170, commence par « Fusionner CET appareil sans supprimer » sur le Mac, le téléphone ET la tablette. Ne synchronise complètement qu'après les trois fusions. Continuer quand même ?"))return;IMAGE_RESCUE_PENDING_V169=false;}syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation complète…";await fullCloudRefreshV161(true);syncNow.disabled=false;syncNow.textContent="✅ Synchronisation complète"};
       const publish=document.createElement("button");publish.style.marginTop="10px";publish.textContent="⛔ Publication de référence désactivée pendant la récupération";publish.disabled=true;publish.title="Utilise la fusion additive bêta 170 pour ne rien écraser.";
       const diag=document.createElement("button");diag.style.marginTop="10px";diag.textContent="🔎 Diagnostiquer les pictogrammes";diag.onclick=async()=>{diag.disabled=true;diag.textContent="🔎 Diagnostic…";await pictogramSyncDiagnosticV164();diag.disabled=false;diag.textContent="🔎 Diagnostiquer les pictogrammes"};
       const rescue=document.createElement("button");rescue.id="rescue-images-v169";rescue.style.marginTop="10px";rescue.textContent="🛟 Sauver les images de CET appareil";rescue.onclick=async()=>{if(!confirm("Utilise ce bouton sur l’appareil qui possède encore le plus d’images correctes (actuellement la tablette). Il restaurera uniquement les images manquantes dans le cloud, sans remplacer les noms, catégories ni pictogrammes. Continuer ?"))return;await rescueImagesFromThisDeviceV169()};
-      const merge170=document.createElement("button");merge170.id="merge-device-v170";merge170.style.marginTop="10px";merge170.textContent="🧩 Fusionner CET appareil sans supprimer";merge170.onclick=async()=>{if(!confirm("Mode récupération : cet appareil va AJOUTER au cloud les pictogrammes, catégories et images qu'il possède encore, sans supprimer ce qui existe déjà. À faire successivement sur le Mac, le téléphone et la tablette. Continuer ?"))return;await contributeThisDeviceV170()};
-      sync.append(syncNow,publish,merge170,rescue,diag);content.appendChild(sync);addAdminCloudConnection(content);
+      const merge170=document.createElement("button");merge170.id="merge-device-v170";merge170.style.marginTop="10px";merge170.textContent="🧩 Fusionner CET appareil sans supprimer";merge170.disabled=true;merge170.title="Désactivé en bêta 171 pendant le diagnostic de récupération.";
+      const diag171=document.createElement("button");diag171.style.marginTop="10px";diag171.textContent="🛟 Diagnostiquer les images locales (sans modifier)";diag171.onclick=()=>inventoryLocalImagesV171();
+      sync.append(syncNow,publish,merge170,rescue,diag171,diag);content.appendChild(sync);addAdminCloudConnection(content);
       const security=mkSection();security.innerHTML="<h2>🔐 Sécurité</h2>";
       const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.")};
       security.appendChild(change);content.appendChild(security);return

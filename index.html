@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 187</title>
+<title>Ma CAA v2.0 bêta 188</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 187</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 188</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7929,12 +7929,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     for(const x of jobs){
       try{await oldPublish184(x.id,x.label,x.speech,x.image);ok++}catch(e){fail.push((x.label||x.id)+': '+(e?.message||e));queueMedia184(x.id,x.label,x.speech,x.image)}
     }
-    alert('PUBLICATION MÉDIAS 187\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
+    alert('PUBLICATION MÉDIAS 188\n\nImages actuelles publiées : '+ok+' / '+jobs.length+'\nEn attente/retry : '+fail.length+(fail.length?'\n\n'+fail.slice(0,8).join('\n'):'')+'\n\nAucune base Admin générale remplacée.');
   }
 
   function add184(){
     if(document.getElementById('media-publish-184'))return;
-    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (187)';
+    const b=document.createElement('button');b.id='media-publish-184';b.type='button';b.textContent='☁️ Publier images actuelles (188)';
     b.style.cssText='position:fixed;right:12px;bottom:88px;z-index:87;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#245fb5;color:white;box-shadow:0 6px 18px #0003';
     b.onclick=publishCurrentMedia184;document.body.appendChild(b);
     setTimeout(flushMedia184,1800);setInterval(()=>{if(document.visibilityState==='visible')flushMedia184()},6000);
@@ -8064,5 +8064,59 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(flushMeta187,250);setTimeout(pullMeta187,500)}});
 })();
 
+</script>
+
+
+<style id="beta188-stable-clean-ui">
+/* BETA188 — interface normale propre : tous les outils temporaires sont retirés visuellement. */
+#diagBtn136,#diagBtn137,#diag152btn,#diag153btn,#diag156btn,#diag157btn,#diag158btn,
+#diag-old-backups-172,#diag-base64-173,#restore-local-174,#restore-local-175,
+#publish-recovery-176,#pull-recovery-176,#publish-recovery-177,#pull-recovery-177,
+#diag-batches-178,#diag-match-179,#preview-match-181,#media-test-182,#media-publish-184{
+  display:none!important;
+}
+</style>
+<script>
+/* ===== BETA 188 — stabilisation après validation multi-appareils =====
+   - ne change pas le modèle de synchronisation validé en 187 ;
+   - masque les outils de diagnostic/récupération temporaires ;
+   - après toute réception de la base Admin générale, réapplique les couches
+     modernes (médias + métadonnées) afin qu'une vieille image/étiquette ne
+     puisse pas reprendre la priorité visuelle. */
+(function(){
+  const OLD_TOOL_IDS_188=[
+    'diagBtn136','diagBtn137','diag152btn','diag153btn','diag156btn','diag157btn','diag158btn',
+    'diag-old-backups-172','diag-base64-173','restore-local-174','restore-local-175',
+    'publish-recovery-176','pull-recovery-176','publish-recovery-177','pull-recovery-177',
+    'diag-batches-178','diag-match-179','preview-match-181','media-test-182','media-publish-184'
+  ];
+  function clean188(){
+    for(const id of OLD_TOOL_IDS_188){
+      const el=document.getElementById(id);
+      if(el){el.remove();}
+    }
+  }
+  function reapplyModernLayers188(){
+    try{if(typeof pullPictoMediaV182==='function')setTimeout(()=>pullPictoMediaV182(false),80)}catch(e){}
+    try{if(typeof pullMeta187==='function')setTimeout(()=>pullMeta187(),180)}catch(e){}
+  }
+  try{
+    const previousPull188=adminBasePull;
+    adminBasePull=async function(){
+      const r=await previousPull188.apply(this,arguments);
+      reapplyModernLayers188();
+      return r;
+    };
+    window.adminBasePull=adminBasePull;
+  }catch(e){console.warn('BETA188 admin pull wrapper',e)}
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{clean188();reapplyModernLayers188()},{once:true});
+  else{clean188();reapplyModernLayers188()}
+  setTimeout(clean188,300);setTimeout(clean188,1200);setTimeout(clean188,3500);
+  try{
+    const mo=new MutationObserver(clean188);
+    mo.observe(document.documentElement,{childList:true,subtree:true});
+  }catch(e){}
+})();
 </script>
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 164</title>
+<title>Ma CAA v2.0 bêta 165</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 164</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 165</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1596,7 +1596,7 @@ async function pictogramSyncDiagnosticV164(){
   const activeId=activeProfile();
   const active=readProfiles().find(x=>x.id===activeId)||null;
   const localProfileLabels=readAdded().map(x=>norm(x.label)).filter(Boolean);
-  lines.push("DIAGNOSTIC PICTOGRAMMES — bêta 164");
+  lines.push("DIAGNOSTIC PICTOGRAMMES — bêta 165");
   lines.push("Appareil : "+navigator.userAgent);
   lines.push("Profil actif : "+(active?active.name:"inconnu")+" ["+activeId+"]");
   lines.push("Admin local — pictos ajoutés : "+localAdminLabels.length);
@@ -1606,6 +1606,9 @@ async function pictogramSyncDiagnosticV164(){
   try{
     const u=await cloudUser();
     if(!u)throw new Error("compte cloud non connecté");
+    const meta=await cloudClient.from("app_config").select("updated_at").eq("key","admin_base").maybeSingle();
+    if(meta.error)throw meta.error;
+    lines.push("Cloud admin — date : "+(meta.data?.updated_at||"inconnue"));
     const ar=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
     if(ar.error)throw ar.error;
     const cloudAdmin=ar.data&&ar.data.data||{};
@@ -3574,7 +3577,29 @@ async function adminBasePush(){
   adminBaseCloudBusy=true;
   try{
     const localBase=readAdminBase();
-    const remoteBase=await canonicalizeAdminBaseV129(localBase);
+
+    // BETA165: NEVER embed IndexedDB pictogram blobs as Base64 in app_config.
+    // With many custom pictograms this made admin_base enormous and Supabase
+    // started timing out, leaving phones/tablets on an older cloud snapshot.
+    // Upload local images to Storage first, then push only portable references.
+    let portableBase=cloneV129(localBase);
+    try{
+      const migrated=await migrateAdminLocalImagesToCloudV125(portableBase,u.id);
+      portableBase=migrated.base||portableBase;
+      // Keep the Mac itself on the same portable representation so future
+      // saves stay lightweight and do not re-upload the same images.
+      if(migrated.changed){
+        localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(portableBase));
+        ADMIN_LAST_BASE_V113=cloneV129(portableBase);
+      }
+      if(migrated.missing)console.warn("BETA165 images locales manquantes :",migrated.missing);
+    }catch(e){
+      console.error("BETA165 préparation images cloud",e);
+      throw new Error("Impossible de préparer les images pour la synchronisation.");
+    }
+
+    // portableBase now contains HTTPS/cloud references instead of Base64 images.
+    const remoteBase=cloneV129(portableBase);
     const r=await cloudClient.from("app_config").upsert(
       {key:"admin_base",data:remoteBase,updated_at:new Date().toISOString()},
       {onConflict:"key"}
@@ -6299,3 +6324,4 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 </script>
 
 </body></html>
+<!-- BETA165: admin_base slim cloud transport; pictogram binaries live in Supabase Storage -->

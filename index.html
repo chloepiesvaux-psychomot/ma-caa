@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 180</title>
+<title>Ma CAA v2.0 bêta 181</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 180</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 181</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7600,6 +7600,75 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 })();
 
 </script>
+
+<script>
+/* ===== BETA 181 — prévisualisation visuelle lots 158 ↔ pictogrammes =====
+   STRICTEMENT LECTURE SEULE : aucune écriture localStorage/IndexedDB/Supabase. */
+(function(){
+  function ts181(k){const m=String(k||'').match(/^admin-(\d{12,})-/);return m?Number(m[1]):0}
+  function hasImg181(v){return !!(v&&(typeof v==='string'?v.trim():(v.__local_image||v.__cloud_image)))}
+  function label181(id,obj){if(obj&&obj.label)return obj.label;const p=String(id||'').split('||');return p.length>1?p[1]:String(id||'')}
+  function targets181(){
+    const b=readAdminBase(),per=[],add=[];
+    for(const [id,it] of Object.entries(b.items||{}))if(it&&typeof it==='object'&&!hasImg181(it.image))per.push({kind:'permanent',id,label:label181(id,it)});
+    for(const x of (b.addedItems||[]))if(x&&!x.deleted&&!hasImg181(x.image))add.push({kind:'added',id:x.id||'',label:x.label||x.speech||x.id||'Sans nom'});
+    return [...per,...add];
+  }
+  async function keys181(){
+    const db=await openLocalImageDB();
+    const keys=await new Promise((res,rej)=>{const tx=db.transaction('images','readonly'),r=tx.objectStore('images').getAllKeys();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error)});
+    db.close();return keys.map(String).filter(k=>ts181(k)).sort((a,b)=>ts181(a)-ts181(b));
+  }
+  function groups181(keys,gap=2500){const gs=[];let g=[],prev=0;for(const k of keys){const t=ts181(k);if(g.length&&t-prev>gap){gs.push(g);g=[]}g.push(k);prev=t}if(g.length)gs.push(g);return gs}
+  async function blobUrl181(key){
+    const db=await openLocalImageDB();
+    const blob=await new Promise((res,rej)=>{const tx=db.transaction('images','readonly'),r=tx.objectStore('images').get(key);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)});
+    db.close();return blob?URL.createObjectURL(blob):'';
+  }
+  function fmt181(t){try{return new Date(t).toLocaleString('fr-FR')}catch(e){return String(t)}}
+  async function open181(){
+    const old=document.getElementById('preview181-overlay');if(old)old.remove();
+    const targets=targets181(),keys=await keys181(),groups=groups181(keys);
+    const candidates=groups.map((g,i)=>({g,i,d:Math.abs(g.length-targets.length),start:ts181(g[0])})).sort((a,b)=>a.d-b.d||b.start-a.start).slice(0,4);
+    const ov=document.createElement('div');ov.id='preview181-overlay';ov.className='editor-overlay';ov.style.zIndex='9999';
+    const panel=document.createElement('div');panel.className='editor';panel.style.maxWidth='980px';panel.style.maxHeight='94vh';
+    panel.innerHTML='<h2>🧭 Prévisualisation correspondances — 181</h2><p><b>LECTURE SEULE.</b> Compare visuellement le pictogramme indiqué avec l’image proposée. Rien n’est restauré.</p>';
+    const controls=document.createElement('div');controls.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0';
+    const sel=document.createElement('select');sel.className='add-select';sel.style.width='auto';
+    candidates.forEach((c,j)=>{const o=document.createElement('option');o.value=j;o.textContent='Lot '+(j+1)+' — '+c.g.length+' images — '+fmt181(c.start);sel.appendChild(o)});
+    const off=document.createElement('select');off.className='add-select';off.style.width='auto';[-2,-1,0,1,2].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent='Décalage '+(v>0?'+':'')+v;if(v===0)o.selected=true;off.appendChild(o)});
+    const close=document.createElement('button');close.textContent='Fermer';close.className='canceledit';close.onclick=()=>ov.remove();
+    controls.append(sel,off,close);panel.appendChild(controls);
+    const info=document.createElement('div');info.style.cssText='font-weight:800;margin:8px 0;color:#334155';panel.appendChild(info);
+    const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px';panel.appendChild(grid);
+    let urls=[];
+    async function renderPreview(){
+      urls.forEach(u=>{try{URL.revokeObjectURL(u)}catch(e){}});urls=[];grid.innerHTML='';
+      const c=candidates[Number(sel.value)||0],shift=Number(off.value)||0;
+      info.textContent='Lot '+((Number(sel.value)||0)+1)+' : '+c.g.length+' images • '+targets.length+' pictogrammes sans image • affichage des 40 premières correspondances • décalage '+(shift>=0?'+':'')+shift;
+      for(let i=0;i<Math.min(40,targets.length);i++){
+        const imgIndex=i+shift;
+        const card=document.createElement('div');card.style.cssText='border:1px solid #dfe4ec;border-radius:14px;padding:9px;background:white;min-height:150px;text-align:center';
+        const title=document.createElement('b');title.textContent=(i+1)+'. '+targets[i].label;title.style.cssText='display:block;min-height:38px';card.appendChild(title);
+        if(imgIndex>=0&&imgIndex<c.g.length){
+          const u=await blobUrl181(c.g[imgIndex]);if(u){urls.push(u);const im=document.createElement('img');im.src=u;im.alt='';im.style.cssText='width:92px;height:92px;object-fit:contain;background:white';card.appendChild(im)}else{card.append('image introuvable')}
+        }else{card.append('— aucune image —')}
+        grid.appendChild(card);
+      }
+    }
+    sel.onchange=renderPreview;off.onchange=renderPreview;ov.appendChild(panel);document.body.appendChild(ov);await renderPreview();
+  }
+  function add181(){
+    if(document.getElementById('preview-match-181'))return;
+    const b=document.createElement('button');b.id='preview-match-181';b.type='button';b.textContent='👁️ Prévisualiser lots (181)';
+    b.style.cssText='position:fixed;left:12px;bottom:112px;z-index:97;border:0;border-radius:999px;padding:11px 14px;font-weight:900;background:#0f766e;color:white;box-shadow:0 6px 18px #0003';
+    b.onclick=async()=>{const old=b.textContent;b.disabled=true;b.textContent='⏳ Préparation…';try{await open181()}catch(e){console.error('BETA181',e);alert('Prévisualisation 181 impossible : '+(e?.message||String(e)))}finally{b.disabled=false;b.textContent=old}};
+    document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add181,{once:true});else add181();
+})();
+</script>
+
 </body></html>
 <!-- BETA166: migrate legacy Base64 + IndexedDB images to Storage before admin_base push -->
 

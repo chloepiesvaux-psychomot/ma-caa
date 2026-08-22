@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 162</title>
+<title>Ma CAA v2.0 bêta 163</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 162</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 163</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1529,8 +1529,57 @@ async function syncPullOneByName(name,silent=false,preserveActive=false){
   }catch(e){console.error(e);if(!silent)alert("Récupération impossible : "+(e?.message||e))}
 }
 
-async function syncPushAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");for(const p of readProfiles()){const b=profileBundle(p.id),q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name).limit(1);const payload={user_id:u.id,name:p.name,data:b,updated_at:new Date().toISOString()};if(q.data?.[0])await cloudClient.from("profiles").update(payload).eq("id",q.data[0].id);else await cloudClient.from("profiles").insert(payload)}showFeedback("Profils envoyés")}
-async function syncPullAll(){const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);if(r.error)return alert(r.error.message);const ps=readProfiles();for(const row of r.data||[]){let p=ps.find(x=>x.name===row.name);if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;for(const [base,raw] of Object.entries(bundle.storage||{})){if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);else if(raw&&typeof raw==="object")localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));}}writeProfiles(ps);syncCustomCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,100);showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome()}
+async function syncPushAll(){
+  const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");
+  for(const p of readProfiles()){
+    let b=profileBundle(p.id);
+    b={...b,storage:await uploadProfilePhotos(u.id,p.id,b)};
+    const stamp=new Date().toISOString();
+    const payload={user_id:u.id,name:p.name,data:b,updated_at:stamp};
+    const q=await cloudClient.from("profiles").select("id").eq("user_id",u.id).eq("name",p.name);
+    if(q.error)throw q.error;
+    const rows=q.data||[];
+    if(rows.length){
+      // BETA163: heal every legacy duplicate row carrying the same profile name.
+      // Otherwise an old duplicate could later overwrite the newest profile on iPad.
+      for(const row of rows){
+        const up=await cloudClient.from("profiles").update(payload).eq("id",row.id);
+        if(up.error)throw up.error;
+      }
+    }else{
+      const ins=await cloudClient.from("profiles").insert(payload);
+      if(ins.error)throw ins.error;
+    }
+  }
+  showFeedback("Profils envoyés");
+}
+async function syncPullAll(){
+  const u=await cloudUser();if(!u)return alert("Connecte-toi d'abord.");
+  const r=await cloudClient.from("profiles").select("*").eq("user_id",u.id);
+  if(r.error)return alert(r.error.message);
+
+  // BETA163: keep ONLY the newest cloud row for each profile name.
+  // Old duplicate rows must never be allowed to re-apply stale pictograms afterwards.
+  const newestByName=new Map();
+  for(const row of r.data||[]){
+    const name=String(row?.name||"");if(!name)continue;
+    const prev=newestByName.get(name);
+    const curMs=Date.parse(row.updated_at||"")||0, prevMs=Date.parse(prev?.updated_at||"")||0;
+    if(!prev||curMs>=prevMs)newestByName.set(name,row);
+  }
+
+  const ps=readProfiles();
+  for(const row of newestByName.values()){
+    let p=ps.find(x=>x.name===row.name);
+    if(!p){p={id:"u"+Date.now()+Math.random().toString(36).slice(2,7),name:row.name};ps.push(p)}
+    const mat=await materializeProfilePhotos(row.data||{}),bundle=mat.bundle;
+    for(const [base,raw] of Object.entries(bundle.storage||{})){
+      if(typeof raw==="string")localStorage.setItem(base+"::"+p.id,raw);
+      else if(raw&&typeof raw==="object")localStorage.setItem(base+"::"+p.id,JSON.stringify(raw));
+    }
+  }
+  writeProfiles(ps);syncCustomCategories();render();renderProfileBar();setTimeout(hydrateAllCloudPictures,100);showFeedback("Profils récupérés");if(document.getElementById("user-home-v38"))openUserHome();
+}
 
 async function publishThisDeviceV162(showFeedbackAtEnd=false){
   if(!cloudClient)return false;
@@ -5748,7 +5797,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   function install(){
     [...document.querySelectorAll("button")].forEach(b=>{if(/Diagnostic cloud (151|152)/.test(b.textContent||""))b.style.display="none"});
     if(document.getElementById("diag153btn"))return;
-    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 162";b.onclick=show153;
+    const b=document.createElement("button");b.id="diag153btn";b.textContent="☁️ Diagnostic 163";b.onclick=show153;
     b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:80;padding:8px 11px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:190px;white-space:nowrap";
     document.body.appendChild(b);
   }
@@ -5771,7 +5820,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   const install154=()=>{
     const d=document.getElementById("diag153btn");
     if(d){
-      d.textContent="☁️ Diagnostic 162";
+      d.textContent="☁️ Diagnostic 163";
       d.style.left="50%";
       d.style.right="auto";
       d.style.bottom="88px";
@@ -5851,7 +5900,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Keep diagnostic away from navigation.
   function diag155(){
     const d=document.getElementById("diag153btn");
-    if(d){d.textContent="☁️ Diagnostic 162";d.style.bottom="88px";d.style.zIndex="80";}
+    if(d){d.textContent="☁️ Diagnostic 163";d.style.bottom="88px";d.style.zIndex="80";}
   }
   setTimeout(diag155,100);
   setTimeout(diag155,1000);
@@ -5968,7 +6017,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     let b=document.getElementById("diag156btn");
     if(!b){
       b=document.createElement("button");
-      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 162";
+      b.id="diag156btn"; b.type="button"; b.textContent="☁️ Diagnostic 163";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -6080,7 +6129,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
     document.querySelectorAll("#diag156btn,#diag153btn,#diag152btn").forEach(b=>b.remove());
     let b=document.getElementById("diag157btn");
     if(!b){
-      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 162";
+      b=document.createElement("button");b.id="diag157btn";b.type="button";b.textContent="☁️ Diagnostic 163";
       b.style.cssText="position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:1000;padding:10px 14px;border:0;border-radius:999px;background:#1769aa;color:#fff;font-weight:800;box-shadow:0 3px 12px #0004;max-width:210px;white-space:nowrap;touch-action:manipulation";
       document.body.appendChild(b);
     }
@@ -6152,7 +6201,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   // Diagnostic button label
   function relabel(){
     const b=document.getElementById("diag157btn");
-    if(b){ b.id="diag158btn"; b.textContent="☁️ Diagnostic 162"; }
+    if(b){ b.id="diag158btn"; b.textContent="☁️ Diagnostic 163"; }
   }
   setTimeout(relabel,100);
   setTimeout(relabel,900);
@@ -6186,7 +6235,7 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start159,{once:true});
   else start159();
   setTimeout(()=>{
-    document.querySelectorAll("#diag158btn,#diag157btn,#diag156btn,#diag153btn").forEach(b=>{b.textContent="☁️ Diagnostic 162"});
+    document.querySelectorAll("#diag158btn,#diag157btn,#diag156btn,#diag153btn").forEach(b=>{b.textContent="☁️ Diagnostic 163"});
   },700);
 })();
 </script>

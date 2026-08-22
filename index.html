@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 168</title>
+<title>Ma CAA v2.0 bêta 170</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 168</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 170</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1647,6 +1647,255 @@ async function waitForAdminCloudIdleV168(timeoutMs=20000){
     await new Promise(r=>setTimeout(r,120));
   }
   return !adminBaseCloudBusy;
+}
+
+
+async function portableImageForRescueV169(v,userId,tag){
+  try{
+    if(!v)return null;
+    if(typeof v==="string"){
+      if(v.startsWith("http://")||v.startsWith("https://"))return v;
+      if(v.startsWith("data:image/")){
+        const blob=dataUrlToBlob(v);
+        return await uploadAdminBlobToCloudV125(blob,userId,"rescue-"+tag);
+      }
+      try{
+        const p=JSON.parse(v);
+        if(p&&typeof p==="object")return await portableImageForRescueV169(p,userId,tag);
+      }catch(e){}
+      return null;
+    }
+    if(v&&typeof v==="object"&&v.__cloud_image===true&&v.path){
+      try{
+        const signed=await cloudClient.storage.from("pictograms").createSignedUrl(v.path,31536000);
+        if(!signed.error&&signed.data?.signedUrl)return signed.data.signedUrl;
+      }catch(e){}
+      return v;
+    }
+    if(v&&typeof v==="object"&&v.__local_image===true&&v.key){
+      const blob=await getLocalAdminImageBlob(v.key);
+      if(!blob)return null;
+      return await uploadAdminBlobToCloudV125(blob,userId,"rescue-"+tag);
+    }
+  }catch(e){
+    console.error("BETA169 image rescue conversion",tag,e);
+  }
+  return null;
+}
+
+function imageMissingForRescueV169(v){
+  if(!v)return true;
+  if(typeof v==="string"){
+    if(!v.trim())return true;
+    try{
+      const p=JSON.parse(v);
+      if(p&&p.__local_image===true)return true;
+    }catch(e){}
+    return false;
+  }
+  // A __local_image reference only works on the device that created its IndexedDB blob.
+  // In the cloud it is effectively a missing image and may safely be repaired from the tablet.
+  if(typeof v==="object"&&v.__local_image===true)return true;
+  if(typeof v==="object")return false;
+  return true;
+}
+
+async function rescueImagesFromThisDeviceV169(){
+  if(!cloudClient){alert("Connexion cloud indisponible.");return false}
+  const u=await cloudUser();
+  if(!u){alert("Connecte d'abord la synchronisation sur cet appareil.");return false}
+  const local=readAdminBase();
+  if(!local){alert("Aucune base locale à secourir.");return false}
+
+  const btn=document.getElementById("rescue-images-v169");
+  if(btn){btn.disabled=true;btn.textContent="🛟 Récupération des images en cours…"}
+  try{
+    const rr=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
+    if(rr.error)throw rr.error;
+    if(!rr.data?.data)throw new Error("Aucune base Administrateur cloud trouvée.");
+    const remote=cloneV129(rr.data.data||{});
+    let rescued=0,skipped=0,failed=0;
+
+    async function rescueInto(remoteObj,localObj,tag){
+      if(!localObj?.image)return;
+      // Safety: only refill a cloud image that is missing. Never overwrite a
+      // non-empty cloud image with a potentially stale cached tablet image.
+      if(remoteObj && !imageMissingForRescueV169(remoteObj.image)){skipped++;return}
+      const pv=await portableImageForRescueV169(localObj.image,u.id,tag);
+      if(!pv){failed++;return}
+      if(remoteObj){remoteObj.image=pv;rescued++}
+    }
+
+    remote.items=remote.items||{};
+    for(const [id,li] of Object.entries(local.items||{})){
+      if(!li?.image)continue;
+      const ri=remote.items[id];
+      if(!ri)continue;
+      await rescueInto(ri,li,"item");
+    }
+
+    const remoteAdded=Array.isArray(remote.addedItems)?remote.addedItems:[];
+    const localAdded=Array.isArray(local.addedItems)?local.addedItems:[];
+    for(const li of localAdded){
+      if(!li?.image)continue;
+      const ri=remoteAdded.find(x=>x&&li&&x.id===li.id) || remoteAdded.find(x=>x&&x.label===li.label&&x.speech===li.speech);
+      if(!ri)continue;
+      await rescueInto(ri,li,"added");
+    }
+
+    async function rescueLists(remoteMap,localMap,kind){
+      remoteMap=remoteMap||{}; localMap=localMap||{};
+      for(const [k,ll] of Object.entries(localMap)){
+        if(!Array.isArray(ll)||!Array.isArray(remoteMap[k]))continue;
+        for(let i=0;i<ll.length;i++){
+          const li=ll[i]; if(!li?.image)continue;
+          const rl=remoteMap[k];
+          const ri=rl.find(x=>x&&li.id&&x.id===li.id) || rl.find(x=>x&&x.label===li.label&&x.speech===li.speech) || rl[i];
+          if(ri)await rescueInto(ri,li,kind);
+        }
+      }
+    }
+    await rescueLists(remote.quickChoices,local.quickChoices,"quick");
+    await rescueLists(remote.submenus,local.submenus,"submenu");
+
+    if(!rescued){
+      alert("Aucune image manquante n'a pu être récupérée depuis cet appareil. Images déjà présentes dans le cloud : "+skipped+" ; images locales introuvables : "+failed+".");
+      return false;
+    }
+
+    const stamp=new Date().toISOString();
+    const wr=await cloudClient.from("app_config").upsert({key:"admin_base",data:remote,updated_at:stamp},{onConflict:"key"});
+    if(wr.error)throw wr.error;
+
+    IMAGE_RESCUE_PENDING_V169=false;
+    alert("✅ Sauvetage terminé : "+rescued+" image(s) restaurée(s) dans le cloud. "+failed+" image(s) locale(s) n'ont pas pu être récupérées. Les noms, catégories et pictogrammes n'ont pas été remplacés.");
+    return true;
+  }catch(e){
+    console.error("BETA169 rescue images",e);
+    alert("Sauvetage impossible : "+(e?.message||String(e)));
+    return false;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="🛟 Sauver les images de CET appareil"}
+  }
+}
+
+
+
+async function contributeThisDeviceV170(){
+  if(!cloudClient){alert("Connexion cloud indisponible.");return false}
+  const u=await cloudUser();
+  if(!u){alert("Connecte d'abord la synchronisation sur cet appareil.");return false}
+  const local=readAdminBase();
+  if(!local){alert("Aucune base locale trouvée sur cet appareil.");return false}
+  const btn=document.getElementById("merge-device-v170");
+  if(btn){btn.disabled=true;btn.textContent="🧩 Fusion en cours…"}
+  try{
+    const idle=await waitForAdminCloudIdleV168(20000);
+    if(!idle)throw new Error("Une synchronisation est encore en cours. Réessaie dans quelques secondes.");
+    adminBaseCloudBusy=true;
+    const rr=await cloudClient.from("app_config").select("data,updated_at").eq("key","admin_base").maybeSingle();
+    if(rr.error)throw rr.error;
+    const remote=cloneV129(rr.data?.data||{});
+    remote.items=remote.items||{};
+    remote.addedItems=Array.isArray(remote.addedItems)?remote.addedItems:[];
+    remote.addedCats=Array.isArray(remote.addedCats)?remote.addedCats:[];
+    remote.subcategories=Array.isArray(remote.subcategories)?remote.subcategories:[];
+    remote.catEdits=remote.catEdits||{};
+    remote.quickChoices=remote.quickChoices||{};
+    remote.submenus=remote.submenus||{};
+    remote.adminOrder=remote.adminOrder||{};
+
+    let added=0, images=0, cats=0, folders=0, lists=0, failedImages=0;
+    const sig=x=>String(x?.id||"")+"|"+String(x?.label||x?.name||"")+"|"+String(x?.speech||"");
+    async function portable(v,tag){
+      if(!v)return v;
+      const pv=await portableImageForRescueV169(v,u.id,"merge170-"+tag);
+      if(pv)return pv;
+      failedImages++;
+      return "";
+    }
+    async function mergeImageOnly(ri,li,tag){
+      if(!li?.image)return;
+      if(ri && !imageMissingForRescueV169(ri.image))return;
+      const pv=await portable(li.image,tag);
+      if(pv&&ri){ri.image=pv;images++}
+    }
+
+    // Permanent pictogram overrides: add missing overrides, otherwise only repair a missing image.
+    for(const [id,li0] of Object.entries(local.items||{})){
+      const li=cloneV129(li0||{});
+      if(!remote.items[id]){
+        if(li.image)li.image=await portable(li.image,"item");
+        remote.items[id]=li; added++;
+      }else{
+        await mergeImageOnly(remote.items[id],li,"item");
+      }
+    }
+
+    // Added pictograms: union by id, then label+speech fallback. Never delete an existing cloud item.
+    for(const li0 of (Array.isArray(local.addedItems)?local.addedItems:[])){
+      if(!li0)continue;
+      const li=cloneV129(li0);
+      let ri=remote.addedItems.find(x=>x&&li.id&&x.id===li.id);
+      if(!ri)ri=remote.addedItems.find(x=>x&&x.label===li.label&&x.speech===li.speech);
+      if(!ri){
+        if(li.image)li.image=await portable(li.image,"added");
+        remote.addedItems.push(li);added++;
+      }else{
+        await mergeImageOnly(ri,li,"added");
+      }
+    }
+
+    // Categories and folders: additive union only.
+    for(const c0 of (Array.isArray(local.addedCats)?local.addedCats:[])){
+      if(!c0)continue;
+      const exists=remote.addedCats.some(c=>c&&(c.id&&c0.id?c.id===c0.id:c.name===c0.name));
+      if(!exists){remote.addedCats.push(cloneV129(c0));cats++}
+    }
+    for(const sc0 of (Array.isArray(local.subcategories)?local.subcategories:[])){
+      if(!sc0)continue;
+      const exists=remote.subcategories.some(sc=>sc&&(sc.id&&sc0.id?sc.id===sc0.id:(sc.name===sc0.name&&sc.category===sc0.category&&sc.parentId===sc0.parentId)));
+      if(!exists){remote.subcategories.push(cloneV129(sc0));folders++}
+    }
+    for(const [k,v] of Object.entries(local.catEdits||{}))if(remote.catEdits[k]===undefined)remote.catEdits[k]=cloneV129(v);
+    for(const [k,v] of Object.entries(local.adminOrder||{}))if(remote.adminOrder[k]===undefined)remote.adminOrder[k]=cloneV129(v);
+
+    async function mergeLists(rmap,lmap,kind){
+      for(const [k,ll] of Object.entries(lmap||{})){
+        if(!Array.isArray(ll))continue;
+        if(!Array.isArray(rmap[k]))rmap[k]=[];
+        for(const li0 of ll){
+          if(!li0)continue;
+          const li=cloneV129(li0);
+          let ri=rmap[k].find(x=>x&&li.id&&x.id===li.id);
+          if(!ri)ri=rmap[k].find(x=>sig(x)===sig(li));
+          if(!ri){
+            if(li.image)li.image=await portable(li.image,kind);
+            rmap[k].push(li);lists++;
+          }else await mergeImageOnly(ri,li,kind);
+        }
+      }
+    }
+    await mergeLists(remote.quickChoices,local.quickChoices,"quick");
+    await mergeLists(remote.submenus,local.submenus,"submenu");
+
+    const raw=JSON.stringify(remote);
+    if(/data:image\//i.test(raw))throw new Error("La fusion contient encore une image Base64 trop lourde.");
+    const stamp=new Date().toISOString();
+    const wr=await cloudClient.from("app_config").upsert({key:"admin_base",data:remote,updated_at:stamp},{onConflict:"key"});
+    if(wr.error)throw wr.error;
+    markAdminBaseSynced(stamp);
+    IMAGE_RESCUE_PENDING_V169=false;
+    alert("✅ Fusion terminée. Ajouts récupérés : "+added+" pictogramme(s), "+cats+" catégorie(s), "+folders+" dossier(s), "+lists+" choix/sous-menu(s), "+images+" image(s). Images locales introuvables : "+failedImages+". Rien n'a été supprimé du cloud.");
+    return true;
+  }catch(e){
+    console.error("BETA170 additive merge",e);
+    alert("Fusion impossible : "+(e?.message||String(e)));
+    return false;
+  }finally{
+    adminBaseCloudBusy=false;
+    if(btn){btn.disabled=false;btn.textContent="🧩 Fusionner CET appareil sans supprimer"}
+  }
 }
 
 async function publishThisDeviceV162(showFeedbackAtEnd=false){
@@ -3665,7 +3914,17 @@ async function adminBasePush(){
     return false;
   }finally{adminBaseCloudBusy=false}
 }
+let IMAGE_RESCUE_PENDING_V169=true;
 async function adminBasePull(showStatus=false){
+  // BETA169 emergency image rescue: do not let a cloud PULL erase the tablet's
+  // still-valid local image references before the user has had a chance to rescue them.
+  if(IMAGE_RESCUE_PENDING_V169){
+    if(showStatus){
+      const st=document.getElementById("admin-sync-live");
+      if(st)st.textContent="🛟 Sauvegarde images en attente — aucune réception cloud automatique.";
+    }
+    return false;
+  }
   const status=document.getElementById("admin-sync-live");
   const setStatus=(txt,ok=false)=>{if(status){status.textContent=txt;status.style.fontWeight="700";status.style.color=ok?"#176b2c":"#8a3b12"}};
   if(adminBaseCloudBusy){if(showStatus)setStatus("Une synchronisation est déjà en cours…");return false}
@@ -4065,10 +4324,12 @@ function openAdminPanel(initialView="home"){
 
     if(view==="settings"){
       const sync=mkSection();sync.innerHTML="<h2>☁️ Synchronisation</h2><p>"+adminBaseUpdatedLabel()+"<br>"+adminSyncLabel()+"</p>";
-      const syncNow=document.createElement("button");syncNow.textContent="🔄 Synchroniser complètement";syncNow.onclick=async()=>{syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation complète…";await fullCloudRefreshV161(true);syncNow.disabled=false;syncNow.textContent="✅ Synchronisation complète"};
-      const publish=document.createElement("button");publish.style.marginTop="10px";publish.textContent="☁️ Publier CET appareil comme référence";publish.onclick=async()=>{if(!confirm("Utilise ce bouton uniquement sur l’appareil où Ma CAA est la plus complète (par exemple le Mac). Sa base actuelle remplacera la copie cloud utilisée par les autres appareils. Continuer ?"))return;publish.disabled=true;publish.textContent="☁️ Publication en cours…";const ok=await publishThisDeviceV162(true);publish.disabled=false;publish.textContent=ok?"✅ Appareil publié comme référence":"☁️ Publier CET appareil comme référence"};
+      const syncNow=document.createElement("button");syncNow.textContent="🔄 Synchroniser complètement (APRÈS les 3 fusions)";syncNow.onclick=async()=>{if(IMAGE_RESCUE_PENDING_V169){if(!confirm("⚠️ Pendant la récupération bêta 170, commence par « Fusionner CET appareil sans supprimer » sur le Mac, le téléphone ET la tablette. Ne synchronise complètement qu'après les trois fusions. Continuer quand même ?"))return;IMAGE_RESCUE_PENDING_V169=false;}syncNow.disabled=true;syncNow.textContent="🔄 Synchronisation complète…";await fullCloudRefreshV161(true);syncNow.disabled=false;syncNow.textContent="✅ Synchronisation complète"};
+      const publish=document.createElement("button");publish.style.marginTop="10px";publish.textContent="⛔ Publication de référence désactivée pendant la récupération";publish.disabled=true;publish.title="Utilise la fusion additive bêta 170 pour ne rien écraser.";
       const diag=document.createElement("button");diag.style.marginTop="10px";diag.textContent="🔎 Diagnostiquer les pictogrammes";diag.onclick=async()=>{diag.disabled=true;diag.textContent="🔎 Diagnostic…";await pictogramSyncDiagnosticV164();diag.disabled=false;diag.textContent="🔎 Diagnostiquer les pictogrammes"};
-      sync.append(syncNow,publish,diag);content.appendChild(sync);addAdminCloudConnection(content);
+      const rescue=document.createElement("button");rescue.id="rescue-images-v169";rescue.style.marginTop="10px";rescue.textContent="🛟 Sauver les images de CET appareil";rescue.onclick=async()=>{if(!confirm("Utilise ce bouton sur l’appareil qui possède encore le plus d’images correctes (actuellement la tablette). Il restaurera uniquement les images manquantes dans le cloud, sans remplacer les noms, catégories ni pictogrammes. Continuer ?"))return;await rescueImagesFromThisDeviceV169()};
+      const merge170=document.createElement("button");merge170.id="merge-device-v170";merge170.style.marginTop="10px";merge170.textContent="🧩 Fusionner CET appareil sans supprimer";merge170.onclick=async()=>{if(!confirm("Mode récupération : cet appareil va AJOUTER au cloud les pictogrammes, catégories et images qu'il possède encore, sans supprimer ce qui existe déjà. À faire successivement sur le Mac, le téléphone et la tablette. Continuer ?"))return;await contributeThisDeviceV170()};
+      sync.append(syncNow,publish,merge170,rescue,diag);content.appendChild(sync);addAdminCloudConnection(content);
       const security=mkSection();security.innerHTML="<h2>🔐 Sécurité</h2>";
       const change=document.createElement("button");change.textContent="🔑 Changer le code administrateur";change.onclick=()=>{const cur=prompt("Code actuel :");if(cur===null)return;if(cur!==getAdminPin())return alert("Code incorrect.");const n=prompt("Nouveau code (4 chiffres) :");if(n===null)return;if(!/^\d{4}$/.test(n))return alert("4 chiffres requis.");if(prompt("Confirmez le code :")!==n)return alert("Les codes ne correspondent pas.");localStorage.setItem(ADMIN_PIN_KEY,n);alert("✓ Code modifié.")};
       security.appendChild(change);content.appendChild(security);return
@@ -6398,3 +6659,5 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 <!-- BETA167: non-blocking image migration; metadata sync continues if individual image upload fails -->
 
 <!-- BETA168 manual cloud publish lock fix -->
+
+<!-- BETA170 additive multi-device recovery merge; based on BETA169 image rescue -->

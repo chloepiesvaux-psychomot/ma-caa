@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 193</title>
+<title>Ma CAA v2.0 bêta 194</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 193</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 194</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8356,164 +8356,157 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
-<style id="beta193-admin-access">
-#admin-pin-gate-193{
-  position:fixed;inset:0;z-index:999998;background:rgba(244,246,251,.98);
-  display:flex;align-items:center;justify-content:center;padding:18px;
+<style id="beta194-admin-pin-style">
+#admin-pin-194{
+  position:fixed;inset:0;z-index:999999;background:#f4f6fb;
+  display:flex;align-items:center;justify-content:center;padding:20px;
   pointer-events:auto!important;
 }
-#admin-pin-gate-193 .box{
-  width:min(420px,100%);background:white;border-radius:22px;padding:22px;
-  box-shadow:0 18px 55px rgba(0,0,0,.2);border:1px solid #dfe4ec;
+#admin-pin-194 .card{
+  width:min(420px,100%);background:#fff;border-radius:22px;padding:24px;
+  box-shadow:0 18px 55px rgba(0,0,0,.18);border:1px solid #dfe4ec;
 }
-#admin-pin-gate-193 input{
-  width:100%;box-sizing:border-box;padding:14px;border:2px solid #d9dee8;
-  border-radius:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900;
+#admin-pin-194 input{
+  width:100%;box-sizing:border-box;border:2px solid #8ca8df;border-radius:14px;
+  padding:14px;font-size:28px;text-align:center;letter-spacing:12px;font-weight:900;
 }
-#admin-pin-gate-193 .row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
-#admin-pin-gate-193 button{border:0;border-radius:12px;padding:12px;font-weight:900;min-height:46px}
-#admin-pin-gate-193 .go{background:#243b6b;color:#fff}
-#admin-pin-gate-193 .cancel{background:#eef1f5;color:#344054}
-#admin-pin-gate-193 .status{min-height:20px;margin-top:9px;font-size:13px;font-weight:800}
+#admin-pin-194 .cancel{
+  width:100%;margin-top:12px;border:0;border-radius:12px;padding:12px;
+  background:#eef1f5;font-weight:900;
+}
+#admin-pin-194 .status{margin-top:10px;min-height:20px;font-size:13px;font-weight:800}
 </style>
-
 <script>
-/* ===== BETA 193 — accès Admin sans couche fantôme ===== */
+/* ===== BETA 194 — validation PIN automatique au 4e chiffre ===== */
 (function(){
-  let opening193=false;
+  let busy194=false;
 
-  function restoreClicks193(){
+  function unlockPage194(){
     try{
-      document.documentElement.style.pointerEvents="auto";
-      document.body.style.pointerEvents="auto";
-      document.body.style.userSelect="";
-      document.body.removeAttribute("inert");
+      document.documentElement.style.pointerEvents="";
+      document.body.style.pointerEvents="";
       document.documentElement.removeAttribute("inert");
-      document.querySelectorAll("[inert]").forEach(el=>el.removeAttribute("inert"));
+      document.body.removeAttribute("inert");
+      document.querySelectorAll("[inert]").forEach(x=>x.removeAttribute("inert"));
     }catch(e){}
   }
 
-  function cleanupGhosts193(keep){
+  function cleanAdminLayers194(){
     try{
-      document.querySelectorAll(".adult-overlay,.editor-overlay,#adult-gate,#admin-access-192,#admin-pin-gate-193").forEach(el=>{
-        if(keep && (el===keep || keep.contains(el) || el.contains(keep)))return;
-        el.remove();
-      });
+      document.querySelectorAll(
+        ".adult-overlay,.editor-overlay,#admin-pin-194,#admin-access-192,#admin-pin-gate-193"
+      ).forEach(x=>x.remove());
     }catch(e){}
-    restoreClicks193();
+    unlockPage194();
   }
 
-  async function launchAdmin193(){
-    if(opening193)return;
-    opening193=true;
+  function forceAdminPanel194(){
+    cleanAdminLayers194();
+    adminUnlocked=true;
+
+    let panel=null;
     try{
-      cleanupGhosts193(null);
-      restoreClicks193();
-      if(typeof adminUnlocked!=="undefined")adminUnlocked=true;
-
-      // Prevent a background cloud refresh from fighting the opening animation.
-      window.__MA_CAA_ADMIN_OPEN_193=true;
-
-      let err=null;
-      try{
-        openAdminPanel("home");
-      }catch(e){
-        err=e;
-        console.error("BETA193 openAdminPanel",e);
-      }
-
-      await new Promise(r=>setTimeout(r,120));
-      const panel=document.getElementById("admin-panel-beta25");
-
-      if(err || !panel){
-        if(typeof adminUnlocked!=="undefined")adminUnlocked=false;
-        restoreClicks193();
-        alert("Ouverture Administrateur impossible : "+(err?.message||"le panneau n'a pas été créé."));
-        return;
-      }
-
-      // Force the real Admin panel above every legacy layer.
-      Object.assign(panel.style,{
-        display:"block",
-        visibility:"visible",
-        opacity:"1",
-        pointerEvents:"auto",
-        zIndex:"999999"
-      });
-      panel.removeAttribute("inert");
-      panel.querySelectorAll("*").forEach(el=>el.removeAttribute("inert"));
-
-      // Remove only legacy overlays that may appear immediately after opening.
-      const until=Date.now()+1800;
-      const obs=new MutationObserver(()=>{
-        if(Date.now()>until){obs.disconnect();return}
-        document.querySelectorAll(".adult-overlay").forEach(el=>{
-          if(!panel.contains(el))el.remove();
-        });
-        restoreClicks193();
-      });
-      obs.observe(document.body,{childList:true,subtree:false});
-      setTimeout(()=>obs.disconnect(),1900);
-
-      restoreClicks193();
-    }finally{
-      setTimeout(()=>{window.__MA_CAA_ADMIN_OPEN_193=false;},2200);
-      opening193=false;
+      openAdminPanel("home");
+      panel=document.getElementById("admin-panel-beta25");
+    }catch(e){
+      adminUnlocked=false;
+      unlockPage194();
+      alert("Erreur Administrateur : "+(e?.message||String(e)));
+      return;
     }
+
+    if(!panel){
+      adminUnlocked=false;
+      unlockPage194();
+      alert("Le code est correct mais le tableau Administrateur n'a pas été créé.");
+      return;
+    }
+
+    panel.style.zIndex="1000000";
+    panel.style.pointerEvents="auto";
+    panel.style.display="block";
+    panel.style.visibility="visible";
+    panel.style.opacity="1";
+    unlockPage194();
+
+    // Remove any legacy gate that reappears during the next second.
+    const obs=new MutationObserver(()=>{
+      document.querySelectorAll(".adult-overlay,#admin-pin-194,#admin-access-192,#admin-pin-gate-193")
+        .forEach(x=>{ if(!panel.contains(x)) x.remove(); });
+      unlockPage194();
+    });
+    obs.observe(document.body,{childList:true});
+    setTimeout(()=>obs.disconnect(),1500);
   }
 
-  function showGate193(){
-    cleanupGhosts193(null);
-    restoreClicks193();
+  function showPin194(){
+    if(document.getElementById("admin-pin-194"))return;
+    cleanAdminLayers194();
 
     const ov=document.createElement("div");
-    ov.id="admin-pin-gate-193";
-    const box=document.createElement("form");
-    box.className="box";
-    box.innerHTML=
-      '<h2 style="margin:0 0 8px;color:#243b6b">🛡️ Mode Administrateur</h2>'+
-      '<p style="margin:0 0 14px;color:#667085">Entre le code administrateur.</p>'+
-      '<input id="admin-pin-input-193" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••">'+
-      '<div class="row"><button type="button" class="cancel">Annuler</button><button type="submit" class="go">Ouvrir</button></div>'+
-      '<div class="status"></div>';
-    ov.appendChild(box);
+    ov.id="admin-pin-194";
+    ov.innerHTML=
+      '<div class="card">'+
+        '<h2 style="margin:0 0 8px;color:#243b6b">🛡️ Mode Administrateur</h2>'+
+        '<p style="margin:0 0 14px;color:#667085">Entre les 4 chiffres du code administrateur.</p>'+
+        '<input id="admin-pin-input-194" type="tel" inputmode="numeric" maxlength="4" autocomplete="off" pattern="[0-9]*" placeholder="••••">'+
+        '<button type="button" class="cancel">Annuler</button>'+
+        '<div class="status" id="admin-pin-status-194"></div>'+
+      '</div>';
     document.body.appendChild(ov);
 
-    const input=box.querySelector("input");
-    const status=box.querySelector(".status");
-    box.querySelector(".cancel").onclick=()=>{ov.remove();restoreClicks193()};
-    box.onsubmit=async e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      if(input.value!==getAdminPin()){
+    const input=ov.querySelector("input");
+    const status=ov.querySelector(".status");
+
+    function validate(){
+      if(busy194)return;
+      const value=(input.value||"").replace(/\D/g,"").slice(0,4);
+      input.value=value;
+      if(value.length<4)return;
+      busy194=true;
+
+      if(value!==String(getAdminPin())){
         status.textContent="Code incorrect.";
         status.style.color="#b42318";
         input.value="";
-        input.focus();
-        return false;
+        busy194=false;
+        setTimeout(()=>input.focus(),50);
+        return;
       }
+
       status.textContent="Code correct — ouverture…";
       status.style.color="#176b34";
-      ov.remove();
-      await launchAdmin193();
-      return false;
-    };
+
+      // Do not rely on any button/click event: open directly from input event.
+      setTimeout(()=>{
+        try{ forceAdminPanel194(); }
+        finally{ busy194=false; }
+      },60);
+    }
+
+    input.addEventListener("input",validate);
+    input.addEventListener("change",validate);
+    input.addEventListener("keyup",e=>{
+      if(e.key==="Enter")validate();
+    });
+    ov.querySelector(".cancel").addEventListener("pointerdown",e=>{
+      e.preventDefault();ov.remove();unlockPage194();
+    });
+
     setTimeout(()=>input.focus(),80);
   }
 
-  // Replace all normal Administrator entry points.
-  openAdminAccess=showGate193;
-  window.openAdminAccess=showGate193;
+  openAdminAccess=showPin194;
+  window.openAdminAccess=showPin194;
 
-  // Final failsafe: when an "Administrateur" nav button is clicked, route here.
-  document.addEventListener("click",function(e){
+  // Route the Administrator navigation control here before legacy handlers.
+  document.addEventListener("pointerdown",function(e){
     const b=e.target&&e.target.closest?e.target.closest("button"):null;
     if(!b)return;
-    const t=(b.textContent||"").trim();
-    if(!/^🛡️?\s*Administrateur$/i.test(t) && !/^Administrateur$/i.test(t))return;
+    if(!/administrateur/i.test((b.textContent||"").trim()))return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    showGate193();
+    showPin194();
   },true);
 })();
 </script>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 188</title>
+<title>Ma CAA v2.0 bêta 189</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 188</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 189</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8119,4 +8119,94 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }catch(e){}
 })();
 </script>
+
+<style id="beta189-mac-installed-bootstrap-style">
+#mac-bootstrap-189{position:fixed;inset:0;z-index:10000;background:#f5f7fb;display:flex;align-items:center;justify-content:center;padding:22px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+#mac-bootstrap-189 .mbox{width:min(520px,100%);background:#fff;border:1px solid #dfe4ec;border-radius:24px;padding:24px;box-shadow:0 18px 55px #0002}
+#mac-bootstrap-189 h2{margin:0 0 10px;color:#17345f}#mac-bootstrap-189 p{line-height:1.45;color:#475467}
+#mac-bootstrap-189 input{width:100%;box-sizing:border-box;margin:6px 0;padding:12px;border:2px solid #d9dee8;border-radius:12px;font-size:16px}
+#mac-bootstrap-189 button{width:100%;border:0;border-radius:12px;padding:13px;margin-top:8px;font-weight:900;font-size:16px;background:#17345f;color:#fff}
+#mac-bootstrap-189 .secondary{background:#eef2f7;color:#344054}.mstatus189{margin-top:12px;padding:10px;border-radius:12px;background:#f2f6ff;color:#234b91;font-weight:800;white-space:pre-wrap}
+</style>
+<script>
+/* ===== BETA 189 — bootstrap fiable pour l'app Mac installée =====
+   Une web-app Safari installée peut avoir un stockage/session distinct de Safari.
+   Cette couche reconnecte explicitement la session puis reconstruit localement
+   les données depuis les couches cloud déjà validées en 187/188. */
+(function(){
+  let bootBusy189=false,bootDone189=false;
+  function isInstalledMac189(){
+    const mac=/Macintosh|Mac OS X/i.test(navigator.userAgent||'');
+    const standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
+    return mac&&standalone;
+  }
+  function setBootStatus189(t){const x=document.getElementById('mac-bootstrap-status-189');if(x)x.textContent=t}
+  function removeBoot189(){const x=document.getElementById('mac-bootstrap-189');if(x)x.remove()}
+  async function waitCloud189(){
+    for(let i=0;i<30;i++){
+      if(window.cloudClient||cloudClient)return window.cloudClient||cloudClient;
+      await new Promise(r=>setTimeout(r,150));
+    }
+    return null;
+  }
+  async function bootstrapAll189(show=true){
+    if(bootBusy189)return false;bootBusy189=true;
+    try{
+      const cc=await waitCloud189();if(!cc)throw new Error('Connexion cloud indisponible');
+      const u=await cloudUser();if(!u)return false;
+      if(show)setBootStatus189('☁️ Récupération des profils…');
+      try{await pullProfilesDirectory()}catch(e){console.warn('189 profils dir',e)}
+      try{await recoverProfilesFromProfilesTable()}catch(e){console.warn('189 profils recovery',e)}
+      try{await syncPullAll()}catch(e){console.warn('189 profils content',e)}
+      if(show)setBootStatus189('🧩 Récupération des pictogrammes et catégories…');
+      try{await adminBasePull(false)}catch(e){console.warn('189 admin base',e)}
+      try{if(typeof syncAdminCategoryManifestV134==='function')await syncAdminCategoryManifestV134('mac-installed-189')}catch(e){console.warn('189 categories manifest',e)}
+      try{if(typeof pullGlobalCustomCatsV135==='function')await pullGlobalCustomCatsV135()}catch(e){console.warn('189 custom cats',e)}
+      if(show)setBootStatus189('🖼️ Récupération des images et dernières modifications…');
+      try{if(typeof pullMeta187==='function')await pullMeta187()}catch(e){console.warn('189 meta',e)}
+      try{if(typeof pullPictoMediaV182==='function')await pullPictoMediaV182(false)}catch(e){console.warn('189 media',e)}
+      try{syncCustomCategories();syncAdminCategories();render();renderProfileBar();await hydrateAllCloudPictures()}catch(e){console.warn('189 render',e)}
+      bootDone189=true;
+      if(show)setBootStatus189('✅ App Mac synchronisée. Ouverture de Ma CAA…');
+      setTimeout(removeBoot189,650);
+      return true;
+    }catch(e){
+      console.error('Bootstrap Mac 189',e);if(show)setBootStatus189('❌ '+(e?.message||String(e)));return false;
+    }finally{bootBusy189=false}
+  }
+  function showLogin189(){
+    if(document.getElementById('mac-bootstrap-189'))return;
+    const ov=document.createElement('div');ov.id='mac-bootstrap-189';
+    ov.innerHTML='<div class="mbox"><h2>💬 Ma CAA sur ce Mac</h2><p>L’app installée possède son propre espace local. Connecte-la une fois au même compte de synchronisation que tes autres appareils : elle récupérera ensuite automatiquement les pictogrammes ajoutés, catégories, sous-catégories, réglages et images.</p><input id="mac-email-189" type="email" autocomplete="username" placeholder="E-mail de synchronisation"><input id="mac-pass-189" type="password" autocomplete="current-password" placeholder="Mot de passe"><button id="mac-login-189">☁️ Connecter et récupérer Ma CAA</button><button id="mac-retry-189" class="secondary">🔄 Je suis déjà connecté · Réessayer</button><div id="mac-bootstrap-status-189" class="mstatus189">Vérification de la connexion…</div></div>';
+    document.body.appendChild(ov);
+    document.getElementById('mac-login-189').onclick=async()=>{
+      const email=document.getElementById('mac-email-189').value.trim(),pass=document.getElementById('mac-pass-189').value;
+      if(!email||!pass){setBootStatus189('Entre ton e-mail et ton mot de passe de synchronisation.');return}
+      setBootStatus189('🔐 Connexion…');
+      const cc=await waitCloud189();if(!cc){setBootStatus189('❌ Connexion cloud indisponible');return}
+      const r=await cc.auth.signInWithPassword({email,password:pass});
+      if(r.error){setBootStatus189('❌ Connexion impossible : '+r.error.message);return}
+      await bootstrapAll189(true);
+    };
+    document.getElementById('mac-retry-189').onclick=()=>bootstrapAll189(true);
+  }
+  async function start189(){
+    if(!isInstalledMac189())return;
+    await new Promise(r=>setTimeout(r,1800));
+    const cc=await waitCloud189();
+    if(!cc){showLogin189();setBootStatus189('❌ La connexion cloud ne s’est pas chargée.');return}
+    const u=await cloudUser();
+    if(u){
+      showLogin189();setBootStatus189('☁️ Compte reconnu. Reconstruction de l’app Mac…');
+      await bootstrapAll189(true);
+    }else{
+      showLogin189();setBootStatus189('Cette app Mac doit être connectée une fois à la synchronisation.');
+    }
+  }
+  // Réappliquer une fois au retour au premier plan, sans bloquer l'interface.
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&isInstalledMac189()&&bootDone189)setTimeout(()=>bootstrapAll189(false),500)});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start189,{once:true});else start189();
+})();
+</script>
+
 </body></html>

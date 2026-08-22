@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 171</title>
+<title>Ma CAA v2.0 bêta 172</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -214,7 +214,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 171</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 172</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -6717,6 +6717,100 @@ const bootstrapCanonicalAdminBaseV132=bootstrapCanonicalAdminBaseV131;
 })();
 </script>
 
+
+<script>
+/* ===== BETA 172 — diagnostic anciennes sauvegardes / associations perdues =====
+   STRICTEMENT LECTURE SEULE : ne modifie ni localStorage, ni IndexedDB, ni Supabase.
+*/
+(function(){
+  function walkStats172(v, stats, depth){
+    if(depth>12 || v==null)return;
+    if(typeof v==='string'){
+      if(/famille/i.test(v))stats.famille++;
+      if(/^data:image\//i.test(v))stats.base64++;
+      return;
+    }
+    if(typeof v!=='object')return;
+    if(v.__local_image===true && v.key)stats.localRefs++;
+    if(v.__cloud_image===true && v.path)stats.cloudRefs++;
+    if(Array.isArray(v)){
+      for(const x of v)walkStats172(x,stats,depth+1);
+      return;
+    }
+    if(Array.isArray(v.addedItems))stats.addedItems=Math.max(stats.addedItems,v.addedItems.length);
+    for(const [k,x] of Object.entries(v)){
+      if(/famille/i.test(k))stats.famille++;
+      walkStats172(x,stats,depth+1);
+    }
+  }
+  function stats172(v){
+    const s={famille:0,localRefs:0,cloudRefs:0,base64:0,addedItems:0};
+    try{walkStats172(v,s,0)}catch(e){}
+    return s;
+  }
+  function parse172(raw){try{return JSON.parse(raw)}catch(e){return raw}}
+  function interesting172(key,raw,st){
+    return /admin|base|backup|save|snapshot|history|archive/i.test(key) || st.famille || st.localRefs || st.base64 || st.addedItems || /Famille|__local_image|addedItems/i.test(raw||'');
+  }
+  function line172(key,raw,st){
+    return key+' | '+String((raw||'').length)+' car. | addedItems='+st.addedItems+' | Famille='+st.famille+' | refs locales='+st.localRefs+' | refs cloud='+st.cloudRefs+' | Base64='+st.base64;
+  }
+  async function run172(){
+    const lines=[];
+    lines.push('DIAGNOSTIC ANCIENNES SAUVEGARDES — bêta 172');
+    lines.push('Appareil : '+navigator.userAgent);
+    lines.push('LECTURE SEULE — aucune donnée modifiée');
+    lines.push('');
+    lines.push('=== LOCALSTORAGE ===');
+    const found=[];
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      let raw=''; try{raw=localStorage.getItem(key)||''}catch(e){}
+      const st=stats172(parse172(raw));
+      if(interesting172(key,raw,st))found.push({key,raw,st});
+    }
+    found.sort((a,b)=> (b.st.famille-a.st.famille) || (b.st.localRefs-a.st.localRefs) || (b.raw.length-a.raw.length));
+    if(!found.length)lines.push('Aucune ancienne clé intéressante détectée.');
+    for(const x of found.slice(0,60))lines.push(line172(x.key,x.raw,x.st));
+    lines.push('');
+    lines.push('Clés localStorage totales : '+localStorage.length);
+    lines.push('Clés potentiellement utiles : '+found.length);
+    lines.push('');
+    lines.push('=== SUPABASE app_config (clés seulement) ===');
+    try{
+      if(typeof cloudClient==='undefined'||!cloudClient){
+        lines.push('Connexion Supabase indisponible.');
+      }else{
+        const r=await cloudClient.from('app_config').select('key,updated_at').limit(200);
+        if(r.error)throw r.error;
+        const rows=r.data||[];
+        lines.push('Nombre de clés trouvées : '+rows.length);
+        rows.sort((a,b)=>String(a.key).localeCompare(String(b.key)));
+        for(const row of rows)lines.push('- '+row.key+' | '+(row.updated_at||'date inconnue'));
+      }
+    }catch(e){lines.push('ERREUR CLOUD : '+(e&&e.message?e.message:String(e)))}
+    lines.push('');
+    lines.push('IMPORTANT : envoie-moi ce diagnostic complet. Ne lance aucune synchronisation avant analyse.');
+
+    const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;background:#0008;z-index:99999;display:flex;align-items:center;justify-content:center;padding:12px';
+    const box=document.createElement('div');box.style.cssText='background:#fff;width:min(900px,100%);max-height:92vh;overflow:auto;border-radius:18px;padding:16px';
+    const h=document.createElement('h2');h.textContent='🔎 Diagnostic anciennes sauvegardes — 172';
+    const ta=document.createElement('textarea');ta.value=lines.join('\n');ta.readOnly=true;ta.style.cssText='width:100%;height:58vh;font-family:monospace;font-size:12px;box-sizing:border-box';
+    const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:10px';
+    const cp=document.createElement('button');cp.textContent='📋 Copier';cp.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);cp.textContent='✅ Copié'}catch(e){ta.select();document.execCommand('copy')}};
+    const cl=document.createElement('button');cl.textContent='Fermer';cl.onclick=()=>ov.remove();
+    row.append(cp,cl);box.append(h,ta,row);ov.appendChild(box);document.body.appendChild(ov);
+  }
+  function addBtn172(){
+    if(document.getElementById('diag-old-backups-172'))return;
+    const b=document.createElement('button');
+    b.id='diag-old-backups-172'; b.type='button'; b.textContent='🔎 Anciennes sauvegardes (172)';
+    b.style.cssText='position:fixed;right:12px;bottom:140px;z-index:95;border:0;border-radius:999px;background:#5b3fa3;color:#fff;padding:10px 14px;font-weight:900;box-shadow:0 4px 14px #0003';
+    b.onclick=run172; document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',addBtn172,{once:true});else addBtn172();
+})();
+</script>
 </body></html>
 <!-- BETA166: migrate legacy Base64 + IndexedDB images to Storage before admin_base push -->
 

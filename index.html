@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 226</title>
+<title>Ma CAA v2.0 bêta 227</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 226</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 227</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8537,7 +8537,15 @@ body.parent-mode .manage-card{
   function renderStarters211(){
     const host=document.querySelector('.starters');if(!host)return;const cat=catNow(),sub=subNow(cat),x=read(),p=pref(x);
     if(!cat||cat.name==='Mode parents'){host.style.display='none';starterRenderSig212='hidden';return}
-    const list=effective(cat,sub,x,p);
+    let list=effective(cat,sub,x,p);
+    try{
+      const orderKey=sub?'sub:'+sub.id:'cat:'+cat.name;
+      const ord=(p.order220||{})[orderKey]||[];
+      list=[...list].sort((a,b)=>{
+        const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);
+        return (ia<0?9999:ia)-(ib<0?9999:ib);
+      });
+    }catch(e){}
     const sig=JSON.stringify({pid:pid(),cat:cat.name,sub:sub?.id||'',hidden:!!p.bandHidden,items:list.map(s=>[s.id,s.emoji||'💬',s.label,s.speech||s.label])});
     if(host.style.display!=='none'&&starterRenderSig212===sig)return;
     const oldRow=host.querySelector('.starterrow');const oldScroll=oldRow?oldRow.scrollLeft:0;
@@ -9715,32 +9723,52 @@ body.parent-mode .manage-card{
     })
   }
   function orderPictos220(box){
-    const note=mk220('div','p220-order-note','ℹ️ Fais glisser un pictogramme pour le déplacer. Le nouvel ordre est enregistré automatiquement.');
-    box.appendChild(note);
+    window.__orderOpen227=window.__orderOpen227||{};
+    const OPEN=window.__orderOpen227;
+
+    box.appendChild(mk220('div','p220-order-note','ℹ️ Fais glisser un pictogramme par la poignée ☰. L’ordre est enregistré automatiquement.'));
 
     const toolbar=mk220('div','p222-collapsebar');
     const openAll=mk220('button','','▾ Tout ouvrir');
     const closeAll=mk220('button','','▸ Tout fermer');
     toolbar.append(openAll,closeAll);box.appendChild(toolbar);
 
-    const tree=document.createElement('div');
-    tree.className='o226-tree';
-    box.appendChild(tree);
+    const tree=document.createElement('div');tree.className='o227-tree';box.appendChild(tree);
+    const nodes=[];
 
-    function node(label, cls){
-      const n=document.createElement('div');n.className='o226-node '+cls;
-      const h=document.createElement('button');h.type='button';h.className='o226-nodehead';
-      const ar=document.createElement('span');ar.className='o226-arrow';ar.textContent='▸';
-      const tx=document.createElement('span');tx.textContent=label;
-      h.append(ar,tx);
-      const body=document.createElement('div');body.className='o226-body';
-      h.onclick=()=>{const on=!n.classList.contains('open');n.classList.toggle('open',on);ar.textContent=on?'▾':'▸'};
-      n.append(h,body);return {n,h,body,ar};
+    function node(label,key,level){
+      const n=document.createElement('div');n.className='o227-node level-'+level;
+      const h=document.createElement('button');h.type='button';h.className='o227-head';
+      const ar=document.createElement('span');ar.className='o227-arrow';
+      const tx=document.createElement('span');tx.className='o227-title';tx.textContent=label;
+      const body=document.createElement('div');body.className='o227-body';
+      const set=(on)=>{OPEN[key]=!!on;n.classList.toggle('open',!!on);ar.textContent=on?'▾':'▸'};
+      set(!!OPEN[key]);
+      h.append(ar,tx);h.onclick=()=>set(!n.classList.contains('open'));
+      n.append(h,body);
+      const obj={n,body,key,set};nodes.push(obj);return obj;
     }
 
-    function attachDrag(wrap,items,cat){
+    function rowFor(x){
+      const r=document.createElement('div');r.className='o227-row';r.dataset.iid=String(itemId2(x));
+      const handle=document.createElement('span');handle.className='o227-handle';handle.textContent='☰';
+      const name=document.createElement('span');name.className='o227-name';name.textContent=displayLabel(x)||'Sans nom';
+      r.append(handle,thumb220(x),name);
+      return r;
+    }
+
+    function saveSubset(cat,orderedSubset){
+      const full=orderedItems(cat);
+      const wanted=new Set(orderedSubset.map(x=>String(itemId2(x))));
+      let i=0;
+      const merged=full.map(x=>wanted.has(String(itemId2(x))) ? orderedSubset[i++] : x);
+      savePicOrder220(cat,merged);
+    }
+
+    function attachDrag(wrap,items,saveFn){
       let drag=null;
-      const rows=()=>[...wrap.querySelectorAll(':scope > .o226-row')];
+      const rows=()=>[...wrap.querySelectorAll(':scope > .o227-row')];
+
       rows().forEach(row=>{
         row.draggable=true;
         row.addEventListener('dragstart',e=>{
@@ -9756,10 +9784,10 @@ body.parent-mode .manage-card{
         row.addEventListener('dragend',()=>{
           if(drag)drag.classList.remove('dragging');drag=null;
           const ordered=rows().map(r=>items.find(x=>String(itemId2(x))===String(r.dataset.iid))).filter(Boolean);
-          savePicOrder220(cat,ordered);
+          saveFn(ordered);
         });
 
-        const handle=row.querySelector('.o226-handle');
+        const handle=row.querySelector('.o227-handle');
         let active=false,pid=null;
         handle.addEventListener('pointerdown',e=>{
           if(e.pointerType==='mouse')return;
@@ -9770,7 +9798,7 @@ body.parent-mode .manage-card{
           if(!active||e.pointerId!==pid)return;
           e.preventDefault();
           const el=document.elementFromPoint(e.clientX,e.clientY);
-          const target=el?.closest?.('.o226-row');
+          const target=el?.closest?.('.o227-row');
           if(!target||target===row||target.parentElement!==wrap)return;
           const r=target.getBoundingClientRect();
           wrap.insertBefore(row,e.clientY>r.top+r.height/2?target.nextSibling:target);
@@ -9780,7 +9808,7 @@ body.parent-mode .manage-card{
           active=false;row.classList.remove('dragging');
           try{handle.releasePointerCapture(pid)}catch(err){}
           const ordered=rows().map(r=>items.find(x=>String(itemId2(x))===String(r.dataset.iid))).filter(Boolean);
-          savePicOrder220(cat,ordered);
+          saveFn(ordered);
         };
         handle.addEventListener('pointerup',end);
         handle.addEventListener('pointercancel',end);
@@ -9788,104 +9816,141 @@ body.parent-mode .manage-card{
     }
 
     cats220().forEach(cat=>{
-      const catNode=node((cat.icon||'📁')+' '+adminCatName(cat),'cat');
+      const catNode=node((cat.icon||'📁')+' '+adminCatName(cat),'pic-cat:'+cat.name,0);
 
-      // Sous-catégories d'abord, uniquement comme repère visuel.
       subs220(cat).forEach(sc=>{
-        const subNode=node((sc.icon||'📁')+' '+adminSubcatPath(sc),'sub');
-        subItems220(cat,sc).forEach(x=>{
-          const r=document.createElement('div');r.className='o226-structrow';
-          r.append(thumb220(x),mk220('span','',displayLabel(x)));
-          subNode.body.appendChild(r);
-        });
-        catNode.body.appendChild(subNode.n);
+        const items=subItems220(cat,sc);
+        const sub=node((sc.icon||'📁')+' '+adminSubcatPath(sc)+' — ordre','pic-sub:'+sc.id,1);
+        items.forEach(x=>sub.body.appendChild(rowFor(x)));
+        attachDrag(sub.body,items,arr=>saveSubset(cat,arr));
+        catNode.body.appendChild(sub.n);
       });
 
-      // Vrai dossier ordre avec TOUTE la liste.
-      const allNode=node('↕️ Tous les pictogrammes de '+adminCatName(cat)+' — ordre','all');
-      const items=orderedItems(cat);
-      items.forEach(x=>{
-        const row=document.createElement('div');row.className='o226-row';row.dataset.iid=String(itemId2(x));
-        const handle=document.createElement('span');handle.className='o226-handle';handle.textContent='☰';
-        row.append(handle,thumb220(x),mk220('span','',displayLabel(x)));
-        allNode.body.appendChild(row);
-      });
-      attachDrag(allNode.body,items,cat);
+      const direct=directItems220(cat);
+      const directNode=node('🖼️ Pictogrammes directs de '+adminCatName(cat)+' — ordre','pic-direct:'+cat.name,1);
+      direct.forEach(x=>directNode.body.appendChild(rowFor(x)));
+      attachDrag(directNode.body,direct,arr=>saveSubset(cat,arr));
+      catNode.body.appendChild(directNode.n);
+
+      const all=orderedItems(cat);
+      const allNode=node('↕️ Tous les pictogrammes de '+adminCatName(cat)+' — ordre','pic-all:'+cat.name,1);
+      all.forEach(x=>allNode.body.appendChild(rowFor(x)));
+      attachDrag(allNode.body,all,arr=>savePicOrder220(cat,arr));
       catNode.body.appendChild(allNode.n);
+
       tree.appendChild(catNode.n);
     });
 
-    openAll.onclick=()=>tree.querySelectorAll('.o226-node').forEach(n=>{
-      n.classList.add('open');const a=n.querySelector(':scope > .o226-nodehead > .o226-arrow');if(a)a.textContent='▾';
-    });
-    closeAll.onclick=()=>tree.querySelectorAll('.o226-node').forEach(n=>{
-      n.classList.remove('open');const a=n.querySelector(':scope > .o226-nodehead > .o226-arrow');if(a)a.textContent='▸';
-    });
+    openAll.onclick=()=>nodes.forEach(o=>o.set(true));
+    closeAll.onclick=()=>nodes.forEach(o=>o.set(false));
   }
+
   function orderPhrases220(box){
+    window.__orderOpen227=window.__orderOpen227||{};
+    const OPEN=window.__orderOpen227;
     const x=starterData220(),p=starterPref220(x);
-    box.appendChild(mk220('div','p220-order-note','ℹ️ Fais glisser une phrase pour la déplacer. Le nouvel ordre est enregistré automatiquement.'));
+
+    box.appendChild(mk220('div','p220-order-note','ℹ️ Fais glisser une phrase par la poignée ☰. L’ordre est enregistré automatiquement.'));
 
     const toolbar=mk220('div','p222-collapsebar');
     const openAll=mk220('button','','▾ Tout ouvrir');
     const closeAll=mk220('button','','▸ Tout fermer');
     toolbar.append(openAll,closeAll);box.appendChild(toolbar);
 
-    const tree=document.createElement('div');tree.className='o226-tree';box.appendChild(tree);
+    const tree=document.createElement('div');tree.className='o227-tree';box.appendChild(tree);
+    const nodes=[];
 
-    function node(label,cls){
-      const n=document.createElement('div');n.className='o226-node '+cls;
-      const h=document.createElement('button');h.type='button';h.className='o226-nodehead';
-      const ar=document.createElement('span');ar.className='o226-arrow';ar.textContent='▸';
-      const tx=document.createElement('span');tx.textContent=label;
-      h.append(ar,tx);
-      const body=document.createElement('div');body.className='o226-body';
-      h.onclick=()=>{const on=!n.classList.contains('open');n.classList.toggle('open',on);ar.textContent=on?'▾':'▸'};
-      n.append(h,body);return {n,body};
+    function node(label,key,level){
+      const n=document.createElement('div');n.className='o227-node level-'+level;
+      const h=document.createElement('button');h.type='button';h.className='o227-head';
+      const ar=document.createElement('span');ar.className='o227-arrow';
+      const tx=document.createElement('span');tx.className='o227-title';tx.textContent=label;
+      const body=document.createElement('div');body.className='o227-body';
+      const set=(on)=>{OPEN[key]=!!on;n.classList.toggle('open',!!on);ar.textContent=on?'▾':'▸'};
+      set(!!OPEN[key]);
+      h.append(ar,tx);h.onclick=()=>set(!n.classList.contains('open'));
+      n.append(h,body);
+      const obj={n,body,key,set};nodes.push(obj);return obj;
+    }
+
+    function uniq(list){
+      const seen=new Set();
+      return list.filter(o=>{const id=String(o.s.id);if(seen.has(id))return false;seen.add(id);return true});
+    }
+
+    function sortedFor(key,list){
+      const order=(p.order220||{})[key]||[];
+      return [...list].sort((a,b)=>{
+        const ia=order.indexOf(a.s.id),ib=order.indexOf(b.s.id);
+        return (ia<0?9999:ia)-(ib<0?9999:ib);
+      });
+    }
+
+    function phraseRow(o){
+      const r=document.createElement('div');r.className='o227-row';r.dataset.sid=String(o.s.id);
+      const h=document.createElement('span');h.className='o227-handle';h.textContent='☰';
+      const name=document.createElement('span');name.className='o227-name';name.textContent=(o.s.emoji||'💬')+' '+o.s.label;
+      r.append(h,name);return r;
     }
 
     function attachDrag(wrap,key){
       let drag=null;
-      const rows=()=>[...wrap.querySelectorAll(':scope > .o226-row')];
+      const rows=()=>[...wrap.querySelectorAll(':scope > .o227-row')];
       rows().forEach(row=>{
         row.draggable=true;
-        row.addEventListener('dragstart',e=>{drag=row;row.classList.add('dragging');try{e.dataTransfer.setData('text/plain',row.dataset.sid)}catch(err){}});
-        row.addEventListener('dragover',e=>{e.preventDefault();if(!drag||drag===row)return;const r=row.getBoundingClientRect();wrap.insertBefore(drag,e.clientY>r.top+r.height/2?row.nextSibling:row)});
-        row.addEventListener('dragend',()=>{if(drag)drag.classList.remove('dragging');drag=null;p.order220[key]=rows().map(r=>r.dataset.sid);saveStarter220(x)});
+        row.addEventListener('dragstart',e=>{
+          drag=row;row.classList.add('dragging');
+          try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',row.dataset.sid)}catch(err){}
+        });
+        row.addEventListener('dragover',e=>{
+          e.preventDefault();if(!drag||drag===row)return;
+          const r=row.getBoundingClientRect();
+          wrap.insertBefore(drag,e.clientY>r.top+r.height/2?row.nextSibling:row);
+        });
+        row.addEventListener('drop',e=>e.preventDefault());
+        row.addEventListener('dragend',()=>{
+          if(drag)drag.classList.remove('dragging');drag=null;
+          p.order220=p.order220||{};
+          p.order220[key]=rows().map(r=>r.dataset.sid);
+          saveStarter220(x);
+        });
       });
     }
 
     cats220().forEach(cat=>{
-      const catNode=node('💬 '+adminCatName(cat),'cat');
+      const catNode=node('💬 '+adminCatName(cat),'phr-cat-node:'+cat.name,0);
+
       subs220(cat).forEach(sc=>{
-        const subNode=node((sc.icon||'📁')+' '+adminSubcatPath(sc),'sub');
-        phraseListForLoc220(x,p,cat,sc).forEach(o=>{
-          subNode.body.appendChild(mk220('div','o226-structrow',(o.s.emoji||'💬')+' '+o.s.label));
-        });
-        catNode.body.appendChild(subNode.n);
+        const key='sub:'+sc.id;
+        const items=sortedFor(key,phraseListForLoc220(x,p,cat,sc));
+        const sub=node((sc.icon||'📁')+' '+adminSubcatPath(sc)+' — ordre','phr-sub-node:'+sc.id,1);
+        items.forEach(o=>sub.body.appendChild(phraseRow(o)));
+        attachDrag(sub.body,key);
+        catNode.body.appendChild(sub.n);
       });
 
-      const allNode=node('↕️ Toutes les phrases de '+adminCatName(cat)+' — ordre','all');
-      const key='cat:'+cat.name;
-      const rows=phraseListForLoc220(x,p,cat,null);
-      const old=p.order220[key]||[];
-      const sorted=[...rows].sort((a,b)=>{
-        const ia=old.indexOf(a.s.id),ib=old.indexOf(b.s.id);
-        return (ia<0?9999:ia)-(ib<0?9999:ib);
-      });
-      sorted.forEach(o=>{
-        const row=document.createElement('div');row.className='o226-row';row.dataset.sid=o.s.id;
-        const h=document.createElement('span');h.className='o226-handle';h.textContent='☰';
-        row.append(h,mk220('span','',(o.s.emoji||'💬')+' '+o.s.label));
-        allNode.body.appendChild(row);
-      });
-      attachDrag(allNode.body,key);
+      const catKey='cat:'+cat.name;
+      const direct=sortedFor(catKey,phraseListForLoc220(x,p,cat,null));
+      const directNode=node('💬 Phrases de '+adminCatName(cat)+' — ordre','phr-direct-node:'+cat.name,1);
+      direct.forEach(o=>directNode.body.appendChild(phraseRow(o)));
+      attachDrag(directNode.body,catKey);
+      catNode.body.appendChild(directNode.n);
+
+      let all=phraseListForLoc220(x,p,cat,null);
+      subs220(cat).forEach(sc=>all=all.concat(phraseListForLoc220(x,p,cat,sc)));
+      all=uniq(all);
+      const allKey='allcat:'+cat.name;
+      all=sortedFor(allKey,all);
+      const allNode=node('↕️ Toutes les phrases de '+adminCatName(cat)+' — ordre','phr-all-node:'+cat.name,1);
+      all.forEach(o=>allNode.body.appendChild(phraseRow(o)));
+      attachDrag(allNode.body,allKey);
       catNode.body.appendChild(allNode.n);
+
       tree.appendChild(catNode.n);
     });
 
-    openAll.onclick=()=>tree.querySelectorAll('.o226-node').forEach(n=>{n.classList.add('open');const a=n.querySelector(':scope > .o226-nodehead > .o226-arrow');if(a)a.textContent='▾'});
-    closeAll.onclick=()=>tree.querySelectorAll('.o226-node').forEach(n=>{n.classList.remove('open');const a=n.querySelector(':scope > .o226-nodehead > .o226-arrow');if(a)a.textContent='▸'});
+    openAll.onclick=()=>nodes.forEach(o=>o.set(true));
+    closeAll.onclick=()=>nodes.forEach(o=>o.set(false));
   }
 
   function drawCustomize220(box){
@@ -10350,6 +10415,22 @@ body.parent-mode .manage-card{
 .o226-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid #edf0f4;background:#fff;cursor:grab;user-select:none;-webkit-user-select:none}
 .o226-row.dragging{opacity:.4;background:#edf5ff}
 .o226-handle{font-size:22px;color:#6d7b92;cursor:grab;padding:2px 8px;touch-action:none}
+</style>
+
+
+<style id="beta227-order-style">
+.o227-tree{border:1px solid #dce3ed;border-radius:15px;overflow:hidden;background:#fff}
+.o227-node{border-bottom:1px solid #e8edf3}.o227-node:last-child{border-bottom:0}
+.o227-head{width:100%;border:0;display:flex;align-items:center;gap:8px;padding:11px 13px;background:#f6f9fd;font:inherit;font-weight:900;text-align:left;cursor:pointer;color:#17213a}
+.o227-node.level-1>.o227-head{padding-left:34px;background:#fbfcfe}
+.o227-arrow{width:20px;color:#385274;flex:0 0 auto}
+.o227-title{display:block!important;opacity:1!important;color:inherit!important;white-space:normal}
+.o227-body{display:none}.o227-node.open>.o227-body{display:block}
+.o227-row{display:flex!important;align-items:center!important;gap:10px;padding:10px 12px 10px 48px;border-top:1px solid #edf0f4;background:#fff;cursor:grab;user-select:none;-webkit-user-select:none;min-height:54px}
+.o227-row.dragging{opacity:.42;background:#edf5ff}
+.o227-handle{display:block!important;font-size:22px;color:#6d7b92;cursor:grab;padding:2px 8px;touch-action:none;flex:0 0 auto}
+.o227-name{display:block!important;visibility:visible!important;opacity:1!important;color:#17213a!important;font-size:16px!important;font-weight:650!important;line-height:1.25!important;white-space:normal!important;overflow:visible!important;flex:1!important;min-width:0!important}
+.o227-row .p220-thumb{flex:0 0 38px!important}
 </style>
 
 </body></html>

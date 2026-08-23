@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 215</title>
+<title>Ma CAA v2.0 bêta 216</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 215</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 216</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -7527,10 +7527,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const hide=document.createElement("button");hide.textContent=e.hidden?"👁️ Réafficher":"🙈 Masquer";
     if(e.kind==="base"){
       edit.onclick=()=>adminEditItem(e.source,e.x);
-      hide.onclick=()=>adminToggleItem(e.source,e.x);
+      hide.onclick=()=>{if(typeof window.openLocationTreeV215==='function')window.openLocationTreeV215(e.x,cat,'admin');else adminToggleItem(e.source,e.x)};
     }else{
       edit.onclick=()=>adminEditAddedItem(e.item);
-      hide.onclick=()=>adminToggleAddedItem(e.item);
+      hide.onclick=()=>{if(typeof window.openLocationTreeV215==='function')window.openLocationTreeV215(e.item,cat,'admin');else adminToggleAddedItem(e.item)};
     }
     c.append(vis,n,edit,hide);host.appendChild(c);
   }
@@ -8985,6 +8985,72 @@ body.parent-mode .manage-card{
       p.append(actions,close);ov.appendChild(p);document.body.appendChild(ov);
     };
     try{openParentPictoQuickActions=window.openParentPictoQuickActions}catch(e){}
+  }
+})();
+</script>
+
+
+<!-- BETA216 — branchement direct Admin + application réelle du masque par emplacement côté utilisateur -->
+<script id="beta216-location-application">
+(function(){
+  const KEY='ma-caa-hidden-location-v213';
+  function candidates216(x){
+    const s=new Set(),add=v=>{if(v!==undefined&&v!==null&&String(v)!=='')s.add(String(v))};
+    try{add(permanentItemId(x))}catch(e){}
+    try{add(x?.[6])}catch(e){}
+    try{add(x?.[3])}catch(e){}
+    try{add(x?.id)}catch(e){}
+    try{add(x?.itemId)}catch(e){}
+    try{add(itemId2(x))}catch(e){}
+    return s;
+  }
+  function mapHas216(map,key,x){
+    const arr=Array.isArray(map?.[key])?map[key].map(String):[];
+    if(!arr.length)return false;
+    const ids=candidates216(x);return arr.some(v=>ids.has(v));
+  }
+  function parentLoc216(){try{const v=JSON.parse(localStorage.getItem(profiledKey(KEY))||'{}');return {cats:v.cats||{},subs:v.subs||{}}}catch(e){return {cats:{},subs:{}}}}
+  function adminLoc216(){try{const v=readAdminBase().locationHiddenV213||{};return {cats:v.cats||{},subs:v.subs||{}}}catch(e){return {cats:{},subs:{}}}}
+  function hiddenHere216(x,catName,subId){
+    const p=parentLoc216(),a=adminLoc216();
+    return subId ? (mapHas216(p.subs,subId,x)||mapHas216(a.subs,subId,x))
+                 : (mapHas216(p.cats,catName,x)||mapHas216(a.cats,catName,x));
+  }
+  window.hiddenHereV216=hiddenHere216;
+
+  // Racine de catégorie : appliquer uniquement le masque de la catégorie.
+  const prevVisible216=window.visibleItems;
+  window.visibleItems=function(cat){
+    let items=prevVisible216?prevVisible216(cat):orderedItems(cat).filter(x=>!isHidden(x));
+    const sid=(window.activeSubcategoryByCategory&&activeSubcategoryByCategory[cat.name]&&activeSubcategoryByCategory[cat.name]!=='all')?activeSubcategoryByCategory[cat.name]:'';
+    if(!sid)items=items.filter(x=>!hiddenHere216(x,cat.name,''));
+    return items;
+  };
+  try{visibleItems=window.visibleItems}catch(e){}
+
+  // Sous-catégorie : appliquer uniquement le masque de la sous-catégorie ouverte.
+  const prevSub216=window.renderSubcategoryFilters;
+  window.renderSubcategoryFilters=function(box,cat,items){
+    const out=prevSub216?prevSub216(box,cat,items):items;
+    const sid=(window.activeSubcategoryByCategory&&activeSubcategoryByCategory[cat.name]&&activeSubcategoryByCategory[cat.name]!=='all')?activeSubcategoryByCategory[cat.name]:'';
+    return sid?out.filter(x=>!hiddenHere216(x,cat.name,sid)):out.filter(x=>!hiddenHere216(x,cat.name,''));
+  };
+  try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
+
+  // La liste Parents doit elle aussi refléter l'état réellement enregistré par emplacement.
+  const prevParent216=window.renderParentCategoryLazy;
+  if(typeof prevParent216==='function'){
+    window.renderParentCategoryLazy=function(box,cat){
+      prevParent216(box,cat);
+      const sid=(window.parentLazyView&&parentLazyView.folderId)||'';
+      [...box.querySelectorAll('.manage-card')].forEach(card=>{
+        const title=card.querySelector('b');if(!title)return;
+        const x=(orderedItems(cat)||[]).find(v=>displayLabel(v)===title.textContent);if(!x)return;
+        const btn=[...card.querySelectorAll('button')].find(b=>/visibilit|Masquer|Réafficher/i.test(b.textContent||''));
+        if(btn){btn.textContent='🙈 Gérer la visibilité';btn.onclick=()=>window.openLocationTreeV215(x,cat,'parent')}
+      });
+    };
+    try{renderParentCategoryLazy=window.renderParentCategoryLazy}catch(e){}
   }
 })();
 </script>

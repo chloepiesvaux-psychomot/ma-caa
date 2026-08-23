@@ -8786,4 +8786,61 @@ body.parent-mode .manage-card{
 </script>
 
 <!-- BETA200 — suppression catégories : bouton visible dans le nouvel Admin + confirmation sécurisée. -->
+
+<script>
+/* ===== BETA 201 — suppression catégorie synchronisable =====
+   BETA200 supprimait physiquement une catégorie ajoutée de addedCats.
+   Le catalogue 190 étant volontairement additif, un autre appareil/cloud pouvait
+   alors la réintroduire. BETA201 conserve un tombstone deleted:true : la catégorie
+   disparaît immédiatement et cette suppression peut se propager aux autres appareils. */
+(function(){
+  window.adminDeleteCat=function(cat){
+    const base=readAdminBase();
+    const rid=adminCatIdentityV113(cat), rlabel=adminCatLabelV113(cat);
+    const added=Array.isArray(base.addedCats)?base.addedCats:[];
+    let idx=added.findIndex(c=>rid && adminCatIdentityV113(c)===rid);
+    if(idx<0 && rlabel){
+      idx=added.findIndex(c=>adminCatLabelV113(c)===rlabel);
+    }
+
+    if(idx>=0){
+      const victim=added[idx];
+      const vid=adminCatIdentityV113(victim), vl=adminCatLabelV113(victim);
+      const pictoCount=(base.addedItems||[]).filter(x=>!x.deleted && String(x.category||'')===vl).length;
+      const folderCount=(base.subcategories||[]).filter(x=>!x.deleted && [x.categoryId,x.catId,x.category,x.cat].some(v=>String(v||'')===vid || String(v||'')===vl)).length;
+      let msg='Supprimer la catégorie « '+vl+' » ?';
+      if(pictoCount||folderCount){
+        msg+='\n\nElle contient actuellement '+pictoCount+' pictogramme(s) ajouté(s) et '+folderCount+' dossier(s).';
+        msg+='\nLes dossiers seront retirés avec la catégorie. Les pictogrammes ne seront pas effacés définitivement.';
+      }
+      if(!confirm(msg))return;
+
+      const now=new Date().toISOString();
+      // Tombstone synchronisable au lieu d'un retrait physique de la liste.
+      base.addedCats[idx]={...victim,deleted:true,deleted_at:now,updated_at:now};
+      base.subcategories=(base.subcategories||[]).map(sc=>{
+        const owners=[sc.categoryId,sc.catId,sc.category,sc.cat].map(v=>String(v||''));
+        if(owners.includes(vid)||owners.includes(vl)) return {...sc,deleted:true,deleted_at:now,updated_at:now};
+        return sc;
+      });
+      writeAdminBase(base);
+      try{syncAdminCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{if(typeof adminRefreshStayV112==='function')adminRefreshStayV112()}catch(e){}
+      try{if(typeof window.publishCatalog190==='function')setTimeout(()=>window.publishCatalog190(),150)}catch(e){}
+      return;
+    }
+
+    // Catégorie intégrée : suppression douce existante, également persistante.
+    if(!confirm('Supprimer cette catégorie ?\n\nCette catégorie fait partie de la base Ma CAA : elle sera retirée de l’affichage, mais ses pictogrammes ne seront pas effacés définitivement.'))return;
+    const key=rid||rlabel;
+    base.deletedCats=Array.from(new Set([...(base.deletedCats||[]),key]));
+    writeAdminBase(base);
+    try{render()}catch(e){}
+    try{if(typeof adminRefreshStayV112==='function')adminRefreshStayV112()}catch(e){}
+  };
+})();
+</script>
+
+<!-- BETA201 — suppression catégories synchronisable par tombstone. -->
 </body></html>

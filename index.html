@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 218</title>
+<title>Ma CAA v2.0 bêta 219</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 218</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 219</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -9315,6 +9315,105 @@ body.parent-mode .manage-card{
   }
   window.openLocationTreeV215=openTree;
   window.openAdminLocationVisibilityV213=(x,cat)=>openTree(x,cat,'admin');
+})();
+</script>
+
+
+<!-- BETA219 — Admin : arborescence construite depuis les IDs Admin réels des cartes -->
+<script id="beta219-admin-location-tree">
+(function(){
+  function n219(s){return String(s??'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+  function adminEntryMatches219(e,label){return n219(e?.label)===n219(label)}
+  function adminEntryLocations219(label){
+    const base=readAdminBase();
+    const subs=(base.subcategories||[]).filter(sc=>!sc.deleted);
+    const out=[];
+    categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&!(base.deletedCats||[]).includes(c.name)).forEach(cat=>{
+      let entry=null;
+      try{entry=(adminPermanentEntries(cat)||[]).find(e=>adminEntryMatches219(e,label))||null}catch(e){}
+      if(!entry)return;
+      const eid=String(entry.id);
+      const scs=subs.filter(sc=>sc.category===cat.name&&(sc.itemIds||[]).map(String).includes(eid));
+      out.push({cat,entry,id:eid,subs:scs});
+    });
+    return out;
+  }
+  function has219(map,key,id){return Array.isArray(map?.[key])&&map[key].map(String).includes(String(id))}
+  function set219(map,key,id,on){
+    let a=Array.isArray(map[key])?map[key].map(String):[];
+    a=a.filter(v=>v!==String(id));
+    if(on)a.push(String(id));
+    if(a.length)map[key]=[...new Set(a)];else delete map[key];
+  }
+  function openAdmin219(label){
+    const locs=adminEntryLocations219(label);
+    const base=readAdminBase();
+    const maps=base.locationHiddenV213||{cats:{},subs:{}};maps.cats=maps.cats||{};maps.subs=maps.subs||{};
+    const ov=document.createElement('div');ov.className='editor-overlay';ov.style.zIndex='1403000';
+    const panel=document.createElement('div');panel.className='editor';panel.style.maxWidth='700px';
+    const h=document.createElement('h2');h.textContent='👁️ Visibilité globale — '+label;panel.appendChild(h);
+    const p=document.createElement('p');p.innerHTML='<b>Coche les emplacements où ce pictogramme doit être masqué.</b><br>Catégorie et sous-catégories sont indépendantes.';panel.appendChild(p);
+    const actions=document.createElement('div');actions.className='loc215-actions';
+    const allHide=document.createElement('button');allHide.textContent='🙈 Tout masquer';
+    const allShow=document.createElement('button');allShow.textContent='👁️ Tout afficher';actions.append(allHide,allShow);panel.appendChild(actions);
+    const tree=document.createElement('div');tree.className='loc215-tree';panel.appendChild(tree);
+    const refs=[];
+    if(!locs.length)tree.innerHTML='<div style="padding:14px;color:#667085">Aucun emplacement trouvé pour ce pictogramme.</div>';
+    locs.forEach(loc=>{
+      const g=document.createElement('div');g.className='loc215-cat';
+      const hd=document.createElement('label');hd.className='loc215-cathead';
+      const cb=document.createElement('input');cb.type='checkbox';cb.checked=has219(maps.cats,loc.cat.name,loc.id);
+      const tx=document.createElement('span');tx.textContent=(loc.cat.icon||'📁')+' '+adminCatName(loc.cat);hd.append(cb,tx);g.appendChild(hd);
+      refs.push({type:'cat',key:loc.cat.name,id:loc.id,cb});
+      if(loc.subs.length){
+        const sw=document.createElement('div');sw.className='loc215-sub';
+        loc.subs.forEach(sc=>{
+          const row=document.createElement('label');row.className='loc215-row';
+          const s=document.createElement('input');s.type='checkbox';s.checked=has219(maps.subs,sc.id,loc.id);
+          const st=document.createElement('span');let path='';try{path=adminSubcatPath(sc)}catch(e){path=sc.name}
+          st.textContent='↳ '+(sc.icon||'📁')+' '+path;row.append(s,st);sw.appendChild(row);
+          refs.push({type:'sub',key:sc.id,id:loc.id,cb:s});
+        });g.appendChild(sw);
+      }
+      tree.appendChild(g);
+    });
+    allHide.onclick=()=>refs.forEach(r=>r.cb.checked=true);
+    allShow.onclick=()=>refs.forEach(r=>r.cb.checked=false);
+    const row=document.createElement('div');row.className='editor-row';
+    const save=document.createElement('button');save.className='saveedit';save.textContent='✓ Enregistrer';
+    const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';
+    save.onclick=()=>{
+      refs.forEach(r=>set219(r.type==='cat'?maps.cats:maps.subs,r.key,r.id,r.cb.checked));
+      base.locationHiddenV213={cats:maps.cats,subs:maps.subs};
+      // Retirer uniquement les anciens masques globaux correspondant aux IDs Admin trouvés.
+      const ids=new Set(locs.map(l=>String(l.id)));
+      base.hiddenItems=(base.hiddenItems||[]).filter(id=>!ids.has(String(id)));
+      (base.addedItems||[]).forEach(it=>{if(ids.has(String(it.id)))it.hidden=false});
+      writeAdminBase(base);ov.remove();try{adminRefresh()}catch(e){};try{renderGrid()}catch(e){}
+    };
+    cancel.onclick=()=>ov.remove();row.append(save,cancel);panel.appendChild(row);ov.appendChild(panel);document.body.appendChild(ov);
+  }
+  window.openAdminLocationTreeV219=openAdmin219;
+
+  // Interception finale des boutons Masquer du tableau Admin 195.
+  // On repart du libellé affiché sur la carte, jamais de l'ancien objet x.
+  document.addEventListener('pointerdown',function(e){
+    const admin=document.getElementById('admin195');if(!admin)return;
+    const btn=e.target.closest?.('.piccard button');if(!btn||!/Masquer|Réafficher/.test(btn.textContent||''))return;
+    const card=btn.closest('.piccard');if(!card)return;
+    const label=card.querySelector('b')?.textContent?.trim();if(!label)return;
+    // Ne pas intercepter les cartes Catégories/Profils qui pourraient avoir d'autres actions.
+    const title=admin.querySelector('.subtitle')?.textContent||admin.textContent||'';
+    if(!/Pictogrammes/i.test(title))return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    setTimeout(()=>openAdmin219(label),0);
+  },true);
+  document.addEventListener('click',function(e){
+    const admin=document.getElementById('admin195');if(!admin)return;
+    const btn=e.target.closest?.('.piccard button');if(!btn||!/Masquer|Réafficher/.test(btn.textContent||''))return;
+    const card=btn.closest('.piccard'),label=card?.querySelector('b')?.textContent?.trim();if(!label)return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+  },true);
 })();
 </script>
 

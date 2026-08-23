@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 213</title>
+<title>Ma CAA v2.0 bêta 214</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 213</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 214</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2678,6 +2678,22 @@ function parentResolvePictoFromButton(btn){
   }
   return null;
 }
+
+function itemAssignedToSubcatV214(x,sc){
+  if(!sc||sc.deleted)return false;
+  const candidates=new Set();
+  const add=v=>{if(v!==undefined&&v!==null&&String(v)!=="")candidates.add(String(v))};
+  try{add(itemId2(x))}catch(e){}
+  try{add(permanentItemId(x))}catch(e){}
+  try{add(x?.id)}catch(e){}
+  try{add(x?.item?.id)}catch(e){}
+  try{add(x?.itemId)}catch(e){}
+  try{add(x?.[6])}catch(e){}
+  try{(adminItemSubcatIds(x)||[]).forEach(add)}catch(e){}
+  return (sc.itemIds||[]).some(id=>candidates.has(String(id))) ||
+         (adminItemSubcatIds(x)||[]).map(String).includes(String(sc.id));
+}
+
 function adminItemSubcatIds(x){
   const vals=[];
   const push=v=>{
@@ -2779,10 +2795,7 @@ function renderParentCategoryLazy(box,cat){
   // Pictogrammes : à la racine = catégorie entière ; dans un dossier = pictos affectés à ce dossier.
   let parentItems=orderedItems(cat);
   if(currentFolder){
-    parentItems=parentItems.filter(x=>{
-      const ids=adminItemSubcatIds(x);
-      return ids.includes(currentFolder.id);
-    });
+    parentItems=parentItems.filter(x=>itemAssignedToSubcatV214(x,currentFolder));
   }
 
   const parentMobile=window.innerWidth<=700;
@@ -8637,7 +8650,7 @@ body.parent-mode .manage-card{
     const note=document.createElement('p');note.textContent='Décoche uniquement les emplacements où ce pictogramme doit être masqué. Une catégorie et ses sous-catégories sont indépendantes.';p.appendChild(note);
     const addRow=(label,subId)=>{const r=document.createElement('div');r.className='loc-v213-row';const cb=document.createElement('input');cb.type='checkbox';cb.checked=!adminHiddenAtV213(x,cat.name,subId);const lab=document.createElement('label');lab.textContent=label;cb.onchange=()=>setAdminHiddenAtV213(x,cat.name,subId,!cb.checked);r.append(cb,lab);p.appendChild(r)};
     addRow((cat.icon||'📂')+' '+adminCatName(cat)+' — catégorie','');
-    const subs=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted&&adminItemSubcatIds(x).includes(sc.id));
+    const subs=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted&&itemAssignedToSubcatV214(x,sc));
     subs.forEach(sc=>addRow('↳ '+(sc.icon||'📁')+' '+adminSubcatPath(sc),sc.id));
     if(!subs.length){const n=document.createElement('div');n.style.cssText='color:#667085;font-size:13px;padding:8px';n.textContent='Ce pictogramme n’est actuellement affecté à aucune sous-catégorie de cette catégorie.';p.appendChild(n)}
     const close=document.createElement('button');close.className='saveedit';close.textContent='✓ Terminer';close.onclick=()=>{ov.remove();try{adminRefresh()}catch(e){};try{renderGrid()}catch(e){}};p.appendChild(close);ov.appendChild(p);document.body.appendChild(ov);
@@ -8706,4 +8719,6 @@ body.parent-mode .manage-card{
 })();
 </script>
 
+<!-- BETA214 — correction affichage des sous-catégories dans Parents + visibilité Admin.
+     Les affectations de pictogrammes aux sous-catégories sont lues depuis subcategory.itemIds. -->
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 207</title>
+<title>Ma CAA v2.0 bêta 208</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 207</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 208</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2833,7 +2833,7 @@ function openAdultGate(){
   box.innerHTML="<h2>🔒 Mode parents</h2><p>Maintiens le bouton pendant 3 secondes pour accéder aux réglages.</p><div class='holdbar'><div class='holdfill'></div></div>";
   const btn=document.createElement("button");btn.className="holdbtn";btn.textContent="Maintenir 3 secondes";
   const close=document.createElement("button");close.className="closeadult";close.textContent="Annuler";
-  box.append(btn,close);overlay.appendChild(box);document.body.appendChild(overlay);
+  box.append(btn,close);overlay.appendChild(box);document.body.appendChild(overlay);overlay.addEventListener('pointerdown',e=>{if(e.target===overlay){clearHold();overlay.remove();}});box.addEventListener('pointerdown',e=>e.stopPropagation());
 
   const fill=box.querySelector(".holdfill");
   let timer=null,raf=null,startAt=0,holding=false,done=false;
@@ -7588,8 +7588,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const ov=document.createElement("div");ov.id="admin-pin195";
     ov.innerHTML='<div class="box"><h2 style="margin:0 0 8px;color:#243b6b">🛡️ Mode Administrateur</h2><p style="color:#667085">Entre le code administrateur.</p><input type="tel" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="••••"><button type="button">Annuler</button><div class="st" style="margin-top:9px;font-weight:800"></div></div>';
     document.body.appendChild(ov);
-    const input=ov.querySelector("input"),st=ov.querySelector(".st");
-    ov.querySelector("button").onclick=()=>{ov.remove();clean195()};
+    const input=ov.querySelector("input"),st=ov.querySelector(".st"),box=ov.querySelector('.box');
+    function closeGate(){ov.remove();clean195()}
+    ov.querySelector("button").onclick=closeGate;
+    ov.addEventListener('pointerdown',e=>{ if(e.target===ov) closeGate(); });
+    box.addEventListener('pointerdown',e=>e.stopPropagation());
     input.oninput=()=>{
       const v=(input.value||"").replace(/\D/g,"").slice(0,4);input.value=v;if(v.length<4)return;
       if(v!==String(getAdminPin())){st.textContent="Code incorrect.";st.style.color="#b42318";input.value="";return}
@@ -8218,10 +8221,13 @@ body.parent-mode .manage-card{
     const row=document.createElement('div');row.className='editor-row';
     const ok=document.createElement('button');ok.className='saveedit';ok.textContent='Valider';
     const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';
+    function closeGate(){overlay.remove()}
     ok.onclick=()=>{if(input.value===pin){unlockParents204(overlay)}else{input.value='';alert('Code utilisateur incorrect.');input.focus()}};
     input.addEventListener('keydown',e=>{if(e.key==='Enter')ok.click()});
     input.addEventListener('input',()=>{if(input.value.length===4)setTimeout(()=>{if(document.body.contains(overlay))ok.click()},60)});
-    cancel.onclick=()=>overlay.remove();
+    cancel.onclick=closeGate;
+    overlay.addEventListener('pointerdown',e=>{ if(e.target===overlay) closeGate(); });
+    box.addEventListener('pointerdown',e=>e.stopPropagation());
     row.append(ok,cancel);box.append(input,row);overlay.appendChild(box);document.body.appendChild(overlay);input.focus();
   }
   window.openAdultGate=openAdultGate204;try{openAdultGate=openAdultGate204}catch(e){}

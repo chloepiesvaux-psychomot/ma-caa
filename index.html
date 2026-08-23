@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 212</title>
+<title>Ma CAA v2.0 bêta 213</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 212</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 213</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8561,4 +8561,149 @@ body.parent-mode .manage-card{
 </script>
 
 <!-- BETA212 — stabilisation visuelle de la bande de phrases favorites : pas de rerendu si contenu inchangé. -->
+
+
+<!-- BETA213 — visibilité par emplacement + recherche utilisateurs -->
+<style id="beta213-style">
+#user-home-v38 .profile-search-v213,.admin-profile-search-v213{width:100%;box-sizing:border-box;padding:13px 15px;border:2px solid #d9e1ed;border-radius:14px;background:#fff;font-size:16px;margin:0 0 16px;outline:none}
+#user-home-v38 .profile-search-v213:focus,.admin-profile-search-v213:focus{border-color:#4f7fd8;box-shadow:0 0 0 3px #4f7fd822}
+.loc-v213-row{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid #dfe5ee;border-radius:11px;background:#fbfcff;margin:6px 0}.loc-v213-row input{width:20px;height:20px}.loc-v213-row label{flex:1;font-weight:800}
+</style>
+<script id="beta213-location-profile-search">
+(function(){
+  const PARENT_LOC_KEY_V213='ma-caa-hidden-location-v213';
+  function itemKeyV213(x){ try{return String(itemId2(x)||permanentItemId(x)||'')}catch(e){return ''} }
+  function readParentLocV213(){try{const v=JSON.parse(localStorage.getItem(profiledKey(PARENT_LOC_KEY_V213))||'{}');return {cats:v.cats||{},subs:v.subs||{}}}catch(e){return {cats:{},subs:{}}}}
+  function writeParentLocV213(v){localStorage.setItem(profiledKey(PARENT_LOC_KEY_V213),JSON.stringify(v));localStorage.setItem('ma-caa-last-save',String(Date.now()));try{scheduleProfileAutoPush()}catch(e){}}
+  function hasInV213(obj,k,id){return Array.isArray(obj?.[k])&&obj[k].includes(id)}
+  function setInV213(obj,k,id,hidden){const a=Array.isArray(obj[k])?[...obj[k]]:[];const has=a.includes(id);if(hidden&&!has)a.push(id);if(!hidden&&has)a.splice(a.indexOf(id),1);if(a.length)obj[k]=a;else delete obj[k]}
+  function parentHiddenAtV213(x,catName,subId){const v=readParentLocV213(),id=itemKeyV213(x);return !!id&&(subId?hasInV213(v.subs,subId,id):hasInV213(v.cats,catName,id))}
+  function setParentHiddenAtV213(x,catName,subId,hidden){const v=readParentLocV213(),id=itemKeyV213(x);if(!id)return;if(subId)setInV213(v.subs,subId,id,hidden);else setInV213(v.cats,catName,id,hidden);writeParentLocV213(v)}
+  function readAdminLocV213(){const a=readAdminBase();const v=a.locationHiddenV213||{};return {base:a,cats:v.cats||{},subs:v.subs||{}}}
+  function adminHiddenAtV213(x,catName,subId){const v=readAdminLocV213(),id=itemKeyV213(x);return !!id&&(subId?hasInV213(v.subs,subId,id):hasInV213(v.cats,catName,id))}
+  function setAdminHiddenAtV213(x,catName,subId,hidden){const v=readAdminLocV213(),id=itemKeyV213(x);if(!id)return;if(subId)setInV213(v.subs,subId,id,hidden);else setInV213(v.cats,catName,id,hidden);v.base.locationHiddenV213={cats:v.cats,subs:v.subs};writeAdminBase(v.base)}
+  function effectiveHiddenAtV213(x,catName,subId){return parentHiddenAtV213(x,catName,subId)||adminHiddenAtV213(x,catName,subId)}
+  window.parentHiddenAtV213=parentHiddenAtV213;window.setParentHiddenAtV213=setParentHiddenAtV213;window.adminHiddenAtV213=adminHiddenAtV213;window.setAdminHiddenAtV213=setAdminHiddenAtV213;window.effectiveHiddenAtV213=effectiveHiddenAtV213;
+
+  // Utilisateur : le masquage de la catégorie ne s'applique qu'à la catégorie,
+  // celui du dossier uniquement lorsque ce dossier est ouvert.
+  const oldRenderSubV213=window.renderSubcategoryFilters;
+  if(typeof oldRenderSubV213==='function'){
+    window.renderSubcategoryFilters=function(box,cat,items){
+      const out=oldRenderSubV213(box,cat,items);
+      const sid=(window.activeSubcategoryByCategory&&activeSubcategoryByCategory[cat.name]&&activeSubcategoryByCategory[cat.name]!=='all')?activeSubcategoryByCategory[cat.name]:'';
+      return out.filter(x=>!effectiveHiddenAtV213(x,cat.name,sid));
+    };
+    try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
+  }
+  // À la racine d'une catégorie sans dossiers, appliquer tout de même le filtre catégorie.
+  const oldVisibleV213=window.visibleItems;
+  window.visibleItems=function(cat){
+    let items=orderedItems(cat).filter(x=>!isHidden(x));
+    const sid=(window.activeSubcategoryByCategory&&activeSubcategoryByCategory[cat.name]&&activeSubcategoryByCategory[cat.name]!=='all')?activeSubcategoryByCategory[cat.name]:'';
+    // Important : si une sous-catégorie est ouverte, ne pas enlever ici les éléments masqués seulement à la racine.
+    if(!sid)items=items.filter(x=>!effectiveHiddenAtV213(x,cat.name,''));
+    return items;
+  };
+  try{visibleItems=window.visibleItems}catch(e){}
+
+  // Mode Parents mobile : le bouton Masquer agit sur l'emplacement actuellement ouvert.
+  const oldQuickV213=window.openParentPictoQuickActions;
+  if(typeof oldQuickV213==='function'){
+    window.openParentPictoQuickActions=function(x,cat){
+      const subId=(window.parentLazyView&&parentLazyView.folderId)||'';
+      const ov=document.createElement('div');ov.className='editor-overlay';ov.style.zIndex='100700';
+      const p=document.createElement('div');p.className='editor';p.style.maxWidth='430px';
+      const h=document.createElement('h2');h.textContent=(displayEmoji(x)||'🖼️')+' '+displayLabel(x);p.appendChild(h);
+      const where=document.createElement('div');where.style.cssText='color:#667085;font-size:13px;margin:-5px 0 12px';
+      const sc=subId?(readAdminBase().subcategories||[]).find(v=>v.id===subId):null;where.textContent='Emplacement : '+(sc?(cat.name+' › '+sc.name):cat.name);p.appendChild(where);
+      const actions=document.createElement('div');actions.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+      const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.style.cssText='padding:11px 8px;border:1px solid #d8dee8;border-radius:10px;background:#f8faff;font-weight:800';b.onclick=()=>{fn();ov.remove()};actions.appendChild(b)};
+      const favNow=isFav(x);add(favNow?'⭐ Retirer favori':'☆ Ajouter favori',()=>parentSetFavoriteFast(x,!favNow));
+      const hiddenNow=parentHiddenAtV213(x,cat.name,subId);add(hiddenNow?'👁️ Réafficher ici':'🙈 Masquer ici',()=>{setParentHiddenAtV213(x,cat.name,subId,!hiddenNow);try{renderGrid()}catch(e){}});
+      add('↑ Monter',()=>moveItem(cat,x,-1));add('↓ Descendre',()=>moveItem(cat,x,1));add('✏️ Modifier',()=>openEditor(x));add('💬 Suite rapide',()=>editQuickChoices(x));
+      if(submenuFor(x).length||expandSubmenuEntries(x).length)add('📂 Sous-menu',()=>setTimeout(()=>openParentSubmenuMobile(x),0));
+      if(isAdded(x)&&!x[5])add('🗑️ Supprimer',()=>deleteAdded(x));
+      const close=document.createElement('button');close.className='canceledit';close.textContent='Fermer';close.onclick=()=>ov.remove();p.append(actions,close);ov.appendChild(p);document.body.appendChild(ov);
+    };
+    try{openParentPictoQuickActions=window.openParentPictoQuickActions}catch(e){}
+  }
+
+  // Admin : fenêtre de visibilité précise pour une catégorie et ses sous-catégories.
+  window.openAdminLocationVisibilityV213=function(x,cat){
+    const ov=document.createElement('div');ov.className='editor-overlay';ov.style.zIndex='1400200';
+    const p=document.createElement('div');p.className='editor';p.style.maxWidth='620px';
+    const title=document.createElement('h2');title.textContent='👁️ Visibilité — '+displayLabel(x);p.appendChild(title);
+    const note=document.createElement('p');note.textContent='Décoche uniquement les emplacements où ce pictogramme doit être masqué. Une catégorie et ses sous-catégories sont indépendantes.';p.appendChild(note);
+    const addRow=(label,subId)=>{const r=document.createElement('div');r.className='loc-v213-row';const cb=document.createElement('input');cb.type='checkbox';cb.checked=!adminHiddenAtV213(x,cat.name,subId);const lab=document.createElement('label');lab.textContent=label;cb.onchange=()=>setAdminHiddenAtV213(x,cat.name,subId,!cb.checked);r.append(cb,lab);p.appendChild(r)};
+    addRow((cat.icon||'📂')+' '+adminCatName(cat)+' — catégorie','');
+    const subs=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted&&adminItemSubcatIds(x).includes(sc.id));
+    subs.forEach(sc=>addRow('↳ '+(sc.icon||'📁')+' '+adminSubcatPath(sc),sc.id));
+    if(!subs.length){const n=document.createElement('div');n.style.cssText='color:#667085;font-size:13px;padding:8px';n.textContent='Ce pictogramme n’est actuellement affecté à aucune sous-catégorie de cette catégorie.';p.appendChild(n)}
+    const close=document.createElement('button');close.className='saveedit';close.textContent='✓ Terminer';close.onclick=()=>{ov.remove();try{adminRefresh()}catch(e){};try{renderGrid()}catch(e){}};p.appendChild(close);ov.appendChild(p);document.body.appendChild(ov);
+  };
+
+  // Recherche des profils sur l'écran d'accueil : enveloppe le rendu existant.
+  const oldHomeV213=window.openUserHome;
+  if(typeof oldHomeV213==='function'){
+    window.openUserHome=function(){
+      oldHomeV213();
+      const home=document.getElementById('user-home-v38');if(!home)return;
+      const wrap=home.firstElementChild;if(!wrap||wrap.querySelector('.profile-search-v213'))return;
+      const title=wrap.firstElementChild,grid=title&&title.nextElementSibling;if(!grid)return;
+      const inp=document.createElement('input');inp.className='profile-search-v213';inp.type='search';inp.placeholder='🔎 Rechercher un utilisateur…';inp.setAttribute('aria-label','Rechercher un utilisateur');
+      inp.oninput=()=>{const q=inp.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();[...grid.children].forEach(card=>{const t=(card.textContent||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();card.style.display=!q||t.includes(q)?'flex':'none'})};
+      wrap.insertBefore(inp,grid);
+    };
+    try{openUserHome=window.openUserHome}catch(e){}
+  }
+
+  // Recherche dans Admin > Profils / utilisateurs.
+  const oldAdminUsersV213=window.adminUsersSection;
+  if(typeof oldAdminUsersV213==='function'){
+    window.adminUsersSection=function(){
+      const section=oldAdminUsersV213();
+      const grid=[...section.children].find(el=>el.style&&String(el.style.display)==='grid')||section.querySelector('div[style*="display: grid"]');
+      if(!grid)return section;
+      const inp=document.createElement('input');inp.className='admin-profile-search-v213';inp.type='search';inp.placeholder='🔎 Rechercher un profil / utilisateur…';
+      inp.oninput=()=>{const q=inp.value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();[...grid.children].forEach(card=>{const t=(card.textContent||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();card.style.display=!q||t.includes(q)?'flex':'none'})};
+      section.insertBefore(inp,grid);return section;
+    };
+    try{adminUsersSection=window.adminUsersSection}catch(e){}
+  }
+
+  // Après chaque rendu Parents desktop, remplacer les boutons de masquage par un masquage local.
+  const oldParentLazyV213=window.renderParentCategoryLazy;
+  if(typeof oldParentLazyV213==='function'){
+    window.renderParentCategoryLazy=function(box,cat){
+      oldParentLazyV213(box,cat);
+      const subId=(window.parentLazyView&&parentLazyView.folderId)||'';
+      const cards=[...box.querySelectorAll('.manage-card')];
+      cards.forEach(card=>{
+        const title=card.querySelector('b');if(!title)return;
+        const x=orderedItems(cat).find(v=>displayLabel(v)===title.textContent);if(!x)return;
+        const btn=[...card.querySelectorAll('button')].find(b=>/Masquer|Réafficher/.test(b.textContent||''));if(!btn)return;
+        const hidden=parentHiddenAtV213(x,cat.name,subId);btn.textContent=hidden?'👁️ Réafficher ici':'🙈 Masquer ici';btn.className=hidden?'showbtn':'hidebtn';
+        btn.onclick=()=>{const next=!parentHiddenAtV213(x,cat.name,subId);setParentHiddenAtV213(x,cat.name,subId,next);btn.textContent=next?'👁️ Réafficher ici':'🙈 Masquer ici';btn.className=next?'showbtn':'hidebtn';try{renderGrid()}catch(e){}};
+      });
+    };
+    try{renderParentCategoryLazy=window.renderParentCategoryLazy}catch(e){}
+  }
+
+  // Intercepter les boutons de masquage dans Admin > Pictogrammes et ouvrir la gestion d'emplacements.
+  document.addEventListener('pointerdown',function(e){
+    const panel=document.getElementById('admin195');if(!panel)return;
+    const btn=e.target.closest&&e.target.closest('.admin-picto-card button');if(!btn||!/Masquer|Réafficher/.test(btn.textContent||''))return;
+    const card=btn.closest('.admin-picto-card'),name=card?.querySelector('.ap-name')?.textContent;if(!name)return;
+    const catButtons=[...panel.querySelectorAll('button')].filter(b=>b.querySelector('span')&&b.textContent.trim()&&b.style.background);
+    // Trouver la catégorie actuellement sélectionnée via son bord actif, sinon via le titre de groupe.
+    const groupTitle=card.closest('div[style*="border-radius: 16px"]')?.querySelector('div[style*="font-size: 21px"]')?.textContent||'';
+    const cat=categories.find(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&(groupTitle.includes(adminCatName(c))||groupTitle.includes(c.name)));
+    if(!cat)return;
+    const x=orderedItems(cat).find(v=>displayLabel(v)===name);if(!x)return;
+    e.preventDefault();e.stopImmediatePropagation();setTimeout(()=>openAdminLocationVisibilityV213(x,cat),0);
+  },true);
+})();
+</script>
+
 </body></html>

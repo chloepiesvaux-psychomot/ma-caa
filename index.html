@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 214</title>
+<title>Ma CAA v2.0 bêta 215</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 214</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 215</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8721,4 +8721,272 @@ body.parent-mode .manage-card{
 
 <!-- BETA214 — correction affichage des sous-catégories dans Parents + visibilité Admin.
      Les affectations de pictogrammes aux sous-catégories sont lues depuis subcategory.itemIds. -->
+
+<!-- BETA215 — arborescence de visibilité par emplacement (Parents + Admin) -->
+<style id="beta215-style">
+.loc215-tree{max-height:58vh;overflow:auto;border:2px solid #d8e0eb;border-radius:15px;padding:10px;background:#fbfcff;margin:12px 0}
+.loc215-cat{margin:8px 0 12px}
+.loc215-cathead{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:11px;background:#eaf1fb;font-weight:950;color:#243b6b}
+.loc215-row{display:flex;align-items:center;gap:10px;padding:9px 11px;border-bottom:1px solid #edf0f5;background:#fff}
+.loc215-row:last-child{border-bottom:0}
+.loc215-row input,.loc215-cathead input{width:21px;height:21px;accent-color:#2563eb;flex:0 0 auto}
+.loc215-sub{margin-left:20px;border-left:3px solid #dce5f2}
+.loc215-help{font-size:13px;color:#667085;margin:4px 0 8px}
+.loc215-actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.loc215-actions button{border:1px solid #d8e0eb;background:#f8faff;border-radius:10px;padding:8px 11px;font-weight:850}
+</style>
+<script id="beta215-location-tree">
+(function(){
+  const PARENT_LOC_KEY='ma-caa-hidden-location-v213';
+
+  function ids215(x){
+    const s=new Set(), add=v=>{if(v!==undefined&&v!==null&&String(v)!=='')s.add(String(v))};
+    try{add(permanentItemId(x))}catch(e){}
+    try{add(itemId2(x))}catch(e){}
+    try{add(x?.[3])}catch(e){}
+    try{add(x?.[6])}catch(e){}
+    try{add(x?.id)}catch(e){}
+    try{add(x?.item?.id)}catch(e){}
+    try{add(x?.itemId)}catch(e){}
+    return s;
+  }
+  function intersects(a,b){for(const v of a)if(b.has(String(v)))return true;return false}
+  function same215(a,b){return intersects(ids215(a),ids215(b))}
+  function itemStable215(x){
+    const a=[...ids215(x)];
+    // Préférer l'identifiant admin stable, puis l'identifiant brut d'un ajouté.
+    return String(x?.[6]||x?.[3]||a.find(v=>!v.includes('|'))||a[0]||'');
+  }
+  function catDisplay215(cat){try{return adminCatName(cat)}catch(e){return cat.name}}
+  function subDepth215(sc,all){
+    let d=0,p=sc.parentId,guard=0;
+    while(p&&guard++<12){const par=all.find(v=>String(v.id)===String(p));if(!par)break;d++;p=par.parentId}
+    return d;
+  }
+
+  function allLocations215(x,currentCat){
+    const base=readAdminBase();
+    const allSubs=(base.subcategories||[]).filter(sc=>!sc.deleted);
+    const targetIds=ids215(x);
+    const result=[];
+    const usable=categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&!(base.deletedCats||[]).includes(c.name));
+
+    usable.forEach(cat=>{
+      let present=false;
+      try{present=(orderedItems(cat)||[]).some(v=>same215(v,x))}catch(e){}
+      if(!present && currentCat && cat.name===currentCat.name)present=true;
+
+      const subs=allSubs.filter(sc=>{
+        if(sc.category!==cat.name)return false;
+        return (sc.itemIds||[]).some(id=>targetIds.has(String(id)));
+      }).sort((a,b)=>{
+        const da=subDepth215(a,allSubs),db=subDepth215(b,allSubs);
+        if(da!==db)return da-db;
+        return (a.order||0)-(b.order||0);
+      });
+
+      if(present||subs.length)result.push({cat,subs});
+    });
+    return result;
+  }
+
+  function readParentLoc215(){
+    try{
+      const v=JSON.parse(localStorage.getItem(profiledKey(PARENT_LOC_KEY))||'{}');
+      return {cats:v.cats||{},subs:v.subs||{}};
+    }catch(e){return {cats:{},subs:{}}}
+  }
+  function setMap215(map,key,id,on){
+    let a=Array.isArray(map[key])?[...map[key]]:[];
+    a=a.filter(v=>String(v)!==String(id));
+    if(on)a.push(String(id));
+    if(a.length)map[key]=[...new Set(a)];
+    else delete map[key];
+  }
+  function readMapped215(map,key,id){
+    return Array.isArray(map?.[key])&&map[key].map(String).includes(String(id));
+  }
+  function saveParentTree215(x,checks){
+    const id=itemStable215(x); if(!id)return;
+    const loc=readParentLoc215();
+    checks.forEach(c=>{
+      if(c.type==='cat')setMap215(loc.cats,c.key,id,c.hidden);
+      else setMap215(loc.subs,c.key,id,c.hidden);
+    });
+    localStorage.setItem(profiledKey(PARENT_LOC_KEY),JSON.stringify(loc));
+
+    // Dès que ce nouveau système est utilisé, l'ancien masquage global de ce picto
+    // est retiré pour laisser chaque emplacement vivre indépendamment.
+    try{
+      const oldId=itemId2(x);
+      let h=readList(HIDDEN_KEY).filter(v=>String(v)!==String(oldId));
+      localStorage.setItem(profiledKey(HIDDEN_KEY),JSON.stringify(h));
+    }catch(e){}
+    localStorage.setItem('ma-caa-last-save',String(Date.now()));
+    try{scheduleProfileAutoPush()}catch(e){}
+  }
+  function saveAdminTree215(x,checks){
+    const id=itemStable215(x); if(!id)return;
+    const base=readAdminBase();
+    const loc=base.locationHiddenV213||{cats:{},subs:{}};
+    loc.cats=loc.cats||{};loc.subs=loc.subs||{};
+    checks.forEach(c=>{
+      if(c.type==='cat')setMap215(loc.cats,c.key,id,c.hidden);
+      else setMap215(loc.subs,c.key,id,c.hidden);
+    });
+    base.locationHiddenV213=loc;
+
+    // Neutraliser l'ancien masquage global Admin du même pictogramme.
+    const candidates=ids215(x);
+    base.hiddenItems=(base.hiddenItems||[]).filter(v=>!candidates.has(String(v)));
+    (base.addedItems||[]).forEach(it=>{if(candidates.has(String(it.id)))it.hidden=false});
+    writeAdminBase(base);
+  }
+
+  function globalParentHidden215(x){
+    try{return isHidden(x)}catch(e){return false}
+  }
+  function globalAdminHidden215(x){
+    const b=readAdminBase(),cand=ids215(x);
+    if((b.hiddenItems||[]).some(v=>cand.has(String(v))))return true;
+    return (b.addedItems||[]).some(it=>cand.has(String(it.id))&&it.hidden);
+  }
+
+  function openTree215(x,currentCat,mode){
+    const locations=allLocations215(x,currentCat);
+    const ov=document.createElement('div');ov.className='editor-overlay';ov.style.zIndex='1400300';
+    const p=document.createElement('div');p.className='editor';p.style.maxWidth='680px';
+
+    const h=document.createElement('h2');
+    h.textContent=(mode==='admin'?'👁️ Visibilité globale — ':'👁️ Visibilité pour ce profil — ')+displayLabel(x);
+    p.appendChild(h);
+
+    const help=document.createElement('div');help.className='loc215-help';
+    help.innerHTML='<b>Coche les emplacements où ce pictogramme doit être masqué.</b><br>Chaque catégorie et sous-catégorie est indépendante.';
+    p.appendChild(help);
+
+    const actions=document.createElement('div');actions.className='loc215-actions';
+    const allHide=document.createElement('button');allHide.textContent='🙈 Tout masquer';
+    const allShow=document.createElement('button');allShow.textContent='👁️ Tout afficher';
+    actions.append(allHide,allShow);p.appendChild(actions);
+
+    const tree=document.createElement('div');tree.className='loc215-tree';p.appendChild(tree);
+    const refs=[];
+
+    const parentLoc=mode==='parent'?readParentLoc215():null;
+    const adminLoc=mode==='admin'?(readAdminBase().locationHiddenV213||{cats:{},subs:{}}):null;
+    const id=itemStable215(x);
+    const oldGlobal=mode==='parent'?globalParentHidden215(x):globalAdminHidden215(x);
+
+    if(!locations.length){
+      tree.innerHTML='<div style="padding:14px;color:#667085">Aucun emplacement trouvé pour ce pictogramme.</div>';
+    }
+
+    locations.forEach(({cat,subs})=>{
+      const group=document.createElement('div');group.className='loc215-cat';
+
+      const head=document.createElement('label');head.className='loc215-cathead';
+      const ccb=document.createElement('input');ccb.type='checkbox';
+      const storedCat=mode==='parent'
+        ? readMapped215(parentLoc.cats,cat.name,id)
+        : readMapped215(adminLoc.cats||{},cat.name,id);
+      ccb.checked=oldGlobal||storedCat;
+      const ct=document.createElement('span');ct.textContent=(cat.icon||'📁')+' '+catDisplay215(cat);
+      head.append(ccb,ct);group.appendChild(head);
+      refs.push({cb:ccb,type:'cat',key:cat.name});
+
+      if(subs.length){
+        const subwrap=document.createElement('div');subwrap.className='loc215-sub';
+        const allSubs=(readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name);
+        subs.forEach(sc=>{
+          const row=document.createElement('label');row.className='loc215-row';
+          const cb=document.createElement('input');cb.type='checkbox';
+          const stored=mode==='parent'
+            ? readMapped215(parentLoc.subs,sc.id,id)
+            : readMapped215(adminLoc.subs||{},sc.id,id);
+          cb.checked=oldGlobal||stored;
+          const depth=subDepth215(sc,allSubs);
+          row.style.paddingLeft=(11+Math.min(depth,5)*22)+'px';
+          const span=document.createElement('span');
+          let path='';try{path=adminSubcatPath(sc)}catch(e){path=sc.name}
+          span.textContent=(depth?'↳ ':'')+(sc.icon||'📁')+' '+path;
+          row.append(cb,span);subwrap.appendChild(row);
+          refs.push({cb:cb,type:'sub',key:sc.id});
+        });
+        group.appendChild(subwrap);
+      }
+      tree.appendChild(group);
+    });
+
+    allHide.onclick=()=>refs.forEach(r=>r.cb.checked=true);
+    allShow.onclick=()=>refs.forEach(r=>r.cb.checked=false);
+
+    const row=document.createElement('div');row.className='editor-row';
+    const save=document.createElement('button');save.className='saveedit';save.textContent='✓ Enregistrer';
+    const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';
+    save.onclick=()=>{
+      const checks=refs.map(r=>({type:r.type,key:r.key,hidden:r.cb.checked}));
+      if(mode==='parent')saveParentTree215(x,checks); else saveAdminTree215(x,checks);
+      ov.remove();
+      try{renderGrid()}catch(e){}
+      try{
+        if(mode==='parent'&&window.parentLazyView&&currentCat){
+          const box=document.getElementById('grid');
+          if(box)renderParentCategoryLazy(box,currentCat);
+        }
+      }catch(e){}
+      try{if(mode==='admin')adminRefresh()}catch(e){}
+    };
+    cancel.onclick=()=>ov.remove();
+    row.append(save,cancel);p.appendChild(row);ov.appendChild(p);document.body.appendChild(ov);
+  }
+
+  window.openLocationTreeV215=openTree215;
+
+  // L'ancien intercepteur Admin 213 appelle cette fonction : on la remplace
+  // par l'arborescence complète.
+  window.openAdminLocationVisibilityV213=function(x,cat){openTree215(x,cat,'admin')};
+
+  // Mode Parents desktop : le bouton Masquer/Réafficher ouvre maintenant
+  // l'arborescence complète au lieu d'agir seulement sur l'emplacement courant.
+  const prevParentRender=window.renderParentCategoryLazy;
+  if(typeof prevParentRender==='function'){
+    window.renderParentCategoryLazy=function(box,cat){
+      prevParentRender(box,cat);
+      [...box.querySelectorAll('.manage-card')].forEach(card=>{
+        const title=card.querySelector('b');if(!title)return;
+        const x=(orderedItems(cat)||[]).find(v=>displayLabel(v)===title.textContent);if(!x)return;
+        const btn=[...card.querySelectorAll('button')].find(b=>/Masquer|Réafficher/.test(b.textContent||''));
+        if(!btn)return;
+        btn.textContent='🙈 Gérer la visibilité';
+        btn.className='hidebtn';
+        btn.onclick=()=>openTree215(x,cat,'parent');
+      });
+    };
+    try{renderParentCategoryLazy=window.renderParentCategoryLazy}catch(e){}
+  }
+
+  // Mode Parents mobile : même arborescence.
+  const prevQuick=window.openParentPictoQuickActions;
+  if(typeof prevQuick==='function'){
+    window.openParentPictoQuickActions=function(x,cat){
+      const ov=document.createElement('div');ov.className='editor-overlay';ov.style.zIndex='100700';
+      const p=document.createElement('div');p.className='editor';p.style.maxWidth='430px';
+      const h=document.createElement('h2');h.textContent=(displayEmoji(x)||'🖼️')+' '+displayLabel(x);p.appendChild(h);
+      const actions=document.createElement('div');actions.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+      const add=(txt,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.style.cssText='padding:11px 8px;border:1px solid #d8dee8;border-radius:10px;background:#f8faff;font-weight:800';b.onclick=()=>{ov.remove();fn()};actions.appendChild(b)};
+      const favNow=isFav(x);add(favNow?'⭐ Retirer favori':'☆ Ajouter favori',()=>parentSetFavoriteFast(x,!favNow));
+      add('🙈 Visibilité',()=>openTree215(x,cat,'parent'));
+      add('↑ Monter',()=>moveItem(cat,x,-1));add('↓ Descendre',()=>moveItem(cat,x,1));
+      add('✏️ Modifier',()=>openEditor(x));add('💬 Suite rapide',()=>editQuickChoices(x));
+      if(submenuFor(x).length||expandSubmenuEntries(x).length)add('📂 Sous-menu',()=>setTimeout(()=>openParentSubmenuMobile(x),0));
+      if(isAdded(x)&&!x[5])add('🗑️ Supprimer',()=>deleteAdded(x));
+      const close=document.createElement('button');close.className='canceledit';close.textContent='Fermer';close.onclick=()=>ov.remove();
+      p.append(actions,close);ov.appendChild(p);document.body.appendChild(ov);
+    };
+    try{openParentPictoQuickActions=window.openParentPictoQuickActions}catch(e){}
+  }
+})();
+</script>
+
 </body></html>

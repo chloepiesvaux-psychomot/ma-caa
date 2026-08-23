@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 219</title>
+<title>Ma CAA v2.0 bêta 220</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 219</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 220</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -9414,6 +9414,358 @@ body.parent-mode .manage-card{
     const card=btn.closest('.piccard'),label=card?.querySelector('b')?.textContent?.trim();if(!label)return;
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
   },true);
+})();
+</script>
+
+
+<!-- BETA220 — refonte Mode Parents : accueil, personnalisation, glisser-déposer, gestion contenu -->
+<style id="beta220-parent-style">
+.parent220{grid-column:1/-1;width:100%;box-sizing:border-box;color:#17213a}
+.parent220 *{box-sizing:border-box}
+.p220-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:2px 0 18px}
+.p220-head h2{font-size:31px;margin:0}.p220-head p{margin:4px 0 0;color:#667085}
+.p220-back{border:1px solid #d5ddeb;background:#f8faff;border-radius:11px;padding:9px 13px;font-weight:850;cursor:pointer}
+.p220-homegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.p220-card{border:1px solid #dfe5ef;background:white;border-radius:20px;padding:22px 18px;min-height:245px;box-shadow:0 5px 18px rgba(25,45,80,.07);display:flex;flex-direction:column;text-align:center;align-items:center}
+.p220-icon{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;font-size:39px;margin-bottom:10px}
+.p220-card h3{font-size:21px;margin:5px 0}.p220-card p{color:#687286;line-height:1.45;margin:4px 0 16px;flex:1}
+.p220-card button{width:100%;border:0;border-radius:13px;padding:13px 12px;color:white;font-weight:950;font-size:16px;cursor:pointer}
+.p220-blue{background:#3177ed}.p220-green{background:#27ad5f}.p220-orange{background:#f58212}
+.p220-tools{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0 16px}
+.p220-tool{border:2px solid #e0e5ed;background:#fff;border-radius:16px;padding:15px;min-height:90px;text-align:left;cursor:pointer;font:inherit}
+.p220-tool.active{border-color:#3177ed;background:#f5f8ff}.p220-tool b{font-size:17px}.p220-tool small{display:block;color:#687286;margin-top:5px;line-height:1.3}
+.p220-seg{display:flex;gap:6px;margin:9px 0 14px}
+.p220-seg button{border:1px solid #ccd6e5;background:#fff;border-radius:10px;padding:9px 18px;font-weight:850;cursor:pointer}
+.p220-seg button.active{background:#3177ed;color:#fff;border-color:#3177ed}
+.p220-search{width:100%;padding:11px 14px;border:2px solid #d8e0eb;border-radius:12px;font-size:15px;margin:0 0 12px}
+.p220-tree{border:1px solid #dce3ed;border-radius:15px;overflow:hidden;background:#fff}
+.p220-cat{border-bottom:1px solid #e8edf3}.p220-cat:last-child{border-bottom:0}
+.p220-cathead,.p220-subhead,.p220-item{display:flex;align-items:center;gap:9px;padding:11px 13px}
+.p220-cathead{font-size:17px;font-weight:950;background:#f6f9fd}
+.p220-subhead{font-weight:900;padding-left:33px;background:#fbfcfe}
+.p220-item{padding-left:55px;border-top:1px solid #f0f3f7;min-height:50px}
+.p220-item.direct{padding-left:33px}
+.p220-item input,.p220-cathead input,.p220-subhead input{width:20px;height:20px;accent-color:#3177ed}
+.p220-thumb{width:38px;height:38px;display:grid;place-items:center;overflow:hidden;border-radius:8px;background:#fff;border:1px solid #e3e7ed;font-size:24px;flex:0 0 auto}
+.p220-thumb img{width:100%;height:100%;object-fit:contain}
+.p220-spacer{margin-left:auto}
+.p220-drag{cursor:grab;font-size:22px;color:#73809a;padding:3px 7px;touch-action:none}
+.p220-dragging{opacity:.35;background:#edf5ff}
+.p220-drop{outline:2px dashed #3177ed;outline-offset:-3px}
+.p220-order-group{border:1px solid #dde4ee;border-radius:15px;margin:10px 0;background:#fff;overflow:hidden}
+.p220-order-title{font-weight:950;padding:11px 13px;background:#f6f9fd}
+.p220-order-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid #edf0f4;background:#fff}
+.p220-order-row:first-of-type{border-top:0}
+.p220-order-note{padding:10px 12px;border-radius:11px;background:#f4f8ff;color:#52647f;margin-bottom:12px}
+.p220-manage-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.p220-manage-tabs button{border:1px solid #ccd6e4;background:#fff;padding:9px 13px;border-radius:11px;font-weight:850}
+.p220-manage-tabs button.active{background:#edf4ff;border-color:#5790ef;color:#245eb8}
+.p220-actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.p220-actions button{border:1px solid #d7deea;background:#fff;border-radius:9px;padding:7px 9px;font-weight:800}
+.p220-actions .del{color:#b42318;border-color:#f1b8b3}
+.p220-add{border:0;background:#27ad5f;color:white;border-radius:11px;padding:10px 13px;font-weight:900;cursor:pointer;margin-bottom:12px}
+.p220-empty{padding:20px;text-align:center;color:#667085}
+@media(max-width:900px){
+ .p220-homegrid,.p220-tools{grid-template-columns:1fr}
+ .p220-card{min-height:190px}
+ .p220-head h2{font-size:25px}
+ .p220-item{padding-left:34px}.p220-item.direct{padding-left:20px}.p220-subhead{padding-left:20px}
+}
+</style>
+
+<script id="beta220-parent-ui">
+(function(){
+  let view220='home', section220='visibility', type220='pictos', manage220='pictos';
+
+  const starterKey='ma-caa-sentence-starters-v209';
+  function starterData220(){
+    try{
+      let x=JSON.parse(localStorage.getItem(starterKey)||'null');
+      if(!x||!Array.isArray(x.starters))x={starters:[],inherit:{},profiles:{}};
+      x.profiles=x.profiles||{};return x;
+    }catch(e){return {starters:[],inherit:{},profiles:{}}}
+  }
+  function starterPref220(x){
+    const id=String(activeProfile());
+    x.profiles[id]=x.profiles[id]||{};
+    const p=x.profiles[id];
+    p.hidden=p.hidden||{};p.personalStarters=Array.isArray(p.personalStarters)?p.personalStarters:[];
+    p.starterFavorites=p.starterFavorites||{};p.order220=p.order220||{};
+    return p;
+  }
+  function saveStarter220(x){
+    x.updated_at=new Date().toISOString();
+    localStorage.setItem(starterKey,JSON.stringify(x));
+    try{localStorage.setItem('ma-caa-last-save',String(Date.now()))}catch(e){}
+    try{renderStarters211()}catch(e){}
+  }
+  function cats220(){return normalCategories()}
+  function subs220(cat){
+    return (readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name).sort((a,b)=>(a.order||0)-(b.order||0))
+  }
+  function directItems220(cat){
+    const subs=subs220(cat), assigned=new Set();
+    subs.forEach(sc=>(sc.itemIds||[]).forEach(id=>assigned.add(String(id))));
+    return orderedItems(cat).filter(x=>{
+      try{
+        const ids=new Set([String(itemId2(x)),String(permanentItemId(x)),String(x?.[6]||''),String(x?.[3]||'')]);
+        return ![...assigned].some(id=>ids.has(String(id)));
+      }catch(e){return true}
+    })
+  }
+  function subItems220(cat,sc){
+    return orderedItems(cat).filter(x=>{try{return itemAssignedToSubcatV214(x,sc)}catch(e){return false}})
+  }
+  function mk220(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=txt;return e}
+  function thumb220(x){
+    const d=mk220('span','p220-thumb');
+    const p=normalizeCloudImageRef(displayImage(x)||'');
+    if(typeof p==='string'&&p){const im=document.createElement('img');im.src=p;im.onerror=()=>{d.innerHTML='';d.textContent=displayEmoji(x)||'🖼️'};d.appendChild(im)}
+    else d.textContent=displayEmoji(x)||'🖼️';
+    return d
+  }
+  function host220(){return document.getElementById('grid')}
+
+  function head220(box,title,sub,back=true){
+    const h=mk220('div','p220-head');
+    if(back){const b=mk220('button','p220-back','← Retour');b.onclick=()=>{view220='home';draw220(box)};h.appendChild(b)}
+    const wrap=document.createElement('div');const t=document.createElement('h2');t.textContent=title;wrap.appendChild(t);
+    if(sub){const p=document.createElement('p');p.textContent=sub;wrap.appendChild(p)}h.appendChild(wrap);box.appendChild(h)
+  }
+
+  function drawHome220(box){
+    head220(box,'Mode parents','Gère le profil et personnalise l’espace de communication de cet utilisateur.',false);
+    const grid=mk220('div','p220-homegrid');
+
+    const card=(icon,bg,title,desc,label,cls,fn)=>{
+      const c=mk220('div','p220-card'),ic=mk220('div','p220-icon',icon);ic.style.background=bg;
+      const h=document.createElement('h3');h.textContent=title;const p=document.createElement('p');p.textContent=desc;
+      const b=mk220('button',cls,label);b.onclick=fn;c.append(ic,h,p,b);return c
+    };
+    grid.append(
+      card('👤','#eaf1ff','Profil','Change la photo du profil et choisis la voix utilisée par Ma CAA.','Ouvrir','p220-blue',()=>{view220='profile';draw220(box)}),
+      card('▦','#e8f8ef','Personnaliser la vue','Règle la visibilité, les favoris et l’ordre des pictogrammes et des phrases.','Personnaliser','p220-green',()=>{view220='customize';section220='visibility';type220='pictos';draw220(box)}),
+      card('✏️','#fff0df','Créer / modifier / supprimer','Gère les pictogrammes, catégories, sous-catégories et phrases du profil.','Accéder','p220-orange',()=>{view220='manage';manage220='pictos';draw220(box)})
+    );box.appendChild(grid)
+  }
+
+  function drawProfile220(box){
+    head220(box,'Profil','Photo et voix du profil actif.');
+    const grid=mk220('div','p220-homegrid');grid.style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
+    const mk=(icon,title,desc,fn)=>{
+      const c=mk220('div','p220-card'),ic=mk220('div','p220-icon',icon);ic.style.background='#edf3ff';
+      const h=document.createElement('h3');h.textContent=title;const p=document.createElement('p');p.textContent=desc;
+      const b=mk220('button','p220-blue','Ouvrir');b.onclick=fn;c.append(ic,h,p,b);return c
+    };
+    grid.append(mk('📷','Photo du profil','Choisir une photo, un emoji ou les initiales.',openProfileAvatarSettings),
+                mk('🔊','Voix','Choisir la voix et la vitesse de lecture.',openVoiceSettings));
+    box.appendChild(grid)
+  }
+
+  function toolTabs220(box){
+    const tools=mk220('div','p220-tools');
+    [['visibility','👁️','Visibilité','Afficher ou masquer'],['favorites','⭐','Favoris','Choisir les favoris'],['order','↕️','Ordonner','Glisser pour déplacer']].forEach(a=>{
+      const b=mk220('button','p220-tool'+(section220===a[0]?' active':''));
+      b.innerHTML='<b>'+a[1]+' '+a[2]+'</b><small>'+a[3]+'</small>';b.onclick=()=>{section220=a[0];draw220(box)};tools.appendChild(b)
+    });box.appendChild(tools);
+    const seg=mk220('div','p220-seg');
+    [['pictos','Pictogrammes'],['phrases','Phrases']].forEach(a=>{const b=mk220('button',type220===a[0]?'active':'',a[1]);b.onclick=()=>{type220=a[0];draw220(box)};seg.appendChild(b)});
+    box.appendChild(seg)
+  }
+
+  function setCatVisible220(cat,on){
+    let v=readHiddenCats();v=on?v.filter(n=>n!==cat.name):[...new Set([...v,cat.name])];writeHiddenCats(v)
+  }
+  function setSubVisible220(sc,on){
+    let v=readHiddenSubcats();v=on?v.filter(n=>String(n)!==String(sc.id)):[...new Set([...v,String(sc.id)])];
+    localStorage.setItem(profiledKey(HIDDEN_SUBCATS_KEY),JSON.stringify(v));try{scheduleProfileAutoPush()}catch(e){}
+  }
+  function setPicVisible220(x,cat,sc,on){
+    try{setParentHiddenExactV217(x,cat.name,sc?sc.id:'',!on)}catch(e){try{setParentHiddenAtV213(x,cat.name,sc?sc.id:'',!on)}catch(e2){}}
+  }
+  function picVisible220(x,cat,sc){
+    try{return !parentHiddenExactV217(x,cat.name,sc?sc.id:'')}catch(e){try{return !parentHiddenAtV213(x,cat.name,sc?sc.id:'')}catch(e2){return true}}
+  }
+
+  function pictosTree220(box,mode){
+    const search=document.createElement('input');search.className='p220-search';search.placeholder='Rechercher une catégorie, sous-catégorie ou pictogramme…';box.appendChild(search);
+    const tree=mk220('div','p220-tree');box.appendChild(tree);
+    function draw(q=''){
+      q=String(q).trim().toLowerCase();tree.innerHTML='';
+      cats220().forEach(cat=>{
+        const allSubs=subs220(cat),direct=directItems220(cat);
+        const allPic=[...direct,...allSubs.flatMap(sc=>subItems220(cat,sc))];
+        const catMatch=(cat.name+' '+adminCatName(cat)).toLowerCase().includes(q)||allPic.some(x=>displayLabel(x).toLowerCase().includes(q))||allSubs.some(sc=>sc.name.toLowerCase().includes(q));
+        if(q&&!catMatch)return;
+        const cg=mk220('div','p220-cat');
+        const ch=mk220('div','p220-cathead');
+        if(mode==='visibility'){
+          const cb=document.createElement('input');cb.type='checkbox';cb.checked=!readHiddenCats().includes(cat.name);cb.onchange=()=>setCatVisible220(cat,cb.checked);ch.appendChild(cb)
+        }
+        ch.append(document.createTextNode((cat.icon||'📁')+' '+adminCatName(cat)));cg.appendChild(ch);
+
+        const addPic=(x,sc,directFlag)=>{
+          if(q&&!displayLabel(x).toLowerCase().includes(q)&&!(sc?.name||'').toLowerCase().includes(q)&&!cat.name.toLowerCase().includes(q))return;
+          const r=mk220('div','p220-item'+(directFlag?' direct':''));r.appendChild(thumb220(x));
+          const name=mk220('span','',displayLabel(x));r.appendChild(name);
+          const cb=document.createElement('input');cb.type='checkbox';cb.style.order='-1';
+          if(mode==='visibility'){cb.checked=picVisible220(x,cat,sc);cb.onchange=()=>setPicVisible220(x,cat,sc,cb.checked)}
+          else {cb.checked=isFav(x);cb.onchange=()=>{const now=isFav(x);if(cb.checked!==now)toggleFav(x)}}
+          r.insertBefore(cb,r.firstChild);cg.appendChild(r)
+        };
+        direct.forEach(x=>addPic(x,null,true));
+        allSubs.forEach(sc=>{
+          const sh=mk220('div','p220-subhead');
+          if(mode==='visibility'){const cb=document.createElement('input');cb.type='checkbox';cb.checked=!readHiddenSubcats().includes(String(sc.id));cb.onchange=()=>setSubVisible220(sc,cb.checked);sh.appendChild(cb)}
+          sh.append(document.createTextNode((sc.icon||'📁')+' '+adminSubcatPath(sc)));cg.appendChild(sh);
+          subItems220(cat,sc).forEach(x=>addPic(x,sc,false))
+        });
+        tree.appendChild(cg)
+      })
+    }
+    search.oninput=()=>draw(search.value);draw()
+  }
+
+  function phraseListForLoc220(x,p,cat,sc){
+    const loc=sc?'sub:'+sc.id:'cat:'+cat.name;
+    const permanent=(x.starters||[]).filter(s=>!s.deleted&&!s.hidden&&((s.targets||[]).includes('*')||(s.targets||[]).includes('cat:'+cat.name)||(sc&&(s.targets||[]).includes('sub:'+sc.id))));
+    const personal=(p.personalStarters||[]).filter(s=>!s.deleted&&!s.hidden&&((s.targets||[]).includes('*')||(s.targets||[]).includes('cat:'+cat.name)||(sc&&(s.targets||[]).includes('sub:'+sc.id))));
+    return [...permanent,...personal].filter((s,i,a)=>a.findIndex(v=>v.id===s.id)===i).map(s=>({s,loc}))
+  }
+  function phrasesTree220(box,mode){
+    const x=starterData220(),p=starterPref220(x),tree=mk220('div','p220-tree');box.appendChild(tree);
+    cats220().forEach(cat=>{
+      const cg=mk220('div','p220-cat'),ch=mk220('div','p220-cathead','💬 '+adminCatName(cat));cg.appendChild(ch);
+      const add=(obj,direct)=>{
+        const r=mk220('div','p220-item'+(direct?' direct':'')),cb=document.createElement('input');cb.type='checkbox';
+        const s=obj.s, loc=obj.loc;
+        if(mode==='visibility'){
+          p.hidden[loc]=p.hidden[loc]||{};
+          cb.checked=!p.hidden[loc][s.id];
+          cb.onchange=()=>{if(cb.checked)delete p.hidden[loc][s.id];else p.hidden[loc][s.id]=true;saveStarter220(x)}
+        }else{
+          cb.checked=!!p.starterFavorites[s.id];
+          cb.onchange=()=>{if(cb.checked)p.starterFavorites[s.id]=true;else delete p.starterFavorites[s.id];saveStarter220(x)}
+        }
+        r.append(cb,mk220('span','', (s.emoji||'💬')+' '+s.label));cg.appendChild(r)
+      };
+      phraseListForLoc220(x,p,cat,null).forEach(o=>add(o,true));
+      subs220(cat).forEach(sc=>{
+        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));cg.appendChild(sh);
+        phraseListForLoc220(x,p,cat,sc).forEach(o=>add(o,false))
+      });tree.appendChild(cg)
+    })
+  }
+
+  function savePicOrder220(cat,items){
+    const map=readOrder();map[cat.name]=items.map(itemId);writeOrder(map)
+  }
+  function makeDraggable220(container,getRows,onSave){
+    let drag=null;
+    container.querySelectorAll('.p220-order-row').forEach(row=>{
+      row.draggable=true;
+      row.addEventListener('dragstart',()=>{drag=row;row.classList.add('p220-dragging')});
+      row.addEventListener('dragend',()=>{row.classList.remove('p220-dragging');container.querySelectorAll('.p220-drop').forEach(x=>x.classList.remove('p220-drop'));drag=null;onSave(getRows())});
+      row.addEventListener('dragover',e=>{e.preventDefault();if(!drag||drag===row)return;row.classList.add('p220-drop');const rect=row.getBoundingClientRect(),after=e.clientY>rect.top+rect.height/2;row.parentNode.insertBefore(drag,after?row.nextSibling:row)});
+      row.addEventListener('dragleave',()=>row.classList.remove('p220-drop'))
+    })
+  }
+  function orderPictos220(box){
+    const note=mk220('div','p220-order-note','ℹ️ Fais glisser un pictogramme pour le déplacer. Le nouvel ordre est enregistré automatiquement.');box.appendChild(note);
+    cats220().forEach(cat=>{
+      const g=mk220('div','p220-order-group'),t=mk220('div','p220-order-title',(cat.icon||'📁')+' '+adminCatName(cat));g.appendChild(t);
+      const items=orderedItems(cat);
+      items.forEach(x=>{
+        const r=mk220('div','p220-order-row');r.dataset.iid=itemId2(x);
+        r.append(mk220('span','p220-drag','☰'),thumb220(x),mk220('span','',displayLabel(x)));g.appendChild(r)
+      });
+      makeDraggable220(g,()=>[...g.querySelectorAll('.p220-order-row')].map(r=>items.find(x=>String(itemId2(x))===String(r.dataset.iid))).filter(Boolean),arr=>savePicOrder220(cat,arr));
+      box.appendChild(g)
+    })
+  }
+  function orderPhrases220(box){
+    const x=starterData220(),p=starterPref220(x);
+    const note=mk220('div','p220-order-note','ℹ️ Fais glisser une phrase pour la déplacer dans la catégorie affichée.');box.appendChild(note);
+    cats220().forEach(cat=>{
+      const rows=phraseListForLoc220(x,p,cat,null);
+      if(!rows.length)return;
+      const key='cat:'+cat.name,g=mk220('div','p220-order-group');g.appendChild(mk220('div','p220-order-title','💬 '+adminCatName(cat)));
+      const old=p.order220[key]||[], sorted=[...rows].sort((a,b)=>{const ia=old.indexOf(a.s.id),ib=old.indexOf(b.s.id);return (ia<0?9999:ia)-(ib<0?9999:ib)});
+      sorted.forEach(o=>{const r=mk220('div','p220-order-row');r.dataset.sid=o.s.id;r.append(mk220('span','p220-drag','☰'),mk220('span','', (o.s.emoji||'💬')+' '+o.s.label));g.appendChild(r)});
+      makeDraggable220(g,()=>[...g.querySelectorAll('.p220-order-row')].map(r=>r.dataset.sid),ids=>{p.order220[key]=ids;saveStarter220(x)});
+      box.appendChild(g)
+    })
+  }
+
+  function drawCustomize220(box){
+    head220(box,'Personnaliser la vue','Visibilité, favoris et ordre des pictogrammes et phrases.');
+    toolTabs220(box);
+    if(section220==='visibility') type220==='pictos'?pictosTree220(box,'visibility'):phrasesTree220(box,'visibility');
+    if(section220==='favorites') type220==='pictos'?pictosTree220(box,'favorites'):phrasesTree220(box,'favorites');
+    if(section220==='order') type220==='pictos'?orderPictos220(box):orderPhrases220(box)
+  }
+
+  function managePictos220(box){
+    const add=mk220('button','p220-add','＋ Ajouter un pictogramme');add.onclick=openAddPicto;box.appendChild(add);
+    const tree=mk220('div','p220-tree');box.appendChild(tree);
+    cats220().forEach(cat=>{
+      const cg=mk220('div','p220-cat');cg.appendChild(mk220('div','p220-cathead',(cat.icon||'📁')+' '+adminCatName(cat)));
+      const show=(x,direct)=>{
+        const r=mk220('div','p220-item'+(direct?' direct':''));r.append(thumb220(x),mk220('span','',displayLabel(x)));
+        const a=mk220('div','p220-actions'),e=mk220('button','','✏️ Modifier');e.onclick=()=>openEditor(x);a.appendChild(e);
+        if(isAdded(x)&&!x[5]){const d=mk220('button','del','🗑️ Supprimer');d.onclick=()=>deleteAdded(x);a.appendChild(d)}
+        r.appendChild(a);cg.appendChild(r)
+      };
+      directItems220(cat).forEach(x=>show(x,true));
+      subs220(cat).forEach(sc=>{cg.appendChild(mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc)));subItems220(cat,sc).forEach(x=>show(x,false))});
+      tree.appendChild(cg)
+    })
+  }
+  function manageCategories220(box){
+    const add=mk220('button','p220-add','＋ Ajouter une catégorie');add.onclick=openAddCategory;box.appendChild(add);
+    const tree=mk220('div','p220-tree');box.appendChild(tree);
+    cats220().forEach(cat=>{
+      const r=mk220('div','p220-cathead',(cat.icon||'📁')+' '+adminCatName(cat)),a=mk220('div','p220-actions'),e=mk220('button','','✏️ Modifier');
+      e.onclick=()=>{try{adminEditCategory(cat)}catch(err){openAddCategory()}};a.appendChild(e);
+      if(cat.customId){const d=mk220('button','del','🗑️ Supprimer');d.onclick=()=>deleteCustomCategory(cat);a.appendChild(d)}
+      r.appendChild(a);tree.appendChild(r)
+    })
+  }
+  function manageSubs220(box){
+    const tree=mk220('div','p220-tree');box.appendChild(tree);
+    cats220().forEach(cat=>{
+      const cg=mk220('div','p220-cat'),h=mk220('div','p220-cathead',(cat.icon||'📁')+' '+adminCatName(cat)),a=mk220('div','p220-actions'),add=mk220('button','','＋ Ajouter');
+      add.onclick=()=>adminManageSubcategories(cat);a.appendChild(add);h.appendChild(a);cg.appendChild(h);
+      subs220(cat).forEach(sc=>cg.appendChild(mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc))));
+      tree.appendChild(cg)
+    })
+  }
+  function managePhrases220(box){
+    const b=mk220('button','p220-add','＋ Gérer / créer les phrases');b.onclick=()=>openParentStarters211?openParentStarters211():openParentStarters209();box.appendChild(b);
+    const x=starterData220(),p=starterPref220(x),tree=mk220('div','p220-tree');box.appendChild(tree);
+    cats220().forEach(cat=>{
+      const cg=mk220('div','p220-cat');cg.appendChild(mk220('div','p220-cathead','💬 '+adminCatName(cat)));
+      phraseListForLoc220(x,p,cat,null).forEach(o=>cg.appendChild(mk220('div','p220-item direct',(o.s.emoji||'💬')+' '+o.s.label)));
+      tree.appendChild(cg)
+    })
+  }
+  function drawManage220(box){
+    head220(box,'Créer / modifier / supprimer','Gère le contenu du profil.');
+    const tabs=mk220('div','p220-manage-tabs');
+    [['pictos','Pictogrammes'],['cats','Catégories'],['subs','Sous-catégories'],['phrases','Phrases']].forEach(a=>{const b=mk220('button',manage220===a[0]?'active':'',a[1]);b.onclick=()=>{manage220=a[0];draw220(box)};tabs.appendChild(b)});box.appendChild(tabs);
+    if(manage220==='pictos')managePictos220(box);if(manage220==='cats')manageCategories220(box);if(manage220==='subs')manageSubs220(box);if(manage220==='phrases')managePhrases220(box)
+  }
+
+  function draw220(box){
+    if(!box)return;box.innerHTML='';box.classList.add('parent220');
+    if(view220==='home')drawHome220(box);
+    else if(view220==='profile')drawProfile220(box);
+    else if(view220==='customize')drawCustomize220(box);
+    else if(view220==='manage')drawManage220(box)
+  }
+
+  window.renderPersonalize=function(box){draw220(box)};
+  try{renderPersonalize=window.renderPersonalize}catch(e){}
 })();
 </script>
 

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 208</title>
+<title>Ma CAA v2.0 bêta 209</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 208</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 209</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2512,6 +2512,7 @@ function renderPersonalize(box){
   tools.append(
     tool("👤","Image du profil","Photo, emoji ou initiales",openProfileAvatarSettings),
     tool("🔊","Voix","Choisir la voix",openVoiceSettings),
+    tool("💬","Débuts de phrases","Afficher ou masquer",openParentStarters209),
     tool("📁","Catégorie","Créer une catégorie",openAddCategory),
     tool("➕","Pictogramme","Créer un pictogramme",openAddPicto)
   );
@@ -7494,7 +7495,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const s=section195();s.innerHTML="<h2>Que veux-tu gérer ?</h2>";
     const g=document.createElement("div");g.className="cards";
     const mk=(ico,l,v,bg)=>{const x=document.createElement("button");x.className="card";x.style.background=bg;x.innerHTML="<div style='font-size:44px'>"+ico+"</div>"+l;x.onclick=()=>render195(v);return x};
-    g.append(mk("👤","Profils / utilisateurs","profiles","#4f7fd8"),mk("🧩","Pictogrammes","pictos","#8b63d9"),mk("📁","Catégories","categories","#20a464"),mk("⚙️","Paramètres","settings","#6b7280"));
+    g.append(mk("👤","Profils / utilisateurs","profiles","#4f7fd8"),mk("🧩","Pictogrammes","pictos","#8b63d9"),mk("📁","Catégories","categories","#20a464"),mk("💬","Débuts de phrases","starters","#b05bb7"),mk("⚙️","Paramètres","settings","#6b7280"));
     s.appendChild(g);body.appendChild(s);
   }
 
@@ -7569,6 +7570,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(view195==="profiles")renderProfiles195(body);
       else if(view195==="pictos")renderPictos195(body);
       else if(view195==="categories")renderCategories195(body);
+      else if(view195==="starters")renderAdminStarters209(body);
       else if(view195==="settings")renderSettings195(body);
       else renderHome195(body);
     }catch(e){
@@ -8239,4 +8241,118 @@ body.parent-mode .manage-card{
 <!-- BETA205 — nettoyage technique conservateur.
      Retrait des anciens outils de récupération/diagnostic 172–183 devenus inutiles.
      Les couches fonctionnelles modernes (médias, métadonnées, catalogue, Admin, profils, Parents) restent inchangées. -->
+
+<style id="beta209-starters-style">
+.starters209-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.starters209-toggle{border:0;border-radius:10px;background:#e4d8fa;color:#4f2f91;padding:7px 10px;font-weight:900;cursor:pointer}.starters209-compact{display:flex;justify-content:flex-start;margin:5px 0 12px}.starters209-compact button{border:1px solid #d8caf3;background:#f7f3ff;color:#4f2f91;border-radius:12px;padding:9px 12px;font-weight:900}.starter209-admincard{display:grid;grid-template-columns:auto minmax(150px,1fr) auto;gap:10px;align-items:center;border:1px solid #dfe5ef;border-radius:14px;padding:10px;margin:8px 0;background:#fff}.starter209-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.starter209-actions button{border:1px solid #d8e0eb;background:#f8faff;border-radius:9px;padding:7px 9px;font-weight:800}.starter209-location{font-size:12px;color:#667085;margin-top:3px}.starter209-check{display:flex;align-items:flex-start;gap:10px;border:1px solid #e0e5ee;border-radius:12px;padding:10px;margin:7px 0;background:#fff}.starter209-check input{width:20px;height:20px;flex:0 0 auto;margin-top:1px}.starter209-subbox{border:1px solid #dfe5ef;border-radius:14px;padding:10px;margin:10px 0;background:#f8faff}.starter209-subbox h4{margin:0 0 8px;color:#243b6b}
+@media(max-width:700px){.starter209-admincard{grid-template-columns:auto 1fr}.starter209-actions{grid-column:1/-1;justify-content:flex-start}.starters209-toggle{padding:7px 8px;font-size:12px}}
+</style>
+<script id="beta209-starters-script">
+(function(){
+  const KEY='ma-caa-sentence-starters-v209';
+  const CLOUD_KEY='sentence_starters_v209';
+  const DEFAULTS=[
+    {id:'st209-je',emoji:'👤',label:'Je',speech:'je',category:'*',subcatId:'',hidden:false,deleted:false},
+    {id:'st209-jeveux',emoji:'👉',label:'Je veux',speech:'je veux',category:'*',subcatId:'',hidden:false,deleted:false},
+    {id:'st209-neveuxpas',emoji:'🙅',label:'Je ne veux pas',speech:'je ne veux pas',category:'*',subcatId:'',hidden:false,deleted:false},
+    {id:'st209-besoin',emoji:'🙏',label:'J’ai besoin de',speech:"j'ai besoin de",category:'*',subcatId:'',hidden:false,deleted:false},
+    {id:'st209-encore',emoji:'➕',label:'Encore',speech:'encore',category:'*',subcatId:'',hidden:false,deleted:false},
+    {id:'st209-fini',emoji:'🛑',label:'C’est fini',speech:"c'est fini",category:'*',subcatId:'',hidden:false,deleted:false}
+  ];
+  function fresh(){return {starters:JSON.parse(JSON.stringify(DEFAULTS)),inherit:{},profiles:{},updated_at:new Date(0).toISOString()}}
+  function read(){
+    try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(x&&Array.isArray(x.starters)){x.inherit=x.inherit||{};x.profiles=x.profiles||{};return x}}catch(e){}
+    const x=fresh();localStorage.setItem(KEY,JSON.stringify(x));return x;
+  }
+  function save(x,push=true){x.updated_at=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(x));if(push)schedulePush();try{renderStarters209()}catch(e){}}
+  function profileId(){try{return String(activeProfile())}catch(e){return 'default'}}
+  function pref(x){const id=profileId();x.profiles=x.profiles||{};x.profiles[id]=x.profiles[id]||{bandHidden:false,hidden:{}};x.profiles[id].hidden=x.profiles[id].hidden||{};return x.profiles[id]}
+  function locKey(cat,sub){return sub?'sub:'+sub:'cat:'+cat}
+  function catObj(){return categories[current]||null}
+  function currentSub(cat){if(!cat)return null;const id=activeSubcategoryByCategory?.[cat.name]||'all';if(id==='all')return null;return (readAdminBase().subcategories||[]).find(sc=>sc.id===id&&!sc.deleted)||null}
+  function activePermanent(x){return (x.starters||[]).filter(s=>s&&!s.deleted&&!s.hidden)}
+  function effective(cat,sub,x=read()){
+    if(!cat||cat.name==='Mode parents')return [];
+    const all=activePermanent(x);
+    if(cat.name==='Favoris')return all.filter(s=>s.category==='*'&&!s.subcatId);
+    if(sub){
+      const own=all.filter(s=>String(s.subcatId||'')===String(sub.id));
+      const inherit=x.inherit?.[sub.id]!==false;
+      const inherited=inherit?all.filter(s=>!s.subcatId&&(s.category==='*'||s.category===cat.name)):[];
+      return [...inherited,...own].filter((s,i,a)=>a.findIndex(q=>q.id===s.id)===i);
+    }
+    return all.filter(s=>!s.subcatId&&(s.category==='*'||s.category===cat.name));
+  }
+  function hiddenAt(p,location,id){return !!(p.hidden?.[location]?.[id])}
+  function renderStarters209(){
+    const host=document.querySelector('.starters');if(!host)return;
+    const cat=catObj(),sub=currentSub(cat),x=read(),p=pref(x);
+    if(!cat||cat.name==='Mode parents'){host.style.display='none';return}
+    const location=locKey(cat.name,sub?.id||'');
+    const list=effective(cat,sub,x).filter(s=>!hiddenAt(p,location,s.id));
+    host.style.display='block';host.innerHTML='';
+    if(p.bandHidden){
+      host.className='starters starters209-compact';
+      const b=document.createElement('button');b.type='button';b.textContent='💬 Afficher les débuts de phrases';
+      b.onclick=()=>{p.bandHidden=false;save(x)};host.appendChild(b);return;
+    }
+    host.className='starters';
+    const hd=document.createElement('div');hd.className='starters209-head';
+    const strong=document.createElement('strong');strong.textContent='Débuts de phrase';
+    const hide=document.createElement('button');hide.className='starters209-toggle';hide.type='button';hide.textContent='Masquer';hide.onclick=()=>{p.bandHidden=true;save(x)};
+    hd.append(strong,hide);host.appendChild(hd);
+    const row=document.createElement('div');row.className='starterrow';host.appendChild(row);
+    if(!list.length){const e=document.createElement('span');e.style.cssText='color:#78699a;font-size:13px;padding:4px';e.textContent='Aucun début de phrase pour cette rubrique.';row.appendChild(e);return}
+    list.forEach(s=>{const b=document.createElement('button');b.className='starter';b.type='button';b.textContent=(s.emoji||'💬')+' '+s.label;b.onclick=()=>add([s.emoji||'💬',s.label,s.speech||s.label]);row.appendChild(b)});
+  }
+  window.renderStarters209=renderStarters209;
+
+  // Rendu automatique après changement de catégorie / sous-catégorie.
+  try{const old=renderGrid;renderGrid=function(){const r=old.apply(this,arguments);setTimeout(renderStarters209,0);return r};window.renderGrid=renderGrid}catch(e){}
+
+  function cats(){return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents')}
+  function subsFor(cat){return (readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name)}
+  function targetText(s){if(s.subcatId){const sc=(readAdminBase().subcategories||[]).find(v=>v.id===s.subcatId);return (s.category||'')+' › '+(sc?.name||'Sous-catégorie')}return s.category==='*'?'Toutes les catégories':s.category}
+  function editor(s0){
+    const x=read(),isNew=!s0,s=s0?{...s0}:{id:'st209-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),emoji:'💬',label:'',speech:'',category:'*',subcatId:'',hidden:false,deleted:false};
+    const ov=document.createElement('div');ov.className='editor-overlay';const p=document.createElement('div');p.className='editor';p.style.maxWidth='560px';
+    p.innerHTML='<h2>'+(isNew?'➕ Créer':'✏️ Modifier')+' un début de phrase</h2>';
+    const mk=(lab,val,ph)=>{const w=document.createElement('label');w.style.cssText='display:block;margin:10px 0;font-weight:800';w.textContent=lab;const i=document.createElement('input');i.value=val||'';i.placeholder=ph||'';i.style.cssText='display:block;width:100%;padding:10px;margin-top:5px;box-sizing:border-box';w.appendChild(i);p.appendChild(w);return i};
+    const emoji=mk('Emoji',s.emoji,'💬'),label=mk('Texte affiché',s.label,'Je voudrais'),speech=mk('Texte prononcé',s.speech,'je voudrais');
+    const cw=document.createElement('label');cw.style.cssText='display:block;margin:10px 0;font-weight:800';cw.textContent='Catégorie';const cs=document.createElement('select');cs.style.cssText='display:block;width:100%;padding:10px;margin-top:5px';cs.innerHTML='<option value="*">Toutes les catégories</option>'+cats().map(c=>'<option></option>').join('');[...cs.options].slice(1).forEach((o,i)=>{o.value=cats()[i].name;o.textContent=adminCatName(cats()[i])});cs.value=s.category||'*';cw.appendChild(cs);p.appendChild(cw);
+    const sw=document.createElement('label');sw.style.cssText='display:block;margin:10px 0;font-weight:800';sw.textContent='Sous-catégorie (facultatif)';const ss=document.createElement('select');ss.style.cssText='display:block;width:100%;padding:10px;margin-top:5px';sw.appendChild(ss);p.appendChild(sw);
+    function drawSubs(){ss.innerHTML='<option value="">— Aucune : niveau catégorie —</option>';if(cs.value==='*'){ss.disabled=true;ss.value='';return}ss.disabled=false;const cat=cats().find(c=>c.name===cs.value);(cat?subsFor(cat):[]).forEach(sc=>{const o=document.createElement('option');o.value=sc.id;o.textContent=adminSubcatPath(sc);ss.appendChild(o)});ss.value=[...ss.options].some(o=>o.value===s.subcatId)?s.subcatId:''}
+    cs.onchange=()=>{s.subcatId='';drawSubs()};drawSubs();
+    const row=document.createElement('div');row.className='editor-row';const ok=document.createElement('button');ok.className='saveedit';ok.textContent='✓ Enregistrer';const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';
+    cancel.onclick=()=>ov.remove();ok.onclick=()=>{const l=label.value.trim();if(!l)return alert('Écris le début de phrase.');s.emoji=emoji.value.trim()||'💬';s.label=l;s.speech=speech.value.trim()||l;s.category=cs.value;s.subcatId=ss.value||'';const idx=x.starters.findIndex(v=>v.id===s.id);if(idx>=0)x.starters[idx]=s;else x.starters.push(s);save(x);ov.remove();try{renderAdmin195('starters')}catch(e){}};row.append(ok,cancel);p.appendChild(row);ov.appendChild(p);document.body.appendChild(ov);
+  }
+
+  window.renderAdminStarters209=function(body){
+    const x=read();
+    const sec=document.createElement('section');sec.className='section';sec.innerHTML='<h2>💬 Débuts de phrases permanents</h2><p style="color:#667085">Crée des débuts de phrases pour toutes les catégories, une catégorie précise ou une sous-catégorie.</p>';
+    const addb=document.createElement('button');addb.textContent='➕ Créer un début de phrase';addb.style.cssText='padding:11px 14px;border:0;border-radius:11px;background:#2eaf58;color:white;font-weight:900;margin-bottom:12px';addb.onclick=()=>editor(null);sec.appendChild(addb);
+    (x.starters||[]).filter(s=>!s.deleted).forEach(s=>{const c=document.createElement('div');c.className='starter209-admincard';const ico=document.createElement('div');ico.style.fontSize='32px';ico.textContent=s.emoji||'💬';const inf=document.createElement('div');const b=document.createElement('b');b.textContent=(s.hidden?'🙈 ':'')+s.label;const loc=document.createElement('div');loc.className='starter209-location';loc.textContent=targetText(s);inf.append(b,loc);const a=document.createElement('div');a.className='starter209-actions';const ed=document.createElement('button');ed.textContent='✏️ Modifier';ed.onclick=()=>editor(s);const hi=document.createElement('button');hi.textContent=s.hidden?'👁️ Réafficher':'🙈 Masquer';hi.onclick=()=>{s.hidden=!s.hidden;save(x);renderAdminStarters209(body)};const del=document.createElement('button');del.textContent='🗑️ Supprimer';del.onclick=()=>{if(!confirm('Supprimer ce début de phrase permanent ?'))return;s.deleted=true;save(x);renderAdminStarters209(body)};a.append(ed,hi,del);c.append(ico,inf,a);sec.appendChild(c)});
+    const inh=document.createElement('div');inh.style.cssText='margin-top:18px;border-top:1px solid #dfe5ef;padding-top:14px';inh.innerHTML='<h3>📁 Reprise dans les sous-catégories</h3><p style="color:#667085">Coché = la sous-catégorie reprend aussi les débuts de phrases de sa catégorie.</p>';
+    cats().forEach(cat=>{const ss=subsFor(cat);if(!ss.length)return;const h=document.createElement('h4');h.textContent=adminCatIcon(cat)+' '+adminCatName(cat);h.style.marginBottom='5px';inh.appendChild(h);ss.forEach(sc=>{const l=document.createElement('label');l.className='starter209-check';const cb=document.createElement('input');cb.type='checkbox';cb.checked=x.inherit?.[sc.id]!==false;cb.onchange=()=>{x.inherit=x.inherit||{};x.inherit[sc.id]=cb.checked;save(x)};const t=document.createElement('span');t.innerHTML='<b>'+adminSubcatPath(sc)+'</b><br><small>'+(cb.checked?'Reprend les phrases de la catégorie':'Utilise uniquement ses propres phrases')+'</small>';cb.onchange=()=>{x.inherit=x.inherit||{};x.inherit[sc.id]=cb.checked;t.querySelector('small').textContent=cb.checked?'Reprend les phrases de la catégorie':'Utilise uniquement ses propres phrases';save(x)};l.append(cb,t);inh.appendChild(l)})});sec.appendChild(inh);body.appendChild(sec);
+  };
+
+  window.openParentStarters209=function(){
+    const x=read(),p=pref(x);const ov=document.createElement('div');ov.className='editor-overlay';const panel=document.createElement('div');panel.className='editor';panel.style.maxWidth='720px';panel.style.maxHeight='88vh';panel.style.overflow='auto';panel.innerHTML='<h2>💬 Débuts de phrases</h2><p style="color:#667085">Choisis ce qui sera visible pour cet utilisateur. Une phrase peut être masquée dans une catégorie sans être masquée dans une sous-catégorie.</p>';
+    const band=document.createElement('label');band.className='starter209-check';const bc=document.createElement('input');bc.type='checkbox';bc.checked=!p.bandHidden;const bt=document.createElement('span');bt.innerHTML='<b>Afficher la bande « Débuts de phrase »</b><br><small>L’utilisateur pourra aussi la masquer ou la réafficher lui-même.</small>';bc.onchange=()=>{p.bandHidden=!bc.checked;save(x)};band.append(bc,bt);panel.appendChild(band);
+    const catSel=document.createElement('select');catSel.style.cssText='width:100%;padding:10px;margin:12px 0';cats().forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=adminCatIcon(c)+' '+adminCatName(c);catSel.appendChild(o)});panel.appendChild(catSel);const host=document.createElement('div');panel.appendChild(host);
+    function checkbox(s,location){const l=document.createElement('label');l.className='starter209-check';const cb=document.createElement('input');cb.type='checkbox';cb.checked=!hiddenAt(p,location,s.id);const t=document.createElement('span');t.innerHTML='<b>'+(s.emoji||'💬')+' '+s.label+'</b>';cb.onchange=()=>{p.hidden=p.hidden||{};p.hidden[location]=p.hidden[location]||{};if(cb.checked)delete p.hidden[location][s.id];else p.hidden[location][s.id]=true;save(x)};l.append(cb,t);return l}
+    function draw(){host.innerHTML='';const cat=cats().find(c=>c.name===catSel.value);if(!cat)return;const catLoc=locKey(cat.name,'');const h=document.createElement('h3');h.textContent='Dans la catégorie';host.appendChild(h);effective(cat,null,x).forEach(s=>host.appendChild(checkbox(s,catLoc)));subsFor(cat).forEach(sc=>{const box=document.createElement('div');box.className='starter209-subbox';const hh=document.createElement('h4');hh.textContent=(sc.icon||'📁')+' '+adminSubcatPath(sc);box.appendChild(hh);const note=document.createElement('div');note.style.cssText='font-size:12px;color:#667085;margin-bottom:7px';note.textContent=x.inherit?.[sc.id]!==false?'Reprend aussi les débuts de phrases de la catégorie.':'Ne reprend pas les débuts de phrases de la catégorie.';box.appendChild(note);effective(cat,sc,x).forEach(s=>box.appendChild(checkbox(s,locKey(cat.name,sc.id))));host.appendChild(box)})}
+    catSel.onchange=draw;draw();const close=document.createElement('button');close.className='saveedit';close.textContent='✓ Terminer';close.style.marginTop='12px';close.onclick=()=>{ov.remove();renderGrid()};panel.appendChild(close);ov.appendChild(panel);document.body.appendChild(ov);
+  };
+
+  let pushTimer=null;
+  function schedulePush(){clearTimeout(pushTimer);pushTimer=setTimeout(pushCloud,1200)}
+  async function pushCloud(){try{if(typeof cloudClient==='undefined'||!cloudClient)return;const x=read();const r=await cloudClient.from('app_config').upsert({key:CLOUD_KEY,data:x,updated_at:x.updated_at},{onConflict:'key'});if(r.error)throw r.error}catch(e){console.warn('BETA209 push',e)}}
+  async function pullCloud(){try{if(typeof cloudClient==='undefined'||!cloudClient)return;const r=await cloudClient.from('app_config').select('data,updated_at').eq('key',CLOUD_KEY).maybeSingle();if(r.error||!r.data?.data)return;const local=read(),remote=r.data.data;const lt=Date.parse(local.updated_at||0)||0,rt=Date.parse(remote.updated_at||r.data.updated_at||0)||0;if(rt>lt){remote.inherit=remote.inherit||{};remote.profiles=remote.profiles||{};localStorage.setItem(KEY,JSON.stringify(remote));renderStarters209();if(document.getElementById('admin195'))try{renderAdmin195('starters')}catch(e){}}}catch(e){console.warn('BETA209 pull',e)}}
+  window.pushStarters209=pushCloud;window.pullStarters209=pullCloud;
+  setTimeout(async()=>{await pullCloud();renderStarters209()},700);
+  setInterval(()=>{if(!document.hidden)pullCloud()},60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(pullCloud,400)});
+  setTimeout(renderStarters209,0);
+})();
+</script>
 </body></html>

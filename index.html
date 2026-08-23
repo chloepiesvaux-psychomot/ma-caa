@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 222</title>
+<title>Ma CAA v2.0 bêta 223</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 222</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 223</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -9593,37 +9593,71 @@ body.parent-mode .manage-card{
     function draw(q=''){
       q=String(q).trim().toLowerCase();tree.innerHTML='';
       cats220().forEach(cat=>{
-        const allSubs=subs220(cat),direct=directItems220(cat);
-        const allPic=[...direct,...allSubs.flatMap(sc=>subItems220(cat,sc))];
-        const catMatch=(cat.name+' '+adminCatName(cat)).toLowerCase().includes(q)||allPic.some(x=>displayLabel(x).toLowerCase().includes(q))||allSubs.some(sc=>sc.name.toLowerCase().includes(q));
+        const allSubs=subs220(cat), allItems=orderedItems(cat);
+        const catMatch=(cat.name+' '+adminCatName(cat)).toLowerCase().includes(q)||
+          allItems.some(x=>displayLabel(x).toLowerCase().includes(q))||
+          allSubs.some(sc=>String(sc.name||'').toLowerCase().includes(q));
         if(q&&!catMatch)return;
+
         const cg=mk220('div','p220-cat');
         const ch=mk220('div','p220-cathead');
         if(mode==='visibility'){
-          const cb=document.createElement('input');cb.type='checkbox';cb.checked=!readHiddenCats().includes(cat.name);cb.onchange=()=>setCatVisible220(cat,cb.checked);ch.appendChild(cb)
+          const cb=document.createElement('input');cb.type='checkbox';
+          cb.checked=!readHiddenCats().includes(cat.name);
+          cb.onchange=()=>setCatVisible220(cat,cb.checked);
+          ch.appendChild(cb);
         }
-        ch.append(document.createTextNode((cat.icon||'📁')+' '+adminCatName(cat)));cg.appendChild(ch);
+        ch.append(document.createTextNode((cat.icon||'📁')+' '+adminCatName(cat)));
+        cg.appendChild(ch);
 
         const addPic=(x,sc,directFlag)=>{
-          if(q&&!displayLabel(x).toLowerCase().includes(q)&&!(sc?.name||'').toLowerCase().includes(q)&&!cat.name.toLowerCase().includes(q))return;
-          const r=mk220('div','p220-item'+(directFlag?' direct':''));r.appendChild(thumb220(x));
-          const name=mk220('span','',displayLabel(x));r.appendChild(name);
+          if(q && !displayLabel(x).toLowerCase().includes(q) &&
+             !String(sc?.name||'').toLowerCase().includes(q) &&
+             !String(cat.name||'').toLowerCase().includes(q)) return;
+          const r=mk220('div','p220-item'+(directFlag?' direct':''));
+          r.appendChild(thumb220(x));
+          r.appendChild(mk220('span','',displayLabel(x)));
           const cb=document.createElement('input');cb.type='checkbox';cb.style.order='-1';
-          if(mode==='visibility'){cb.checked=picVisible220(x,cat,sc);cb.onchange=()=>setPicVisible220(x,cat,sc,cb.checked)}
-          else {cb.checked=isFav(x);cb.onchange=()=>{const now=isFav(x);if(cb.checked!==now)toggleFav(x)}}
-          r.insertBefore(cb,r.firstChild);cg.appendChild(r)
+          if(mode==='visibility'){
+            cb.checked=picVisible220(x,cat,sc);
+            cb.onchange=()=>setPicVisible220(x,cat,sc,cb.checked);
+          }else{
+            cb.checked=isFav(x);
+            cb.onchange=()=>{const now=isFav(x);if(cb.checked!==now)toggleFav(x)};
+          }
+          r.insertBefore(cb,r.firstChild);cg.appendChild(r);
         };
-        direct.forEach(x=>addPic(x,null,true));
+
+        // 1. Sous-catégories en premier.
         allSubs.forEach(sc=>{
           const sh=mk220('div','p220-subhead');
-          if(mode==='visibility'){const cb=document.createElement('input');cb.type='checkbox';cb.checked=!readHiddenSubcats().includes(String(sc.id));cb.onchange=()=>setSubVisible220(sc,cb.checked);sh.appendChild(cb)}
-          sh.append(document.createTextNode((sc.icon||'📁')+' '+adminSubcatPath(sc)));cg.appendChild(sh);
-          subItems220(cat,sc).forEach(x=>addPic(x,sc,false))
+          sh.dataset.p223kind='sub';
+          sh.dataset.p223key=String(sc.id);
+          if(mode==='visibility'){
+            const cb=document.createElement('input');cb.type='checkbox';
+            cb.checked=!readHiddenSubcats().includes(String(sc.id));
+            cb.onchange=()=>setSubVisible220(sc,cb.checked);
+            sh.appendChild(cb);
+          }
+          sh.append(document.createTextNode((sc.icon||'📁')+' '+adminSubcatPath(sc)));
+          cg.appendChild(sh);
+          subItems220(cat,sc).forEach(x=>addPic(x,sc,false));
         });
-        tree.appendChild(cg)
-      })
+
+        // 2. Puis un sous-dossier explicite avec TOUS les pictogrammes de la catégorie,
+        // y compris ceux déjà présents dans une sous-catégorie.
+        const allHead=mk220('div','p220-subhead p223-allhead');
+        allHead.dataset.p223kind='all';
+        allHead.dataset.p223key='all:'+cat.name;
+        allHead.append(document.createTextNode('🖼️ Tous les pictogrammes de '+adminCatName(cat)));
+        cg.appendChild(allHead);
+        allItems.forEach(x=>addPic(x,null,true));
+
+        tree.appendChild(cg);
+      });
+      try{window.enhanceTrees223?.(tree)}catch(e){}
     }
-    search.oninput=()=>draw(search.value);draw()
+    search.oninput=()=>draw(search.value);draw();
   }
 
   function phraseListForLoc220(x,p,cat,sc){
@@ -9642,19 +9676,29 @@ body.parent-mode .manage-card{
         if(mode==='visibility'){
           p.hidden[loc]=p.hidden[loc]||{};
           cb.checked=!p.hidden[loc][s.id];
-          cb.onchange=()=>{if(cb.checked)delete p.hidden[loc][s.id];else p.hidden[loc][s.id]=true;saveStarter220(x)}
+          cb.onchange=()=>{if(cb.checked)delete p.hidden[loc][s.id];else p.hidden[loc][s.id]=true;saveStarter220(x)};
         }else{
           cb.checked=!!p.starterFavorites[s.id];
-          cb.onchange=()=>{if(cb.checked)p.starterFavorites[s.id]=true;else delete p.starterFavorites[s.id];saveStarter220(x)}
+          cb.onchange=()=>{if(cb.checked)p.starterFavorites[s.id]=true;else delete p.starterFavorites[s.id];saveStarter220(x)};
         }
-        r.append(cb,mk220('span','', (s.emoji||'💬')+' '+s.label));cg.appendChild(r)
+        r.append(cb,mk220('span','',(s.emoji||'💬')+' '+s.label));cg.appendChild(r);
       };
-      phraseListForLoc220(x,p,cat,null).forEach(o=>add(o,true));
+
+      // Sous-catégories en premier.
       subs220(cat).forEach(sc=>{
-        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));cg.appendChild(sh);
-        phraseListForLoc220(x,p,cat,sc).forEach(o=>add(o,false))
-      });tree.appendChild(cg)
-    })
+        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));
+        sh.dataset.p223kind='sub';sh.dataset.p223key=String(sc.id);
+        cg.appendChild(sh);
+        phraseListForLoc220(x,p,cat,sc).forEach(o=>add(o,false));
+      });
+
+      // Puis toutes les phrases de la catégorie.
+      const ah=mk220('div','p220-subhead p223-allhead','💬 Toutes les phrases de '+adminCatName(cat));
+      ah.dataset.p223kind='all';ah.dataset.p223key='phrases:'+cat.name;
+      cg.appendChild(ah);
+      phraseListForLoc220(x,p,cat,null).forEach(o=>add(o,true));
+      tree.appendChild(cg);
+    });
   }
 
   function savePicOrder220(cat,items){
@@ -9672,29 +9716,81 @@ body.parent-mode .manage-card{
   }
   function orderPictos220(box){
     const note=mk220('div','p220-order-note','ℹ️ Fais glisser un pictogramme pour le déplacer. Le nouvel ordre est enregistré automatiquement.');box.appendChild(note);
+    const tree=mk220('div','p220-tree p223-order-tree');box.appendChild(tree);
+
     cats220().forEach(cat=>{
-      const g=mk220('div','p220-order-group'),t=mk220('div','p220-order-title',(cat.icon||'📁')+' '+adminCatName(cat));g.appendChild(t);
+      const cg=mk220('div','p220-cat');
+      cg.appendChild(mk220('div','p220-cathead',(cat.icon||'📁')+' '+adminCatName(cat)));
+
+      // Sous-catégories : affichage repliable pour repérer la structure.
+      subs220(cat).forEach(sc=>{
+        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));
+        sh.dataset.p223kind='sub';sh.dataset.p223key='order-sub:'+sc.id;
+        cg.appendChild(sh);
+        subItems220(cat,sc).forEach(x=>{
+          const r=mk220('div','p220-item');
+          r.append(thumb220(x),mk220('span','',displayLabel(x)));
+          cg.appendChild(r);
+        });
+      });
+
+      // Liste globale réellement ordonnable.
+      const ah=mk220('div','p220-subhead p223-allhead','↕️ Tous les pictogrammes de '+adminCatName(cat)+' — ordre');
+      ah.dataset.p223kind='all';ah.dataset.p223key='order-all:'+cat.name;
+      cg.appendChild(ah);
+
+      const wrap=mk220('div','p223-orderwrap');
       const items=orderedItems(cat);
       items.forEach(x=>{
         const r=mk220('div','p220-order-row');r.dataset.iid=itemId2(x);
-        r.append(mk220('span','p220-drag','☰'),thumb220(x),mk220('span','',displayLabel(x)));g.appendChild(r)
+        r.append(mk220('span','p220-drag','☰'),thumb220(x),mk220('span','',displayLabel(x)));wrap.appendChild(r);
       });
-      makeDraggable220(g,()=>[...g.querySelectorAll('.p220-order-row')].map(r=>items.find(x=>String(itemId2(x))===String(r.dataset.iid))).filter(Boolean),arr=>savePicOrder220(cat,arr));
-      box.appendChild(g)
-    })
+      makeDraggable220(
+        wrap,
+        ()=>[...wrap.querySelectorAll('.p220-order-row')].map(r=>items.find(x=>String(itemId2(x))===String(r.dataset.iid))).filter(Boolean),
+        arr=>savePicOrder220(cat,arr)
+      );
+      cg.appendChild(wrap);
+      tree.appendChild(cg);
+    });
   }
   function orderPhrases220(box){
     const x=starterData220(),p=starterPref220(x);
     const note=mk220('div','p220-order-note','ℹ️ Fais glisser une phrase pour la déplacer dans la catégorie affichée.');box.appendChild(note);
+    const tree=mk220('div','p220-tree p223-order-tree');box.appendChild(tree);
+
     cats220().forEach(cat=>{
+      const cg=mk220('div','p220-cat');
+      cg.appendChild(mk220('div','p220-cathead','💬 '+adminCatName(cat)));
+
+      subs220(cat).forEach(sc=>{
+        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));
+        sh.dataset.p223kind='sub';sh.dataset.p223key='order-phrase-sub:'+sc.id;
+        cg.appendChild(sh);
+        phraseListForLoc220(x,p,cat,sc).forEach(o=>{
+          cg.appendChild(mk220('div','p220-item',(o.s.emoji||'💬')+' '+o.s.label));
+        });
+      });
+
       const rows=phraseListForLoc220(x,p,cat,null);
-      if(!rows.length)return;
-      const key='cat:'+cat.name,g=mk220('div','p220-order-group');g.appendChild(mk220('div','p220-order-title','💬 '+adminCatName(cat)));
-      const old=p.order220[key]||[], sorted=[...rows].sort((a,b)=>{const ia=old.indexOf(a.s.id),ib=old.indexOf(b.s.id);return (ia<0?9999:ia)-(ib<0?9999:ib)});
-      sorted.forEach(o=>{const r=mk220('div','p220-order-row');r.dataset.sid=o.s.id;r.append(mk220('span','p220-drag','☰'),mk220('span','', (o.s.emoji||'💬')+' '+o.s.label));g.appendChild(r)});
-      makeDraggable220(g,()=>[...g.querySelectorAll('.p220-order-row')].map(r=>r.dataset.sid),ids=>{p.order220[key]=ids;saveStarter220(x)});
-      box.appendChild(g)
-    })
+      const ah=mk220('div','p220-subhead p223-allhead','↕️ Toutes les phrases de '+adminCatName(cat)+' — ordre');
+      ah.dataset.p223kind='all';ah.dataset.p223key='order-phrases:'+cat.name;
+      cg.appendChild(ah);
+
+      const key='cat:'+cat.name,wrap=mk220('div','p223-orderwrap');
+      const old=p.order220[key]||[];
+      const sorted=[...rows].sort((a,b)=>{
+        const ia=old.indexOf(a.s.id),ib=old.indexOf(b.s.id);
+        return (ia<0?9999:ia)-(ib<0?9999:ib);
+      });
+      sorted.forEach(o=>{
+        const r=mk220('div','p220-order-row');r.dataset.sid=o.s.id;
+        r.append(mk220('span','p220-drag','☰'),mk220('span','',(o.s.emoji||'💬')+' '+o.s.label));wrap.appendChild(r);
+      });
+      makeDraggable220(wrap,()=>[...wrap.querySelectorAll('.p220-order-row')].map(r=>r.dataset.sid),ids=>{p.order220[key]=ids;saveStarter220(x)});
+      cg.appendChild(wrap);
+      tree.appendChild(cg);
+    });
   }
 
   function drawCustomize220(box){
@@ -9709,17 +9805,35 @@ body.parent-mode .manage-card{
     const add=mk220('button','p220-add','＋ Ajouter un pictogramme');add.onclick=openAddPicto;box.appendChild(add);
     const tree=mk220('div','p220-tree');box.appendChild(tree);
     cats220().forEach(cat=>{
-      const cg=mk220('div','p220-cat');cg.appendChild(mk220('div','p220-cathead',(cat.icon||'📁')+' '+adminCatName(cat)));
+      const cg=mk220('div','p220-cat');
+      cg.appendChild(mk220('div','p220-cathead',(cat.icon||'📁')+' '+adminCatName(cat)));
+
       const show=(x,direct)=>{
-        const r=mk220('div','p220-item'+(direct?' direct':''));r.append(thumb220(x),mk220('span','',displayLabel(x)));
-        const a=mk220('div','p220-actions'),e=mk220('button','','✏️ Modifier');e.onclick=()=>openEditor(x);a.appendChild(e);
-        if(isAdded(x)&&!x[5]){const d=mk220('button','del','🗑️ Supprimer');d.onclick=()=>deleteAdded(x);a.appendChild(d)}
-        r.appendChild(a);cg.appendChild(r)
+        const r=mk220('div','p220-item'+(direct?' direct':''));
+        r.append(thumb220(x),mk220('span','',displayLabel(x)));
+        const a=mk220('div','p220-actions'),e=mk220('button','','✏️ Modifier');
+        e.onclick=()=>openEditor(x);a.appendChild(e);
+        if(isAdded(x)&&!x[5]){
+          const d=mk220('button','del','🗑️ Supprimer');d.onclick=()=>deleteAdded(x);a.appendChild(d);
+        }
+        r.appendChild(a);cg.appendChild(r);
       };
-      directItems220(cat).forEach(x=>show(x,true));
-      subs220(cat).forEach(sc=>{cg.appendChild(mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc)));subItems220(cat,sc).forEach(x=>show(x,false))});
-      tree.appendChild(cg)
-    })
+
+      // Sous-catégories d'abord.
+      subs220(cat).forEach(sc=>{
+        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));
+        sh.dataset.p223kind='sub';sh.dataset.p223key=String(sc.id);
+        cg.appendChild(sh);
+        subItems220(cat,sc).forEach(x=>show(x,false));
+      });
+
+      // Puis tous les pictogrammes de la catégorie, même s'ils sont déjà dans un dossier.
+      const ah=mk220('div','p220-subhead p223-allhead','🖼️ Tous les pictogrammes de '+adminCatName(cat));
+      ah.dataset.p223kind='all';ah.dataset.p223key='manage-all:'+cat.name;
+      cg.appendChild(ah);
+      orderedItems(cat).forEach(x=>show(x,true));
+      tree.appendChild(cg);
+    });
   }
   function manageCategories220(box){
     const add=mk220('button','p220-add','＋ Ajouter une catégorie');add.onclick=openAddCategory;box.appendChild(add);
@@ -9741,13 +9855,33 @@ body.parent-mode .manage-card{
     })
   }
   function managePhrases220(box){
-    const b=mk220('button','p220-add','＋ Gérer / créer les phrases');b.onclick=()=>openParentStarters211?openParentStarters211():openParentStarters209();box.appendChild(b);
+    const b=mk220('button','p220-add','＋ Gérer / créer les phrases');
+    b.onclick=()=>openParentStarters211?openParentStarters211():openParentStarters209();
+    box.appendChild(b);
     const x=starterData220(),p=starterPref220(x),tree=mk220('div','p220-tree');box.appendChild(tree);
+
     cats220().forEach(cat=>{
-      const cg=mk220('div','p220-cat');cg.appendChild(mk220('div','p220-cathead','💬 '+adminCatName(cat)));
-      phraseListForLoc220(x,p,cat,null).forEach(o=>cg.appendChild(mk220('div','p220-item direct',(o.s.emoji||'💬')+' '+o.s.label)));
-      tree.appendChild(cg)
-    })
+      const cg=mk220('div','p220-cat');
+      cg.appendChild(mk220('div','p220-cathead','💬 '+adminCatName(cat)));
+
+      subs220(cat).forEach(sc=>{
+        const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));
+        sh.dataset.p223kind='sub';sh.dataset.p223key=String(sc.id);
+        cg.appendChild(sh);
+        phraseListForLoc220(x,p,cat,sc).forEach(o=>{
+          cg.appendChild(mk220('div','p220-item',(o.s.emoji||'💬')+' '+o.s.label));
+        });
+      });
+
+      const ah=mk220('div','p220-subhead p223-allhead','💬 Toutes les phrases de '+adminCatName(cat));
+      ah.dataset.p223kind='all';ah.dataset.p223key='manage-phrases:'+cat.name;
+      cg.appendChild(ah);
+      phraseListForLoc220(x,p,cat,null).forEach(o=>{
+        cg.appendChild(mk220('div','p220-item direct',(o.s.emoji||'💬')+' '+o.s.label));
+      });
+
+      tree.appendChild(cg);
+    });
   }
   function drawManage220(box){
     head220(box,'Créer / modifier / supprimer','Gère le contenu du profil.');
@@ -9823,105 +9957,120 @@ body.parent-mode .manage-card{
 
 
 <!-- BETA222 — arborescences repliables Mode Parents -->
-<style id="beta222-tree-style">
+<style id="beta223-tree-style">
 .p222-collapsebar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
 .p222-collapsebar button{border:1px solid #ccd6e5;background:#f8faff;border-radius:10px;padding:8px 11px;font-weight:850;cursor:pointer}
 .p222-toggle{border:0;background:transparent;font-size:18px;line-height:1;cursor:pointer;padding:2px 5px;color:#385274}
 .p222-catbody,.p222-subbody{display:none}
 .p222-open>.p222-catbody,.p222-open>.p222-subbody{display:block}
 .p222-cattop,.p222-subtop{display:flex;align-items:center;gap:8px;width:100%}
-.p222-cattop .p220-spacer,.p222-subtop .p220-spacer{margin-left:auto}
-.p222-direct-label{font-size:12px;color:#7a8599;font-weight:800;padding:7px 12px 3px 34px;background:#fcfdff}
+.p223-allhead{background:#eef4ff!important;color:#274b7a;border-top:1px solid #dce7f5}
+.p223-orderwrap{display:none}
+.p222-open>.p223-orderwrap{display:block}
+.p223-order-tree .p220-order-row{margin:0;border-radius:0}
 </style>
 
-<script id="beta222-collapsible-trees">
+<script id="beta223-collapsible-trees">
 (function(){
-  function addControls222(box, root){
-    const bar=document.createElement('div');bar.className='p222-collapsebar';
-    const open=document.createElement('button');open.textContent='▾ Tout ouvrir';
-    const close=document.createElement('button');close.textContent='▸ Tout fermer';
-    open.onclick=()=>root.querySelectorAll('.p222-node').forEach(n=>n.classList.add('p222-open'));
-    close.onclick=()=>root.querySelectorAll('.p222-node').forEach(n=>n.classList.remove('p222-open'));
-    bar.append(open,close);box.insertBefore(bar,root);
+  const STATE='ma-caa-parent-tree-open-v223';
+  function stateKey(){
+    let id='default';try{id=String(activeProfile())}catch(e){}
+    return STATE+'::'+id;
   }
-
-  function makeToggle222(node, head, body){
-    if(!node||!head||!body)return;
-    node.classList.add('p222-node');
+  function readState(){try{return JSON.parse(localStorage.getItem(stateKey())||'{}')}catch(e){return {}}}
+  function saveState(s){try{localStorage.setItem(stateKey(),JSON.stringify(s))}catch(e){}}
+  function keyFor223(node,head){
+    const specific=head?.dataset?.p223key||'';
+    const kind=head?.dataset?.p223kind||'';
+    let txt=(head?.textContent||'').replace(/[▸▾]/g,'').trim();
+    return (node.classList.contains('p220-cat')?'cat:':'sub:')+(specific?kind+':'+specific:txt);
+  }
+  function setOpen223(node,tg,key,on){
+    node.classList.toggle('p222-open',on);tg.textContent=on?'▾':'▸';
+    const s=readState();s[key]=!!on;saveState(s);
+  }
+  function makeToggle223(node,head,body){
+    if(!node||!head||!body||head.dataset.p223toggle==='1')return;
+    head.dataset.p223toggle='1';node.classList.add('p222-node');
     body.classList.add(node.classList.contains('p220-cat')?'p222-catbody':'p222-subbody');
     const top=document.createElement('div');
     top.className=node.classList.contains('p220-cat')?'p222-cattop':'p222-subtop';
-    const tg=document.createElement('button');tg.className='p222-toggle';tg.type='button';tg.textContent='▸';
-    tg.onclick=e=>{e.stopPropagation();node.classList.toggle('p222-open');tg.textContent=node.classList.contains('p222-open')?'▾':'▸'};
+    const tg=document.createElement('button');tg.className='p222-toggle';tg.type='button';
+    const key=keyFor223(node,head);
     while(head.firstChild)top.appendChild(head.firstChild);
     head.append(tg,top);
+    const isOpen=!!readState()[key];
+    node.classList.toggle('p222-open',isOpen);tg.textContent=isOpen?'▾':'▸';
+    tg.onclick=e=>{e.stopPropagation();setOpen223(node,tg,key,!node.classList.contains('p222-open'))};
   }
+  function enhanceTrees223(root){
+    if(!root||root.dataset.p223==='1')return;
+    root.dataset.p223='1';
 
-  function reorderCatBody222(catNode){
-    // In a category: subcategories first, then direct pictograms.
-    const body=catNode.querySelector(':scope > .p222-catbody'); if(!body)return;
-    const subs=[...body.children].filter(x=>x.classList.contains('p222-subwrap'));
-    const directs=[...body.children].filter(x=>x.classList.contains('p222-direct'));
-    const others=[...body.children].filter(x=>!subs.includes(x)&&!directs.includes(x));
-    [...subs,...directs,...others].forEach(x=>body.appendChild(x));
-  }
-
-  function enhanceTree222(root){
-    if(!root||root.dataset.p222==='1')return;
-    root.dataset.p222='1';
-
-    // Rebuild each category into collapsible structure.
     [...root.children].forEach(cat=>{
       if(!cat.classList.contains('p220-cat'))return;
-      const head=cat.querySelector(':scope > .p220-cathead'); if(!head)return;
+      const head=cat.querySelector(':scope > .p220-cathead');if(!head)return;
       const body=document.createElement('div');
+
       [...cat.children].filter(x=>x!==head).forEach(x=>body.appendChild(x));
 
-      // Group each subcategory with its following pictograms until next subcategory.
-      const children=[...body.children];
-      const rebuilt=document.createElement('div');
+      const children=[...body.children], rebuilt=document.createElement('div');
       let currentSub=null;
       children.forEach(ch=>{
         if(ch.classList.contains('p220-subhead')){
           const wrap=document.createElement('div');wrap.className='p222-subwrap p222-node';
-          const subHead=ch;
           const subBody=document.createElement('div');subBody.className='p222-subbody';
-          wrap.append(subHead,subBody);rebuilt.appendChild(wrap);
-          makeToggle222(wrap,subHead,subBody);
+          wrap.append(ch,subBody);rebuilt.appendChild(wrap);
+          makeToggle223(wrap,ch,subBody);
           currentSub=wrap;
-        }else if(ch.classList.contains('p220-item')){
-          if(currentSub){
-            currentSub.querySelector('.p222-subbody').appendChild(ch);
-          }else{
-            ch.classList.add('p222-direct');rebuilt.appendChild(ch);
-          }
-        }else{
-          rebuilt.appendChild(ch);
-        }
+        }else if(ch.classList.contains('p223-orderwrap')){
+          if(currentSub)currentSub.querySelector('.p222-subbody').appendChild(ch);
+          else rebuilt.appendChild(ch);
+        }else if(ch.classList.contains('p220-item')||ch.classList.contains('p220-order-row')){
+          if(currentSub)currentSub.querySelector('.p222-subbody').appendChild(ch);
+          else rebuilt.appendChild(ch);
+        }else rebuilt.appendChild(ch);
       });
-
       while(rebuilt.firstChild)body.appendChild(rebuilt.firstChild);
-      cat.appendChild(body);
-      makeToggle222(cat,head,body);
-      reorderCatBody222(cat);
+      cat.appendChild(body);makeToggle223(cat,head,body);
     });
-  }
 
-  const oldDraw220=window.renderPersonalize;
-  // Hook after each parent render using MutationObserver so existing logic stays untouched.
+    const parent=root.parentElement;
+    if(parent && (!root.previousElementSibling || !root.previousElementSibling.classList.contains('p222-collapsebar'))){
+      const bar=document.createElement('div');bar.className='p222-collapsebar';
+      const open=document.createElement('button');open.textContent='▾ Tout ouvrir';
+      const close=document.createElement('button');close.textContent='▸ Tout fermer';
+      open.onclick=()=>{
+        const s=readState();
+        root.querySelectorAll('.p222-node').forEach(n=>{
+          const h=n.querySelector(':scope > .p220-cathead, :scope > .p220-subhead');
+          const tg=h?.querySelector(':scope > .p222-toggle');
+          if(!h||!tg)return;const k=keyFor223(n,h);n.classList.add('p222-open');tg.textContent='▾';s[k]=true;
+        });saveState(s);
+      };
+      close.onclick=()=>{
+        const s=readState();
+        root.querySelectorAll('.p222-node').forEach(n=>{
+          const h=n.querySelector(':scope > .p220-cathead, :scope > .p220-subhead');
+          const tg=h?.querySelector(':scope > .p222-toggle');
+          if(!h||!tg)return;const k=keyFor223(n,h);n.classList.remove('p222-open');tg.textContent='▸';s[k]=false;
+        });saveState(s);
+      };
+      bar.append(open,close);parent.insertBefore(bar,root);
+    }
+  }
+  window.enhanceTrees223=enhanceTrees223;
+
   const mo=new MutationObserver(()=>{
     const grid=document.getElementById('grid');
     if(!grid||!grid.classList.contains('parent220'))return;
-    const trees=[...grid.querySelectorAll('.p220-tree')];
-    trees.forEach(tree=>{
-      enhanceTree222(tree);
-      if(!tree.previousElementSibling || !tree.previousElementSibling.classList.contains('p222-collapsebar')){
-        addControls222(tree.parentElement,tree);
-      }
-    });
+    grid.querySelectorAll('.p220-tree').forEach(enhanceTrees223);
   });
-  document.addEventListener('DOMContentLoaded',()=>{const g=document.getElementById('grid');if(g)mo.observe(g,{childList:true,subtree:true})});
-  setTimeout(()=>{const g=document.getElementById('grid');if(g)mo.observe(g,{childList:true,subtree:true})},0);
+  function watch(){
+    const g=document.getElementById('grid');
+    if(g){mo.observe(g,{childList:true,subtree:true});g.querySelectorAll('.p220-tree').forEach(enhanceTrees223)}
+  }
+  document.addEventListener('DOMContentLoaded',watch);setTimeout(watch,0);
 })();
 </script>
 

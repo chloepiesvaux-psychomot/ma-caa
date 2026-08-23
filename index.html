@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 221</title>
+<title>Ma CAA v2.0 bêta 222</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 221</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 222</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -9818,6 +9818,110 @@ body.parent-mode .manage-card{
     };
     window.renderGrid=renderGrid;
   }catch(e){}
+})();
+</script>
+
+
+<!-- BETA222 — arborescences repliables Mode Parents -->
+<style id="beta222-tree-style">
+.p222-collapsebar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+.p222-collapsebar button{border:1px solid #ccd6e5;background:#f8faff;border-radius:10px;padding:8px 11px;font-weight:850;cursor:pointer}
+.p222-toggle{border:0;background:transparent;font-size:18px;line-height:1;cursor:pointer;padding:2px 5px;color:#385274}
+.p222-catbody,.p222-subbody{display:none}
+.p222-open>.p222-catbody,.p222-open>.p222-subbody{display:block}
+.p222-cattop,.p222-subtop{display:flex;align-items:center;gap:8px;width:100%}
+.p222-cattop .p220-spacer,.p222-subtop .p220-spacer{margin-left:auto}
+.p222-direct-label{font-size:12px;color:#7a8599;font-weight:800;padding:7px 12px 3px 34px;background:#fcfdff}
+</style>
+
+<script id="beta222-collapsible-trees">
+(function(){
+  function addControls222(box, root){
+    const bar=document.createElement('div');bar.className='p222-collapsebar';
+    const open=document.createElement('button');open.textContent='▾ Tout ouvrir';
+    const close=document.createElement('button');close.textContent='▸ Tout fermer';
+    open.onclick=()=>root.querySelectorAll('.p222-node').forEach(n=>n.classList.add('p222-open'));
+    close.onclick=()=>root.querySelectorAll('.p222-node').forEach(n=>n.classList.remove('p222-open'));
+    bar.append(open,close);box.insertBefore(bar,root);
+  }
+
+  function makeToggle222(node, head, body){
+    if(!node||!head||!body)return;
+    node.classList.add('p222-node');
+    body.classList.add(node.classList.contains('p220-cat')?'p222-catbody':'p222-subbody');
+    const top=document.createElement('div');
+    top.className=node.classList.contains('p220-cat')?'p222-cattop':'p222-subtop';
+    const tg=document.createElement('button');tg.className='p222-toggle';tg.type='button';tg.textContent='▸';
+    tg.onclick=e=>{e.stopPropagation();node.classList.toggle('p222-open');tg.textContent=node.classList.contains('p222-open')?'▾':'▸'};
+    while(head.firstChild)top.appendChild(head.firstChild);
+    head.append(tg,top);
+  }
+
+  function reorderCatBody222(catNode){
+    // In a category: subcategories first, then direct pictograms.
+    const body=catNode.querySelector(':scope > .p222-catbody'); if(!body)return;
+    const subs=[...body.children].filter(x=>x.classList.contains('p222-subwrap'));
+    const directs=[...body.children].filter(x=>x.classList.contains('p222-direct'));
+    const others=[...body.children].filter(x=>!subs.includes(x)&&!directs.includes(x));
+    [...subs,...directs,...others].forEach(x=>body.appendChild(x));
+  }
+
+  function enhanceTree222(root){
+    if(!root||root.dataset.p222==='1')return;
+    root.dataset.p222='1';
+
+    // Rebuild each category into collapsible structure.
+    [...root.children].forEach(cat=>{
+      if(!cat.classList.contains('p220-cat'))return;
+      const head=cat.querySelector(':scope > .p220-cathead'); if(!head)return;
+      const body=document.createElement('div');
+      [...cat.children].filter(x=>x!==head).forEach(x=>body.appendChild(x));
+
+      // Group each subcategory with its following pictograms until next subcategory.
+      const children=[...body.children];
+      const rebuilt=document.createElement('div');
+      let currentSub=null;
+      children.forEach(ch=>{
+        if(ch.classList.contains('p220-subhead')){
+          const wrap=document.createElement('div');wrap.className='p222-subwrap p222-node';
+          const subHead=ch;
+          const subBody=document.createElement('div');subBody.className='p222-subbody';
+          wrap.append(subHead,subBody);rebuilt.appendChild(wrap);
+          makeToggle222(wrap,subHead,subBody);
+          currentSub=wrap;
+        }else if(ch.classList.contains('p220-item')){
+          if(currentSub){
+            currentSub.querySelector('.p222-subbody').appendChild(ch);
+          }else{
+            ch.classList.add('p222-direct');rebuilt.appendChild(ch);
+          }
+        }else{
+          rebuilt.appendChild(ch);
+        }
+      });
+
+      while(rebuilt.firstChild)body.appendChild(rebuilt.firstChild);
+      cat.appendChild(body);
+      makeToggle222(cat,head,body);
+      reorderCatBody222(cat);
+    });
+  }
+
+  const oldDraw220=window.renderPersonalize;
+  // Hook after each parent render using MutationObserver so existing logic stays untouched.
+  const mo=new MutationObserver(()=>{
+    const grid=document.getElementById('grid');
+    if(!grid||!grid.classList.contains('parent220'))return;
+    const trees=[...grid.querySelectorAll('.p220-tree')];
+    trees.forEach(tree=>{
+      enhanceTree222(tree);
+      if(!tree.previousElementSibling || !tree.previousElementSibling.classList.contains('p222-collapsebar')){
+        addControls222(tree.parentElement,tree);
+      }
+    });
+  });
+  document.addEventListener('DOMContentLoaded',()=>{const g=document.getElementById('grid');if(g)mo.observe(g,{childList:true,subtree:true})});
+  setTimeout(()=>{const g=document.getElementById('grid');if(g)mo.observe(g,{childList:true,subtree:true})},0);
 })();
 </script>
 

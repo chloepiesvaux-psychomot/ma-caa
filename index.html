@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 216</title>
+<title>Ma CAA v2.0 bêta 217</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 216</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 217</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -9052,6 +9052,163 @@ body.parent-mode .manage-card{
     };
     try{renderParentCategoryLazy=window.renderParentCategoryLazy}catch(e){}
   }
+})();
+</script>
+
+
+
+<!-- BETA217 — identifiant canonique des pictogrammes pour visibilité par emplacement -->
+<script id="beta217-location-canonical">
+(function(){
+  const PKEY='ma-caa-hidden-location-v213';
+  const norm=s=>String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+
+  function samePic217(entry,x){
+    if(!entry||!x)return false;
+    try{if(entry.kind==='added'&&entry.item){
+      const xid=x.id||x[3]; if(xid&&String(entry.item.id)===String(xid))return true;
+    }}catch(e){}
+    try{if(entry.x===x)return true}catch(e){}
+    try{
+      const a=norm(entry.label),b=norm(displayLabel(x));
+      if(a&&b&&a===b){
+        const es=entry.x?norm(spokenText(entry.x)):norm(entry.item?.speech||entry.label);
+        const xs=norm(spokenText(x));
+        if(!es||!xs||es===xs)return true;
+      }
+    }catch(e){}
+    return false;
+  }
+
+  function entryFor217(x,cat){
+    const catsToTry=[];
+    if(cat)catsToTry.push(cat);
+    categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents').forEach(c=>{if(!catsToTry.includes(c))catsToTry.push(c)});
+    for(const c of catsToTry){
+      try{const e=(adminPermanentEntries(c)||[]).find(v=>samePic217(v,x));if(e)return {entry:e,cat:c}}catch(err){}
+    }
+    return null;
+  }
+
+  function canonical217(x,cat){
+    const f=entryFor217(x,cat);if(f?.entry?.id)return String(f.entry.id);
+    try{if(x?.id)return String(x.id)}catch(e){}
+    try{if(x?.[6])return String(x[6])}catch(e){}
+    try{if(x?.[3])return String(x[3])}catch(e){}
+    try{return String(itemId2(x)||'')}catch(e){return ''}
+  }
+  window.canonicalPictoIdV217=canonical217;
+
+  function locations217(x,currentCat){
+    const base=readAdminBase(),subs=(base.subcategories||[]).filter(sc=>!sc.deleted),out=[];
+    const cats=categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&!(base.deletedCats||[]).includes(c.name));
+    cats.forEach(cat=>{
+      let match=null;try{match=(adminPermanentEntries(cat)||[]).find(e=>samePic217(e,x))}catch(e){}
+      if(!match&&(!currentCat||cat.name!==currentCat.name))return;
+      const exactId=match?String(match.id):canonical217(x,currentCat||cat);
+      const scs=subs.filter(sc=>sc.category===cat.name&&(sc.itemIds||[]).map(String).includes(exactId));
+      if(match||scs.length)out.push({cat,id:exactId,subs:scs});
+    });
+    return out;
+  }
+
+  function readParent217(){try{const v=JSON.parse(localStorage.getItem(profiledKey(PKEY))||'{}');return {cats:v.cats||{},subs:v.subs||{}}}catch(e){return {cats:{},subs:{}}}}
+  function has217(map,key,id){return Array.isArray(map?.[key])&&map[key].map(String).includes(String(id))}
+  function set217(map,key,id,on){let a=Array.isArray(map[key])?map[key].map(String):[];a=a.filter(v=>v!==String(id));if(on)a.push(String(id));if(a.length)map[key]=[...new Set(a)];else delete map[key]}
+  function adminMaps217(){try{const b=readAdminBase(),v=b.locationHiddenV213||{};return {base:b,cats:v.cats||{},subs:v.subs||{}}}catch(e){return {base:readAdminBase(),cats:{},subs:{}}}}
+
+  function hasAnyLocation217(x,cat){
+    const locs=locations217(x,cat),p=readParent217(),a=adminMaps217();
+    for(const loc of locs){
+      if(has217(p.cats,loc.cat.name,loc.id)||has217(a.cats,loc.cat.name,loc.id))return true;
+      for(const sc of loc.subs)if(has217(p.subs,sc.id,loc.id)||has217(a.subs,sc.id,loc.id))return true;
+    }
+    return false;
+  }
+  function hidden217(x,cat,subId){
+    const loc=locations217(x,cat).find(v=>v.cat.name===cat.name);
+    const id=loc?.id||canonical217(x,cat); if(!id)return false;
+    const p=readParent217(),a=adminMaps217();
+    return subId ? (has217(p.subs,subId,id)||has217(a.subs,subId,id))
+                 : (has217(p.cats,cat.name,id)||has217(a.cats,cat.name,id));
+  }
+  window.hiddenHereV217=hidden217;
+
+  function neutralizeLegacyParent217(x,cat){
+    try{
+      const candidates=new Set([canonical217(x,cat),itemId2(x),x?.[3],x?.[6]].filter(Boolean).map(String));
+      const old=readList(HIDDEN_KEY).filter(v=>!candidates.has(String(v)));
+      localStorage.setItem(profiledKey(HIDDEN_KEY),JSON.stringify(old));
+    }catch(e){}
+  }
+  function neutralizeLegacyAdmin217(x,cat,base){
+    const candidates=new Set([canonical217(x,cat),x?.id,x?.[3],x?.[6]].filter(Boolean).map(String));
+    try{const f=entryFor217(x,cat);if(f?.entry?.id)candidates.add(String(f.entry.id))}catch(e){}
+    base.hiddenItems=(base.hiddenItems||[]).filter(v=>!candidates.has(String(v)));
+    (base.addedItems||[]).forEach(it=>{if(candidates.has(String(it.id)))it.hidden=false});
+  }
+
+  function open217(x,currentCat,mode){
+    const locs=locations217(x,currentCat);
+    const ov=document.createElement('div');ov.className='editor-overlay';ov.style.zIndex='1400800';
+    const panel=document.createElement('div');panel.className='editor';panel.style.maxWidth='690px';
+    const h=document.createElement('h2');h.textContent=(mode==='admin'?'👁️ Visibilité globale — ':'👁️ Visibilité pour ce profil — ')+displayLabel(x);panel.appendChild(h);
+    const note=document.createElement('p');note.innerHTML='<b>Coche les emplacements où ce pictogramme doit être masqué.</b><br>Catégories et sous-catégories sont totalement indépendantes.';panel.appendChild(note);
+    const act=document.createElement('div');act.className='loc215-actions';
+    const bh=document.createElement('button');bh.textContent='🙈 Tout masquer';const bs=document.createElement('button');bs.textContent='👁️ Tout afficher';act.append(bh,bs);panel.appendChild(act);
+    const tree=document.createElement('div');tree.className='loc215-tree';panel.appendChild(tree);
+    const refs=[];
+    const pmap=mode==='parent'?readParent217():null, amap=mode==='admin'?adminMaps217():null;
+    if(!locs.length)tree.innerHTML='<div style="padding:14px;color:#667085">Aucun emplacement trouvé pour ce pictogramme.</div>';
+    const allSubs=(readAdminBase().subcategories||[]).filter(sc=>!sc.deleted);
+    function depth(sc){let d=0,p=sc.parentId,g=0;while(p&&g++<12){const q=allSubs.find(v=>String(v.id)===String(p));if(!q)break;d++;p=q.parentId}return d}
+    locs.forEach(loc=>{
+      const group=document.createElement('div');group.className='loc215-cat';
+      const head=document.createElement('label');head.className='loc215-cathead';const cb=document.createElement('input');cb.type='checkbox';
+      cb.checked=mode==='parent'?has217(pmap.cats,loc.cat.name,loc.id):has217(amap.cats,loc.cat.name,loc.id);
+      const tx=document.createElement('span');tx.textContent=(loc.cat.icon||'📁')+' '+adminCatName(loc.cat);head.append(cb,tx);group.appendChild(head);refs.push({cb,type:'cat',key:loc.cat.name,id:loc.id});
+      if(loc.subs.length){const sw=document.createElement('div');sw.className='loc215-sub';
+        loc.subs.forEach(sc=>{const row=document.createElement('label');row.className='loc215-row';row.style.paddingLeft=(11+Math.min(depth(sc),5)*22)+'px';const s=document.createElement('input');s.type='checkbox';s.checked=mode==='parent'?has217(pmap.subs,sc.id,loc.id):has217(amap.subs,sc.id,loc.id);const st=document.createElement('span');let path='';try{path=adminSubcatPath(sc)}catch(e){path=sc.name}st.textContent='↳ '+(sc.icon||'📁')+' '+path;row.append(s,st);sw.appendChild(row);refs.push({cb:s,type:'sub',key:sc.id,id:loc.id})});group.appendChild(sw)}
+      tree.appendChild(group);
+    });
+    bh.onclick=()=>refs.forEach(r=>r.cb.checked=true);bs.onclick=()=>refs.forEach(r=>r.cb.checked=false);
+    const row=document.createElement('div');row.className='editor-row';const save=document.createElement('button');save.className='saveedit';save.textContent='✓ Enregistrer';const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';
+    save.onclick=()=>{
+      if(mode==='parent'){
+        const v=readParent217();refs.forEach(r=>set217(r.type==='cat'?v.cats:v.subs,r.key,r.id,r.cb.checked));localStorage.setItem(profiledKey(PKEY),JSON.stringify(v));neutralizeLegacyParent217(x,currentCat);localStorage.setItem('ma-caa-last-save',String(Date.now()));try{scheduleProfileAutoPush()}catch(e){}
+      }else{
+        const v=adminMaps217();refs.forEach(r=>set217(r.type==='cat'?v.cats:v.subs,r.key,r.id,r.cb.checked));v.base.locationHiddenV213={cats:v.cats,subs:v.subs};neutralizeLegacyAdmin217(x,currentCat,v.base);writeAdminBase(v.base);
+      }
+      ov.remove();try{renderGrid()}catch(e){};try{if(mode==='admin')adminRefresh()}catch(e){};
+    };
+    cancel.onclick=()=>ov.remove();row.append(save,cancel);panel.appendChild(row);ov.appendChild(panel);document.body.appendChild(ov);
+  }
+  window.openLocationTreeV215=open217;
+  window.openAdminLocationVisibilityV213=(x,cat)=>open217(x,cat,'admin');
+
+  // Dernière couche de rendu : si le nouveau système a été utilisé pour un picto,
+  // ignorer l'ancien masque global et ne regarder que l'emplacement courant.
+  window.visibleItems=function(cat){
+    return orderedItems(cat).filter(x=>{
+      const configured=hasAnyLocation217(x,cat);
+      if(!configured&&isHidden(x))return false;
+      const sid=(window.activeSubcategoryByCategory&&activeSubcategoryByCategory[cat.name]&&activeSubcategoryByCategory[cat.name]!=='all')?activeSubcategoryByCategory[cat.name]:'';
+      if(!sid&&hidden217(x,cat,''))return false;
+      return true;
+    });
+  };
+  try{visibleItems=window.visibleItems}catch(e){}
+
+  // On enveloppe le dernier filtre de sous-catégorie : il doit appliquer uniquement
+  // la case de la sous-catégorie ouverte, jamais celle de la catégorie.
+  const previousSub217=window.renderSubcategoryFilters;
+  window.renderSubcategoryFilters=function(box,cat,items){
+    let out=previousSub217?previousSub217(box,cat,items):items;
+    const sid=(window.activeSubcategoryByCategory&&activeSubcategoryByCategory[cat.name]&&activeSubcategoryByCategory[cat.name]!=='all')?activeSubcategoryByCategory[cat.name]:'';
+    if(sid)out=out.filter(x=>!hidden217(x,cat,sid));
+    return out;
+  };
+  try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
 })();
 </script>
 

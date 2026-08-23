@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 201</title>
+<title>Ma CAA v2.0 bêta 202</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -8843,4 +8843,168 @@ body.parent-mode .manage-card{
 </script>
 
 <!-- BETA201 — suppression catégories synchronisable par tombstone. -->
+
+
+<!-- BETA202 — suppression profils synchronisable par tombstones. -->
+<script id="beta202-profile-delete-sync">
+(function(){
+  if(window.__beta202ProfileDeleteSyncInstalled)return;
+  window.__beta202ProfileDeleteSyncInstalled=true;
+
+  const TOMBSTONE_KEY='ma-caa-profile-tombstones-v202';
+  const norm=v=>String(v||'').trim().toLocaleLowerCase('fr');
+
+  function readTombs(){
+    try{const x=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||'[]');return Array.isArray(x)?x:[]}
+    catch(e){return []}
+  }
+  function dedupeTombs(list){
+    const m=new Map();
+    (list||[]).forEach(t=>{
+      if(!t)return;
+      const k=String(t.id||'')+'|'+norm(t.name);
+      if(!k||k==='|')return;
+      const old=m.get(k);
+      if(!old || String(t.deleted_at||'')>String(old.deleted_at||''))m.set(k,t);
+    });
+    return [...m.values()];
+  }
+  function saveTombs(list){
+    const v=dedupeTombs(list);
+    localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(v));
+    return v;
+  }
+  function isDeleted(p,tombs=readTombs()){
+    if(!p)return false;
+    const id=String(p.id||''), name=norm(p.name);
+    return tombs.some(t=>(t.id && String(t.id)===id) || (t.name && norm(t.name)===name));
+  }
+  function markDeleted(p){
+    if(!p)return readTombs();
+    return saveTombs([...readTombs(),{id:String(p.id||''),name:String(p.name||''),deleted_at:new Date().toISOString()}]);
+  }
+  function clearDeletedForNewProfile(p){
+    if(!p)return;
+    const id=String(p.id||''), name=norm(p.name);
+    saveTombs(readTombs().filter(t=>!(String(t.id||'')===id || norm(t.name)===name)));
+  }
+  function mergeProfiles(a,b,tombs){
+    const out=[];
+    [...(a||[]),...(b||[])].forEach(p=>{
+      if(!p || isDeleted(p,tombs))return;
+      const idx=out.findIndex(x=>String(x.id||'')===String(p.id||'') || (norm(x.name) && norm(x.name)===norm(p.name)));
+      if(idx<0)out.push({...p}); else out[idx]={...out[idx],...p};
+    });
+    return out;
+  }
+
+  // PUSH : fusionne d'abord le répertoire cloud existant, puis applique les suppressions.
+  // Ainsi, un appareil incomplet ne peut ni effacer ni ressusciter des profils par accident.
+  window.pushProfilesDirectory=async function(){
+    if(!cloudClient)return false;
+    const u=await cloudUser();if(!u)return false;
+    try{
+      let remoteData={};
+      try{
+        const q=await cloudClient.from('app_config').select('data').eq('key','profiles_directory').maybeSingle();
+        if(!q.error && q.data?.data)remoteData=q.data.data;
+      }catch(e){}
+      const tombs=saveTombs([...(remoteData.deleted_profiles||[]),...readTombs()]);
+      const profiles=mergeProfiles(remoteData.profiles||[],readProfiles(),tombs).map(publicProfileDescriptor);
+      const data={profiles,deleted_profiles:tombs,updated_at:new Date().toISOString()};
+      const r=await cloudClient.from('app_config').upsert({key:'profiles_directory',data,updated_at:new Date().toISOString()},{onConflict:'key'});
+      if(r.error)throw r.error;
+      localStorage.setItem(PROFILES_DIRECTORY_KEY,new Date().toISOString());
+      return true;
+    }catch(e){console.error('Profiles directory push v202',e);return false}
+  };
+
+  // PULL : les tombstones cloud gagnent toujours sur les anciens profils locaux/cloud.
+  window.pullProfilesDirectory=async function(){
+    if(!cloudClient)return false;
+    try{
+      const r=await cloudClient.from('app_config').select('data,updated_at').eq('key','profiles_directory').maybeSingle();
+      if(r.error)throw r.error;
+      if(!r.data?.data)return false;
+      const data=r.data.data||{};
+      const tombs=saveTombs([...(data.deleted_profiles||[]),...readTombs()]);
+      const local=(readProfiles()||[]).filter(p=>!isDeleted(p,tombs));
+      const remote=(data.profiles||[]).filter(p=>!isDeleted(p,tombs));
+      const merged=mergeProfiles(local,remote,tombs);
+      if(!merged.length)return false;
+      profilesDirectoryPulling=true;
+      localStorage.setItem(PROFILES_KEY,JSON.stringify(merged));
+      profilesDirectoryPulling=false;
+      localStorage.setItem(PROFILES_DIRECTORY_KEY,new Date().toISOString());
+      const active=localStorage.getItem(ACTIVE_PROFILE_KEY);
+      if(!active || !merged.some(p=>p.id===active))localStorage.setItem(ACTIVE_PROFILE_KEY,merged[0].id);
+      try{syncCustomCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{renderProfileBar()}catch(e){}
+      try{if(document.getElementById('user-home-v38'))openUserHome()}catch(e){}
+      return true;
+    }catch(e){profilesDirectoryPulling=false;console.error('Profiles directory pull v202',e);return false}
+  };
+
+  // L'ancienne table "profiles" peut contenir des profils de tests historiques.
+  // On la consulte encore si nécessaire, mais jamais pour ressusciter un profil supprimé.
+  window.recoverProfilesFromProfilesTable=async function(){
+    if(!cloudClient)return {ok:false,count:0,message:'Supabase indisponible'};
+    const u=await cloudUser();
+    if(!u)return {ok:false,count:0,message:'Connexion cloud Administrateur requise'};
+    try{
+      const r=await cloudClient.from('profiles').select('id,name,updated_at').eq('user_id',u.id);
+      if(r.error)throw r.error;
+      const rows=r.data||[], tombs=readTombs(), local=readProfiles().filter(p=>!isDeleted(p,tombs));
+      let added=0;
+      for(const row of rows){
+        if(!row.name)continue;
+        const candidate={id:'cloud-'+String(row.id),name:row.name};
+        if(isDeleted(candidate,tombs))continue;
+        if(!local.some(p=>p.id===candidate.id || norm(p.name)===norm(candidate.name))){local.push(candidate);added++}
+      }
+      profilesDirectoryPulling=true;localStorage.setItem(PROFILES_KEY,JSON.stringify(local));profilesDirectoryPulling=false;
+      await pushProfilesDirectory();
+      try{render()}catch(e){};try{renderProfileBar()}catch(e){};try{if(document.getElementById('user-home-v38'))openUserHome()}catch(e){}
+      return {ok:true,count:added,message:rows.length+' profil(s) trouvé(s) dans le cloud'};
+    }catch(e){console.error('Recover profiles v202',e);return {ok:false,count:0,message:e?.message||String(e)}}
+  };
+
+  function deleteProfileV202(id,adminMode){
+    const p=readProfiles().filter(x=>!isDeleted(x));
+    if(p.length<=1){alert('Il faut conserver au moins un utilisateur.');return}
+    const target=p.find(x=>x.id===id);if(!target)return;
+    if(!confirm('Supprimer '+(adminMode?'l’utilisateur':'le profil')+' « '+target.name+' » et ses personnalisations ?'))return;
+    markDeleted(target);
+    PROFILE_DATA_KEYS.forEach(k=>localStorage.removeItem(k+'::'+id));
+    const next=p.filter(x=>x.id!==id);
+    profilesDirectoryPulling=true;localStorage.setItem(PROFILES_KEY,JSON.stringify(next));profilesDirectoryPulling=false;
+    localStorage.setItem('ma-caa-last-save',String(Date.now()));
+    if(activeProfile()===id)localStorage.setItem(ACTIVE_PROFILE_KEY,next[0].id);
+    try{scheduleProfilesDirectoryPush()}catch(e){}
+    try{syncCustomCategories()}catch(e){};try{render()}catch(e){};try{renderProfileBar()}catch(e){};
+    try{if(adminMode&&typeof adminRefreshStayV112==='function')adminRefreshStayV112();else if(typeof renderGrid==='function')renderGrid()}catch(e){}
+    // Publication immédiate en plus du timer pour propager la suppression au plus vite.
+    setTimeout(()=>{try{pushProfilesDirectory()}catch(e){}},100);
+  }
+  window.adminDeleteUser=id=>deleteProfileV202(id,true);
+  window.deleteProfile=id=>deleteProfileV202(id,false);
+
+  // Si l'utilisateur recrée volontairement un profil portant un ancien nom supprimé,
+  // on retire son tombstone avant publication.
+  window.adminCreateUser=function(){
+    const name=prompt('Prénom ou nom du nouvel utilisateur :');if(!name||!name.trim())return;
+    const pin=prompt('Code PIN facultatif : 4 chiffres, ou laisse vide pour Sans PIN.','');if(pin===null)return;
+    if(pin!==''&&!/^\d{4}$/.test(pin)){alert('Le PIN doit contenir exactement 4 chiffres, ou être vide.');return}
+    const p=readProfiles().filter(x=>!isDeleted(x)), np={id:'u'+Date.now(),name:name.trim(),pin};
+    clearDeletedForNewProfile(np);p.push(np);writeProfiles(p);scheduleProfilesDirectoryPush();adminRefreshStayV112();
+  };
+  window.addProfile=function(){
+    const name=prompt('Prénom ou nom du nouvel utilisateur :');if(!name||!name.trim())return;
+    const p=readProfiles().filter(x=>!isDeleted(x)), np={id:'u'+Date.now(),name:name.trim()};
+    clearDeletedForNewProfile(np);p.push(np);writeProfiles(p);switchProfile(np.id);
+  };
+})();
+</script>
+
 </body></html>

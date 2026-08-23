@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 197</title>
+<title>Ma CAA v2.0 bêta 198</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
-.app{min-height:100vh;display:grid;grid-template-columns:230px 1fr}.side{background:linear-gradient(#09243f,#0d3155);padding:18px 14px;color:white}.brand{font-size:22px;font-weight:900;padding:10px 8px 18px}.nav{display:grid;gap:8px}
+.app{height:100vh;height:100dvh;min-height:0;display:grid;grid-template-columns:230px 1fr;overflow:hidden}.side{background:linear-gradient(#09243f,#0d3155);padding:18px 14px;color:white;height:100vh;height:100dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.brand{font-size:22px;font-weight:900;padding:10px 8px 18px}.nav{display:grid;gap:8px}
 .cat{border:0;border-radius:14px;color:white;background:#ffffff12;padding:14px 12px;text-align:left;font-weight:800}.cat.active{background:var(--yellow);color:#172033}
-main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;background:white;border-bottom:1px solid var(--line);padding:16px 20px;display:grid;grid-template-columns:1fr 190px;gap:14px}
+main{min-width:0;height:100vh;height:100dvh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;background:white;border-bottom:1px solid var(--line);padding:16px 20px;display:grid;grid-template-columns:1fr 190px;gap:14px}
 .phrase{min-height:110px;border:2px solid #d7dce5;border-radius:18px;padding:10px;display:flex;gap:8px;overflow-x:auto}.hint{margin:auto;color:#6b7280;text-align:center;font-weight:700}
 .token{min-width:88px;background:white;border:1px solid var(--line);border-radius:13px;padding:7px;display:grid;place-items:center}.token .emo{font-size:34px}.token b{font-size:13px;text-align:center}
 .actions{display:grid;gap:8px}.actions button{border:0;border-radius:13px;color:white;font-weight:900}.speak{background:var(--green)}.undo{background:var(--purple)}.clear{background:var(--red)}
@@ -33,7 +33,7 @@ main{min-width:0;padding-bottom:78px}.phrasebar{position:sticky;top:0;z-index:5;
 .customcat-row{grid-column:1/-1;background:#f8f9fc;border:1px solid #e2e6ef;border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .customcat-row button{border:0;border-radius:10px;padding:8px 10px;font-weight:800;background:#fff0f0;color:#b42318}
 .profilebar{display:flex;align-items:center;gap:8px;background:#eef4ff;border:1px solid #d6e2fa;border-radius:14px;padding:9px 12px;margin:8px 0;font-weight:800}.profilebar button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:white;font-weight:800}.profile-list{display:grid;gap:8px;margin:12px 0}.profile-row{display:flex;gap:8px;align-items:center;border:1px solid #e1e5ed;border-radius:12px;padding:10px}.profile-row b{flex:1}.profile-row button{border:0;border-radius:9px;padding:8px;font-weight:800}.pin-input{width:100%;box-sizing:border-box;border:2px solid #d9dee8;border-radius:14px;padding:14px;font-size:24px;text-align:center;letter-spacing:8px;font-weight:900}.pin-note{font-size:13px;color:#667085;margin-top:10px}.voice-select,.voice-range{width:100%;box-sizing:border-box}.voice-select{border:2px solid #d9dee8;border-radius:12px;padding:12px;font-size:16px;background:white}.voice-value{font-weight:900;color:#234b91}.syncbox{border:2px solid #dbe7ff;border-radius:16px;padding:14px;margin:12px 0;background:#f7faff}.syncbox input{width:100%;box-sizing:border-box;padding:11px;margin:5px 0;border:2px solid #d9dee8;border-radius:10px;font-size:15px}.syncstatus{font-size:13px;font-weight:800;margin:8px 0}.feedback{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99;background:#17345f;color:white;padding:10px 16px;border-radius:14px;font-weight:900;box-shadow:0 5px 18px #0003;opacity:0;pointer-events:none;transition:opacity .15s}.feedback.show{opacity:1}.bottom,.drawer{display:none}
-@media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#fff6;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
+@media(max-width:900px){.app{grid-template-columns:1fr;height:100vh;height:100dvh;overflow:hidden}.side{display:none}.phrasebar{grid-template-columns:1fr;padding:10px}.actions{display:none}.phrase{min-height:92px}.content{padding:14px}.head{display:block}.head h1{font-size:25px}.search{width:100%;margin-bottom:12px}.grid{grid-template-columns:repeat(3,1fr);gap:9px}.pic{min-height:132px}.pic .emo{font-size:45px}.pic b{font-size:16px}.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:fixed;left:0;right:0;bottom:0;z-index:10;background:white;border-top:1px solid var(--line);padding:7px 7px calc(7px + env(safe-area-inset-bottom))}.bottom button{border:0;border-radius:12px;padding:11px 4px;font-weight:900}.bottom .speak{color:white}.bottom .clear{color:white}.drawer.open{display:flex;position:fixed;inset:0;z-index:20;background:#fff6;align-items:end}.sheet{width:100%;max-height:82vh;overflow:auto;background:var(--navy);color:white;border-radius:22px 22px 0 0;padding:15px}.sheet .x{float:right;border:0;border-radius:9px;padding:6px 10px}.sheet h2{margin:7px 0 15px}}
 @media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
 
 /* v1.7 — finitions ergonomiques téléphone/tablette */
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 197</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 198</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3307,6 +3307,25 @@ function expandSubmenuEntries(parent){
  });
  return out
 }
+function globalSearchItemsV198(query){
+  const q=(query||"").trim().toLowerCase();
+  if(!q)return [];
+  const out=[],seen=new Set();
+  // Recherche dans toutes les catégories visibles de l’enfant, sans dépendre
+  // de la catégorie ni du sous-dossier actuellement ouverts.
+  normalCategories().forEach(cat=>{
+    visibleItems(cat).forEach(x=>{
+      const id=itemId2(x)||[displayLabel(x),spokenText(x)].join("|");
+      if(seen.has(id))return;
+      const hay=[displayLabel(x),spokenText(x),adminCategoryDisplay(cat).name||cat.name]
+        .filter(Boolean).join(" ").toLowerCase();
+      if(!hay.includes(q))return;
+      seen.add(id);out.push(x);
+    });
+  });
+  return out;
+}
+
 function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdultBadge();renderProfileBar();
   const __caaBeforeScroll=window.scrollY||0;
   const __caaCurrentCat=categories[current]?.name||"";
@@ -3324,10 +3343,23 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
     }
     renderPersonalize(box);return;
   }
-  let items=c.name==="Favoris"?favoriteItems():visibleItems(c);
-  if(c.name!=="Favoris")items=renderSubcategoryFilters(box,c,items);
-  items=items.filter(x=>displayLabel(x).toLowerCase().includes(q));
-  if(c.name==="Favoris" && items.length===0){
+  let items;
+  if(q){
+    items=globalSearchItemsV198(q);
+    el("title").textContent="Résultats de recherche";
+    if(items.length===0){
+      const msg=document.createElement("div");
+      msg.style.cssText="grid-column:1/-1;text-align:center;padding:30px 12px;color:#667085;font-weight:700";
+      msg.textContent="Aucun pictogramme ne correspond à cette recherche.";
+      box.appendChild(msg);return;
+    }
+  }else{
+    const cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};
+    el("title").textContent=cd.name;
+    items=c.name==="Favoris"?favoriteItems():visibleItems(c);
+    if(c.name!=="Favoris")items=renderSubcategoryFilters(box,c,items);
+  }
+  if(c.name==="Favoris" && !q && items.length===0){
     const msg=document.createElement("div");
     msg.style.cssText="grid-column:1/-1;text-align:center;padding:30px 12px;color:#667085;font-weight:700";
     msg.innerHTML="⭐ Aucun favori pour l’instant.<br><span style='font-weight:500'>Appuie sur l’étoile d’un pictogramme pour l’ajouter ici.</span>";
@@ -8610,4 +8642,11 @@ body > [role="dialog"]{
 })();
 </script>
 
+
+<style id="beta198-independent-scroll">
+/* BETA198 — navigation et pictogrammes défilent indépendamment. */
+.side::-webkit-scrollbar,main::-webkit-scrollbar{width:8px}
+.side::-webkit-scrollbar-thumb,main::-webkit-scrollbar-thumb{background:#ffffff30;border-radius:999px}
+main::-webkit-scrollbar-thumb{background:#98a2b355}
+</style>
 </body></html>

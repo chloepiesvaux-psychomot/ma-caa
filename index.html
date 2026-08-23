@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 211</title>
+<title>Ma CAA v2.0 bêta 212</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 211</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 212</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8489,6 +8489,9 @@ body.parent-mode .manage-card{
 #admin211-results{display:grid;gap:7px;margin-top:10px;max-height:360px;overflow:auto}
 .admin211-result{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid #e0e5ee;background:#f9fbff;border-radius:11px;padding:9px 11px;cursor:pointer}
 .admin211-result small{display:block;color:#667085;margin-top:2px}
+/* BETA212 — stabilisation de la bande de phrases */
+.starters{box-sizing:border-box;contain:layout paint;}
+.starters .starterrow{min-height:42px;scrollbar-gutter:stable;}
 </style>
 <script id="beta211-script">
 (function(){
@@ -8517,14 +8520,19 @@ body.parent-mode .manage-card{
     const location=loc(cat.name,sub?.id||'');
     return [...permanentEffective(cat,sub,x),...personalEffective(cat,sub,x,p)].filter((s,i,a)=>a.findIndex(q=>q.id===s.id)===i).filter(s=>!hidden(p,location,s.id));
   }
+  let starterRenderSig212='';
   function renderStarters211(){
     const host=document.querySelector('.starters');if(!host)return;const cat=catNow(),sub=subNow(cat),x=read(),p=pref(x);
-    if(!cat||cat.name==='Mode parents'){host.style.display='none';return}
-    const list=effective(cat,sub,x,p);host.style.display='block';host.innerHTML='';
-    if(p.bandHidden){host.className='starters starters209-compact';const b=document.createElement('button');b.type='button';b.textContent='💬 Afficher les débuts de phrases';b.onclick=()=>{p.bandHidden=false;save(x)};host.appendChild(b);return}
-    host.className='starters';const hd=document.createElement('div');hd.className='starters209-head';const st=document.createElement('strong');st.textContent=cat.name==='Favoris'?'Phrases favorites':'Débuts de phrase';const h=document.createElement('button');h.className='starters209-toggle';h.textContent='Masquer';h.onclick=()=>{p.bandHidden=true;save(x)};hd.append(st,h);host.appendChild(hd);
-    const row=document.createElement('div');row.className='starterrow';host.appendChild(row);if(!list.length){const e=document.createElement('span');e.style.cssText='color:#78699a;font-size:13px;padding:4px';e.textContent=cat.name==='Favoris'?'Aucune phrase favorite pour ce profil.':'Aucun début de phrase pour cette rubrique.';row.appendChild(e);return}
-    list.forEach(s=>{const b=document.createElement('button');b.className='starter';b.type='button';b.textContent=(s.emoji||'💬')+' '+s.label;b.onclick=()=>add([s.emoji||'💬',s.label,s.speech||s.label]);row.appendChild(b)})
+    if(!cat||cat.name==='Mode parents'){host.style.display='none';starterRenderSig212='hidden';return}
+    const list=effective(cat,sub,x,p);
+    const sig=JSON.stringify({pid:pid(),cat:cat.name,sub:sub?.id||'',hidden:!!p.bandHidden,items:list.map(s=>[s.id,s.emoji||'💬',s.label,s.speech||s.label])});
+    if(host.style.display!=='none'&&starterRenderSig212===sig)return;
+    const oldRow=host.querySelector('.starterrow');const oldScroll=oldRow?oldRow.scrollLeft:0;
+    starterRenderSig212=sig;host.style.display='block';host.innerHTML='';
+    if(p.bandHidden){host.className='starters starters209-compact';const b=document.createElement('button');b.type='button';b.textContent='💬 Afficher les débuts de phrases';b.onclick=()=>{p.bandHidden=false;starterRenderSig212='';save(x)};host.appendChild(b);return}
+    host.className='starters';const hd=document.createElement('div');hd.className='starters209-head';const st=document.createElement('strong');st.textContent=cat.name==='Favoris'?'Phrases favorites':'Débuts de phrase';const h=document.createElement('button');h.className='starters209-toggle';h.textContent='Masquer';h.onclick=()=>{p.bandHidden=true;starterRenderSig212='';save(x)};hd.append(st,h);host.appendChild(hd);
+    const row=document.createElement('div');row.className='starterrow';host.appendChild(row);if(!list.length){const e=document.createElement('span');e.style.cssText='color:#78699a;font-size:13px;padding:4px';e.textContent=cat.name==='Favoris'?'Aucune phrase favorite pour ce profil.':'Aucun début de phrase pour cette rubrique.';row.appendChild(e);row.scrollLeft=oldScroll;return}
+    list.forEach(s=>{const b=document.createElement('button');b.className='starter';b.type='button';b.textContent=(s.emoji||'💬')+' '+s.label;b.onclick=()=>add([s.emoji||'💬',s.label,s.speech||s.label]);row.appendChild(b)});row.scrollLeft=oldScroll;
   }
   window.renderStarters211=renderStarters211;window.renderStarters210=renderStarters211;window.renderStarters209=renderStarters211;
   try{const old=renderGrid;renderGrid=function(){const r=old.apply(this,arguments);setTimeout(renderStarters211,35);return r};window.renderGrid=renderGrid}catch(e){}
@@ -8552,4 +8560,5 @@ body.parent-mode .manage-card{
 })();
 </script>
 
+<!-- BETA212 — stabilisation visuelle de la bande de phrases favorites : pas de rerendu si contenu inchangé. -->
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 209</title>
+<title>Ma CAA v2.0 bêta 210</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 209</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 210</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8353,6 +8353,128 @@ body.parent-mode .manage-card{
   setInterval(()=>{if(!document.hidden)pullCloud()},60000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(pullCloud,400)});
   setTimeout(renderStarters209,0);
+})();
+</script>
+
+
+<style id="beta210-starters-style">
+.starter210-tree{border:1px solid #dfe5ef;border-radius:14px;padding:10px;margin:10px 0;background:#f8faff}
+.starter210-tree h4{margin:0 0 7px;color:#243b6b}.starter210-tree .sub{margin-left:28px}
+.starter210-emoji-grid{display:grid;grid-template-columns:repeat(8,minmax(42px,1fr));gap:7px;margin:7px 0 10px}
+.starter210-emoji-grid button{font-size:24px;border:1px solid #d8e0eb;background:#fff;border-radius:10px;padding:7px;cursor:pointer}
+.starter210-emoji-grid button.sel{outline:3px solid #8b63d9;background:#f2ecff}
+.starter210-target-summary{font-size:12px;color:#667085;margin-top:3px;line-height:1.35}
+@media(max-width:700px){.starter210-emoji-grid{grid-template-columns:repeat(6,minmax(38px,1fr))}}
+</style>
+<script id="beta210-starters-fixes">
+(function(){
+  const KEY='ma-caa-sentence-starters-v209';
+  const CLOUD_KEY='sentence_starters_v209';
+  const EMOJIS=['💬','👤','👉','🙅','🙏','➕','🛑','🙂','😊','😢','😡','😰','🤢','❤️','🏠','📍','🍽️','🥤','🚽','🛏️','🎒','🏫','👋','❓','✅','❌','➡️','🧠','🤝','🗣️'];
+  function cats210(){return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents')}
+  function subs210(cat){return (readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name)}
+  function migrateStarter(s){
+    if(Array.isArray(s.targets))return s;
+    if(s.subcatId)s.targets=['sub:'+s.subcatId];
+    else if(s.category==='*'||!s.category)s.targets=['*'];
+    else s.targets=['cat:'+s.category];
+    return s;
+  }
+  function read210(){
+    let x=null;try{x=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+    if(!x||!Array.isArray(x.starters))x={starters:[],inherit:{},profiles:{},updated_at:new Date(0).toISOString()};
+    x.inherit=x.inherit||{};x.profiles=x.profiles||{};x.starters.forEach(migrateStarter);return x;
+  }
+  let pushTimer210=null;
+  function save210(x,push=true){
+    x.updated_at=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(x));
+    if(push){clearTimeout(pushTimer210);pushTimer210=setTimeout(push210,900)}
+    try{renderStarters210()}catch(e){}
+  }
+  async function push210(){try{if(typeof cloudClient==='undefined'||!cloudClient)return;const x=read210();const r=await cloudClient.from('app_config').upsert({key:CLOUD_KEY,data:x,updated_at:x.updated_at},{onConflict:'key'});if(r.error)throw r.error}catch(e){console.warn('BETA210 push',e)}}
+  function profileId210(){try{return String(activeProfile())}catch(e){return 'default'}}
+  function pref210(x){const id=profileId210();x.profiles[id]=x.profiles[id]||{bandHidden:false,hidden:{}};x.profiles[id].hidden=x.profiles[id].hidden||{};return x.profiles[id]}
+  function loc210(cat,sub){return sub?'sub:'+sub:'cat:'+cat}
+  function catNow210(){return categories[current]||null}
+  function subNow210(cat){if(!cat)return null;const id=(typeof activeSubcategoryByCategory!=='undefined'&&activeSubcategoryByCategory)?(activeSubcategoryByCategory[cat.name]||'all'):'all';if(id==='all')return null;return (readAdminBase().subcategories||[]).find(sc=>String(sc.id)===String(id)&&!sc.deleted)||null}
+  function active210(x){return x.starters.filter(s=>s&&!s.deleted&&!s.hidden).map(migrateStarter)}
+  function hasTarget(s,t){return (s.targets||[]).includes(t)}
+  function effective210(cat,sub,x=read210()){
+    if(!cat||cat.name==='Mode parents')return [];
+    const all=active210(x);
+    if(cat.name==='Favoris')return all.filter(s=>hasTarget(s,'*'));
+    const catT='cat:'+cat.name;
+    if(!sub)return all.filter(s=>hasTarget(s,'*')||hasTarget(s,catT));
+    const ownT='sub:'+sub.id;
+    const own=all.filter(s=>hasTarget(s,ownT));
+    const inherited=x.inherit?.[sub.id]!==false?all.filter(s=>hasTarget(s,'*')||hasTarget(s,catT)):[];
+    return [...inherited,...own].filter((s,i,a)=>a.findIndex(q=>q.id===s.id)===i);
+  }
+  function hidden210(p,location,id){return !!p.hidden?.[location]?.[id]}
+  function renderStarters210(){
+    const host=document.querySelector('.starters');if(!host)return;
+    const cat=catNow210(),sub=subNow210(cat),x=read210(),p=pref210(x);
+    if(!cat||cat.name==='Mode parents'){host.style.display='none';return}
+    const location=loc210(cat.name,sub?.id||'');const list=effective210(cat,sub,x).filter(s=>!hidden210(p,location,s.id));
+    host.style.display='block';host.innerHTML='';
+    if(p.bandHidden){host.className='starters starters209-compact';const b=document.createElement('button');b.type='button';b.textContent='💬 Afficher les débuts de phrases';b.onclick=()=>{p.bandHidden=false;save210(x)};host.appendChild(b);return}
+    host.className='starters';const hd=document.createElement('div');hd.className='starters209-head';const strong=document.createElement('strong');strong.textContent='Débuts de phrase';const hide=document.createElement('button');hide.className='starters209-toggle';hide.type='button';hide.textContent='Masquer';hide.onclick=()=>{p.bandHidden=true;save210(x)};hd.append(strong,hide);host.appendChild(hd);
+    const row=document.createElement('div');row.className='starterrow';host.appendChild(row);
+    if(!list.length){const e=document.createElement('span');e.style.cssText='color:#78699a;font-size:13px;padding:4px';e.textContent='Aucun début de phrase pour cette rubrique.';row.appendChild(e);return}
+    list.forEach(s=>{const b=document.createElement('button');b.className='starter';b.type='button';b.textContent=(s.emoji||'💬')+' '+s.label;b.onclick=()=>add([s.emoji||'💬',s.label,s.speech||s.label]);row.appendChild(b)})
+  }
+  window.renderStarters209=renderStarters210;window.renderStarters210=renderStarters210;
+  try{const prev=renderGrid;renderGrid=function(){const r=prev.apply(this,arguments);setTimeout(renderStarters210,20);return r};window.renderGrid=renderGrid}catch(e){}
+
+  function targetLabel210(t){
+    if(t==='*')return 'Toutes les catégories';
+    if(t.startsWith('cat:')){const n=t.slice(4),c=cats210().find(v=>v.name===n);return c?adminCatName(c):n}
+    if(t.startsWith('sub:')){const id=t.slice(4),sc=(readAdminBase().subcategories||[]).find(v=>String(v.id)===String(id));return sc?(sc.category+' › '+adminSubcatPath(sc)):'Sous-catégorie'}
+    return t;
+  }
+  function targetsSummary210(s){const ts=s.targets||[];if(ts.includes('*'))return 'Toutes les catégories';if(!ts.length)return 'Aucun emplacement';return ts.map(targetLabel210).join(' · ')}
+  function emojiPicker210(panel,current,onPick){
+    const wrap=document.createElement('div');const lab=document.createElement('div');lab.textContent='Emoji';lab.style.cssText='font-weight:800;margin-top:10px';wrap.appendChild(lab);
+    const grid=document.createElement('div');grid.className='starter210-emoji-grid';let chosen=current||'💬';
+    function paint(){[...grid.children].forEach(b=>b.classList.toggle('sel',b.dataset.e===chosen))}
+    EMOJIS.forEach(e=>{const b=document.createElement('button');b.type='button';b.textContent=e;b.dataset.e=e;b.onclick=()=>{chosen=e;custom.value=e;paint();onPick(chosen)};grid.appendChild(b)});
+    const custom=document.createElement('input');custom.value=chosen;custom.placeholder='Ou saisir/coller un emoji';custom.style.cssText='width:100%;padding:10px;box-sizing:border-box';custom.oninput=()=>{chosen=custom.value.trim()||'💬';paint();onPick(chosen)};wrap.append(grid,custom);panel.appendChild(wrap);paint();onPick(chosen)
+  }
+  function targetsTree210(panel,selected){
+    const state=new Set(selected||[]);const global=document.createElement('label');global.className='starter209-check';const gc=document.createElement('input');gc.type='checkbox';gc.checked=state.has('*');const gt=document.createElement('span');gt.innerHTML='<b>🌐 Toutes les catégories</b><br><small>La phrase est proposée partout.</small>';global.append(gc,gt);panel.appendChild(global);
+    const trees=[];
+    function syncDisabled(){trees.forEach(el=>{el.querySelectorAll('input').forEach(i=>i.disabled=gc.checked);el.style.opacity=gc.checked?'.55':'1'})}
+    gc.onchange=()=>{if(gc.checked){state.clear();state.add('*')}else state.delete('*');syncDisabled()};
+    cats210().forEach(cat=>{const box=document.createElement('div');box.className='starter210-tree';const h=document.createElement('h4');h.textContent=adminCatIcon(cat)+' '+adminCatName(cat);box.appendChild(h);const cl=document.createElement('label');cl.className='starter209-check';const cb=document.createElement('input');cb.type='checkbox';const ct='cat:'+cat.name;cb.checked=state.has(ct);const tx=document.createElement('span');tx.innerHTML='<b>Dans la catégorie</b>';cb.onchange=()=>cb.checked?state.add(ct):state.delete(ct);cl.append(cb,tx);box.appendChild(cl);
+      subs210(cat).forEach(sc=>{const l=document.createElement('label');l.className='starter209-check sub';const s=document.createElement('input');s.type='checkbox';const t='sub:'+sc.id;s.checked=state.has(t);s.onchange=()=>s.checked?state.add(t):state.delete(t);const n=document.createElement('span');n.innerHTML='<b>'+(sc.icon||'📁')+' '+adminSubcatPath(sc)+'</b>';l.append(s,n);box.appendChild(l)});panel.appendChild(box);trees.push(box)});
+    syncDisabled();return ()=>[...state];
+  }
+  function editor210(s0){
+    const x=read210(),isNew=!s0,s=s0?JSON.parse(JSON.stringify(migrateStarter(s0))):{id:'st210-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),emoji:'💬',label:'',speech:'',targets:[],hidden:false,deleted:false};
+    const ov=document.createElement('div');ov.className='editor-overlay';const p=document.createElement('div');p.className='editor';p.style.cssText='max-width:680px;max-height:90vh;overflow:auto';p.innerHTML='<h2>'+(isNew?'➕ Créer':'✏️ Modifier')+' un début de phrase</h2><p style="color:#667085">Coche une ou plusieurs catégories et sous-catégories.</p>';
+    let chosenEmoji=s.emoji||'💬';emojiPicker210(p,chosenEmoji,e=>chosenEmoji=e);
+    const mk=(lab,val,ph)=>{const w=document.createElement('label');w.style.cssText='display:block;margin:10px 0;font-weight:800';w.textContent=lab;const i=document.createElement('input');i.value=val||'';i.placeholder=ph||'';i.style.cssText='display:block;width:100%;padding:10px;margin-top:5px;box-sizing:border-box';w.appendChild(i);p.appendChild(w);return i};
+    const label=mk('Texte affiché',s.label,'Je suis');const speech=mk('Texte prononcé',s.speech,'je suis');const th=document.createElement('h3');th.textContent='Où proposer cette phrase ?';th.style.marginTop='18px';p.appendChild(th);const getTargets=targetsTree210(p,s.targets);
+    const row=document.createElement('div');row.className='editor-row';const ok=document.createElement('button');ok.className='saveedit';ok.textContent='✓ Enregistrer';const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';cancel.onclick=()=>ov.remove();ok.onclick=()=>{const l=label.value.trim();if(!l)return alert('Écris le début de phrase.');const targets=getTargets();if(!targets.length)return alert('Choisis au moins une catégorie ou sous-catégorie.');s.emoji=chosenEmoji||'💬';s.label=l;s.speech=speech.value.trim()||l;s.targets=targets;delete s.category;delete s.subcatId;const idx=x.starters.findIndex(v=>v.id===s.id);if(idx>=0)x.starters[idx]=s;else x.starters.push(s);save210(x);ov.remove();renderAdmin195('starters');setTimeout(renderStarters210,20)};row.append(ok,cancel);p.appendChild(row);ov.appendChild(p);document.body.appendChild(ov)
+  }
+  window.renderAdminStarters209=function(body){
+    // Toujours repartir d'une seule section : évite l'empilement observé en 209.
+    body.innerHTML='';const x=read210();const sec=document.createElement('section');sec.className='section';sec.innerHTML='<h2>💬 Débuts de phrases permanents</h2><p style="color:#667085">Une même phrase peut être proposée dans plusieurs catégories et sous-catégories.</p>';
+    const addb=document.createElement('button');addb.textContent='➕ Créer un début de phrase';addb.style.cssText='padding:11px 14px;border:0;border-radius:11px;background:#2eaf58;color:white;font-weight:900;margin-bottom:12px';addb.onclick=()=>editor210(null);sec.appendChild(addb);
+    x.starters.filter(s=>!s.deleted).forEach(s0=>{const s=migrateStarter(s0),c=document.createElement('div');c.className='starter209-admincard';const ico=document.createElement('div');ico.style.fontSize='32px';ico.textContent=s.emoji||'💬';const inf=document.createElement('div');const b=document.createElement('b');b.textContent=(s.hidden?'🙈 ':'')+s.label;const loc=document.createElement('div');loc.className='starter210-target-summary';loc.textContent=targetsSummary210(s);inf.append(b,loc);const a=document.createElement('div');a.className='starter209-actions';const ed=document.createElement('button');ed.textContent='✏️ Modifier';ed.onclick=()=>editor210(s);const hi=document.createElement('button');hi.textContent=s.hidden?'👁️ Réafficher':'🙈 Masquer';hi.onclick=()=>{s.hidden=!s.hidden;save210(x);renderAdmin195('starters')};const del=document.createElement('button');del.textContent='🗑️ Supprimer';del.onclick=()=>{if(!confirm('Supprimer ce début de phrase permanent ?'))return;s.deleted=true;save210(x);renderAdmin195('starters')};a.append(ed,hi,del);c.append(ico,inf,a);sec.appendChild(c)});
+    const inh=document.createElement('div');inh.style.cssText='margin-top:18px;border-top:1px solid #dfe5ef;padding-top:14px';inh.innerHTML='<h3>📁 Reprise dans les sous-catégories</h3><p style="color:#667085">Pour chaque sous-catégorie, choisis si elle reprend aussi les phrases affectées à sa catégorie.</p>';
+    cats210().forEach(cat=>{const ss=subs210(cat);if(!ss.length)return;const h=document.createElement('h4');h.textContent=adminCatIcon(cat)+' '+adminCatName(cat);h.style.marginBottom='5px';inh.appendChild(h);ss.forEach(sc=>{const l=document.createElement('label');l.className='starter209-check';const cb=document.createElement('input');cb.type='checkbox';cb.checked=x.inherit?.[sc.id]!==false;const t=document.createElement('span');t.innerHTML='<b>'+adminSubcatPath(sc)+'</b><br><small>'+(cb.checked?'Reprend les phrases de la catégorie':'Utilise uniquement ses phrases propres')+'</small>';cb.onchange=()=>{x.inherit[sc.id]=cb.checked;t.querySelector('small').textContent=cb.checked?'Reprend les phrases de la catégorie':'Utilise uniquement ses phrases propres';save210(x)};l.append(cb,t);inh.appendChild(l)})});sec.appendChild(inh);body.appendChild(sec)
+  };
+  window.openParentStarters209=function(){
+    const x=read210(),p=pref210(x),ov=document.createElement('div');ov.className='editor-overlay';const panel=document.createElement('div');panel.className='editor';panel.style.cssText='max-width:720px;max-height:88vh;overflow:auto';panel.innerHTML='<h2>💬 Débuts de phrases</h2><p style="color:#667085">Choisis ce qui est visible pour ce profil.</p>';
+    const band=document.createElement('label');band.className='starter209-check';const bc=document.createElement('input');bc.type='checkbox';bc.checked=!p.bandHidden;const bt=document.createElement('span');bt.innerHTML='<b>Afficher la bande « Débuts de phrase »</b>';bc.onchange=()=>{p.bandHidden=!bc.checked;save210(x)};band.append(bc,bt);panel.appendChild(band);
+    const catSel=document.createElement('select');catSel.style.cssText='width:100%;padding:10px;margin:12px 0';cats210().forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=adminCatIcon(c)+' '+adminCatName(c);catSel.appendChild(o)});panel.appendChild(catSel);const host=document.createElement('div');panel.appendChild(host);
+    function checkbox(s,location){const l=document.createElement('label');l.className='starter209-check';const cb=document.createElement('input');cb.type='checkbox';cb.checked=!hidden210(p,location,s.id);const t=document.createElement('span');t.innerHTML='<b>'+(s.emoji||'💬')+' '+s.label+'</b>';cb.onchange=()=>{p.hidden[location]=p.hidden[location]||{};if(cb.checked)delete p.hidden[location][s.id];else p.hidden[location][s.id]=true;save210(x)};l.append(cb,t);return l}
+    function draw(){host.innerHTML='';const cat=cats210().find(c=>c.name===catSel.value);if(!cat)return;const h=document.createElement('h3');h.textContent='Dans la catégorie';host.appendChild(h);effective210(cat,null,x).forEach(s=>host.appendChild(checkbox(s,loc210(cat.name,''))));subs210(cat).forEach(sc=>{const box=document.createElement('div');box.className='starter209-subbox';const hh=document.createElement('h4');hh.textContent=(sc.icon||'📁')+' '+adminSubcatPath(sc);box.appendChild(hh);const note=document.createElement('div');note.style.cssText='font-size:12px;color:#667085;margin-bottom:7px';note.textContent=x.inherit?.[sc.id]!==false?'Reprend aussi les phrases de la catégorie.':'Ne reprend pas les phrases de la catégorie.';box.appendChild(note);effective210(cat,sc,x).forEach(s=>box.appendChild(checkbox(s,loc210(cat.name,sc.id))));host.appendChild(box)})}
+    catSel.onchange=draw;draw();const close=document.createElement('button');close.className='saveedit';close.textContent='✓ Terminer';close.style.marginTop='12px';close.onclick=()=>{ov.remove();renderGrid();setTimeout(renderStarters210,20)};panel.appendChild(close);ov.appendChild(panel);document.body.appendChild(ov)
+  };
+  // Si le tableau Admin est déjà ouvert après mise à jour, afficher le nouveau rendu.
+  setTimeout(()=>{try{renderStarters210()}catch(e){}},50);
 })();
 </script>
 </body></html>

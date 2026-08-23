@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 202</title>
+<title>Ma CAA v2.0 bêta 203</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 200</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 203</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -9004,6 +9004,114 @@ body.parent-mode .manage-card{
     const p=readProfiles().filter(x=>!isDeleted(x)), np={id:'u'+Date.now(),name:name.trim()};
     clearDeletedForNewProfile(np);p.push(np);writeProfiles(p);switchProfile(np.id);
   };
+})();
+</script>
+
+
+
+<!-- BETA203 — suppression profils fantômes + nom utilisateur dans la barre latérale. -->
+<style id="beta203-sidebar-user-style">
+.side-user-203{margin:-8px 8px 14px;padding:9px 10px;border-radius:12px;background:#ffffff14;font-size:14px;font-weight:850;display:flex;align-items:center;gap:7px;min-height:22px}
+@media(min-width:901px){#profileBar .profile-who-203{display:none}}
+@media(max-width:900px){.side-user-203{display:none}}
+</style>
+<script id="beta203-profile-ghost-fix">
+(function(){
+  if(window.__beta203Installed)return;window.__beta203Installed=true;
+  const TOMBSTONE_KEY='ma-caa-profile-tombstones-v202';
+  const norm=v=>String(v||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const rawRead=window.readProfiles;
+  function tombs(){try{const a=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return []}}
+  function saveTombs(a){
+    const m=new Map();(a||[]).forEach(t=>{if(!t)return;const k=String(t.id||'')+'|'+norm(t.name);if(k==='|')return;const o=m.get(k);if(!o||String(t.deleted_at||'')>String(o.deleted_at||''))m.set(k,t)});
+    const v=[...m.values()];localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(v));return v;
+  }
+  function deleted(p,ts=tombs()){
+    if(!p)return false;const id=String(p.id||''),name=norm(p.name);
+    return ts.some(t=>(t.id&&String(t.id)===id)||(t.name&&norm(t.name)===name));
+  }
+  function mark(p){return saveTombs([...tombs(),{id:String(p?.id||''),name:String(p?.name||''),deleted_at:new Date().toISOString()}])}
+  function filteredProfiles(){
+    let arr=[];try{arr=JSON.parse(localStorage.getItem(PROFILES_KEY)||'[]');if(!Array.isArray(arr))arr=[]}catch(e){arr=[]}
+    const ts=tombs();arr=arr.filter(p=>!deleted(p,ts));
+    if(arr.length)return arr;
+    // N'invente plus le profil historique « Utilisateur » si sa suppression a été mémorisée.
+    const fallback={id:'default',name:'Utilisateur'};
+    return deleted(fallback,ts)?[]:[fallback];
+  }
+  window.readProfiles=filteredProfiles;
+  try{readProfiles=filteredProfiles}catch(e){}
+
+  function merge(a,b,ts){
+    const out=[];[...(a||[]),...(b||[])].forEach(p=>{
+      if(!p||deleted(p,ts))return;
+      const i=out.findIndex(x=>String(x.id||'')===String(p.id||'')||(norm(x.name)&&norm(x.name)===norm(p.name)));
+      if(i<0)out.push({...p});else out[i]={...out[i],...p};
+    });return out;
+  }
+  async function push203(){
+    if(!cloudClient)return false;const u=await cloudUser();if(!u)return false;
+    try{
+      let rd={};try{const q=await cloudClient.from('app_config').select('data').eq('key','profiles_directory').maybeSingle();if(!q.error&&q.data?.data)rd=q.data.data}catch(e){}
+      const ts=saveTombs([...(rd.deleted_profiles||[]),...tombs()]);
+      const profiles=merge(rd.profiles||[],filteredProfiles(),ts).map(publicProfileDescriptor);
+      const data={profiles,deleted_profiles:ts,updated_at:new Date().toISOString()};
+      const r=await cloudClient.from('app_config').upsert({key:'profiles_directory',data,updated_at:new Date().toISOString()},{onConflict:'key'});if(r.error)throw r.error;
+      localStorage.setItem(PROFILES_DIRECTORY_KEY,new Date().toISOString());return true;
+    }catch(e){console.error('Profiles push 203',e);return false}
+  }
+  async function pull203(){
+    if(!cloudClient)return false;
+    try{
+      const r=await cloudClient.from('app_config').select('data,updated_at').eq('key','profiles_directory').maybeSingle();if(r.error)throw r.error;if(!r.data?.data)return false;
+      const d=r.data.data||{},ts=saveTombs([...(d.deleted_profiles||[]),...tombs()]);
+      const local=filteredProfiles(),remote=(d.profiles||[]).filter(p=>!deleted(p,ts)),merged=merge(local,remote,ts);
+      if(!merged.length)return false;
+      profilesDirectoryPulling=true;localStorage.setItem(PROFILES_KEY,JSON.stringify(merged));profilesDirectoryPulling=false;
+      const active=localStorage.getItem(ACTIVE_PROFILE_KEY);if(!active||!merged.some(p=>p.id===active))localStorage.setItem(ACTIVE_PROFILE_KEY,merged[0].id);
+      localStorage.setItem(PROFILES_DIRECTORY_KEY,new Date().toISOString());
+      try{render()}catch(e){};try{renderProfileBar()}catch(e){};return true;
+    }catch(e){profilesDirectoryPulling=false;console.error('Profiles pull 203',e);return false}
+  }
+  window.pushProfilesDirectory=push203;window.pullProfilesDirectory=pull203;
+  try{pushProfilesDirectory=push203;pullProfilesDirectory=pull203}catch(e){}
+
+  function delete203(id,adminMode){
+    const p=filteredProfiles();if(p.length<=1){alert('Il faut conserver au moins un utilisateur.');return}
+    const target=p.find(x=>String(x.id)===String(id));if(!target)return;
+    if(!confirm('Supprimer '+(adminMode?'l’utilisateur':'le profil')+' « '+target.name+' » et ses personnalisations ?'))return;
+    mark(target);PROFILE_DATA_KEYS.forEach(k=>localStorage.removeItem(k+'::'+target.id));
+    const next=p.filter(x=>String(x.id)!==String(target.id));profilesDirectoryPulling=true;localStorage.setItem(PROFILES_KEY,JSON.stringify(next));profilesDirectoryPulling=false;
+    localStorage.setItem('ma-caa-last-save',String(Date.now()));if(activeProfile()===target.id&&next[0])localStorage.setItem(ACTIVE_PROFILE_KEY,next[0].id);
+    try{render()}catch(e){};try{renderProfileBar()}catch(e){};try{if(adminMode&&typeof adminRefreshStayV112==='function')adminRefreshStayV112()}catch(e){}
+    setTimeout(push203,50);setTimeout(push203,1200);
+  }
+  window.adminDeleteUser=id=>delete203(id,true);window.deleteProfile=id=>delete203(id,false);
+  try{adminDeleteUser=window.adminDeleteUser;deleteProfile=window.deleteProfile}catch(e){}
+
+  // L'ancien secours de la table profiles ne peut plus réintroduire un profil supprimé.
+  const recover203=async function(){
+    if(!cloudClient)return {ok:false,count:0,message:'Supabase indisponible'};const u=await cloudUser();if(!u)return {ok:false,count:0,message:'Connexion cloud Administrateur requise'};
+    try{const r=await cloudClient.from('profiles').select('id,name,updated_at').eq('user_id',u.id);if(r.error)throw r.error;const ts=tombs(),local=filteredProfiles();let added=0;
+      for(const row of (r.data||[])){if(!row.name)continue;const c={id:'cloud-'+String(row.id),name:row.name};if(deleted(c,ts))continue;if(!local.some(p=>String(p.id)===String(c.id)||norm(p.name)===norm(c.name))){local.push(c);added++}}
+      profilesDirectoryPulling=true;localStorage.setItem(PROFILES_KEY,JSON.stringify(local));profilesDirectoryPulling=false;await push203();try{renderProfileBar()}catch(e){};return {ok:true,count:added,message:(r.data||[]).length+' profil(s) trouvé(s) dans le cloud'};
+    }catch(e){return {ok:false,count:0,message:e?.message||String(e)}}
+  };
+  window.recoverProfilesFromProfilesTable=recover203;try{recoverProfilesFromProfilesTable=recover203}catch(e){}
+
+  // Nom du profil actif sous « Ma CAA » dans la barre latérale.
+  const oldRenderProfileBar=window.renderProfileBar;
+  function render203(){
+    let slot=document.getElementById('side-user-203');
+    const brand=document.querySelector('.side .brand');
+    if(brand){if(!slot){slot=document.createElement('div');slot.id='side-user-203';slot.className='side-user-203';brand.insertAdjacentElement('afterend',slot)}slot.textContent='👤 '+profileName()}
+    let bar=document.getElementById('profileBar');
+    if(!bar){bar=document.createElement('div');bar.id='profileBar';bar.className='profilebar';const main=document.querySelector('main')||document.body;main.insertBefore(bar,main.firstChild)}
+    bar.innerHTML='';const who=document.createElement('span');who.className='profile-who-203';who.innerHTML='👤 <b>'+profileName()+'</b>';bar.appendChild(who);
+    const b=document.createElement('button');b.textContent='👤 Changer d’utilisateur';b.onclick=openUserHome;bar.appendChild(b);
+  }
+  window.renderProfileBar=render203;try{renderProfileBar=render203}catch(e){}
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(render203,0));setTimeout(render203,0);
 })();
 </script>
 

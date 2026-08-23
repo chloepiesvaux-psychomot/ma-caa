@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 199</title>
+<title>Ma CAA v2.0 bêta 200</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -223,7 +223,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><small>CATÉGORIE</small><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 199</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 200</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -4547,7 +4547,9 @@ function adminEditCategory(cat){
       // Pas de navigation automatique.
     }catch(e){}
   };
-  row.append(save,cancel);panel.appendChild(row);overlay.appendChild(panel);document.body.appendChild(overlay);
+  const del=document.createElement("button");del.type="button";del.textContent="🗑️ Supprimer cette catégorie";del.style.cssText="margin-top:12px;padding:10px 14px;border-radius:10px;border:1px solid #efb3b3;background:#fff5f5;color:#a61b1b;font-weight:900";
+  del.onclick=()=>{overlay.remove();adminDeleteCat(cat)};
+  row.append(save,cancel);panel.appendChild(row);panel.appendChild(del);overlay.appendChild(panel);document.body.appendChild(overlay);
 }
 function adminToggleCat(cat){
   const a=readAdminBase(),k=cat.name;
@@ -4582,7 +4584,11 @@ function adminDeleteCat(cat){
   }
   if(idx>=0){
     const victim=added[idx], vid=adminCatIdentityV113(victim), vl=adminCatLabelV113(victim);
-    if(!confirm("Supprimer la catégorie « "+vl+" » ?"))return;
+    const pictoCount=(base.addedItems||[]).filter(x=>!x.deleted && String(x.category||"")===vl).length;
+    const folderCount=(base.subcategories||[]).filter(x=>!x.deleted && String(x.category||x.categoryId||x.cat||x.catId||"")===vl).length;
+    let msg="Supprimer la catégorie « "+vl+" » ?";
+    if(pictoCount||folderCount)msg+="\n\nElle contient actuellement "+pictoCount+" pictogramme(s) ajouté(s) et "+folderCount+" dossier(s).\nLes dossiers seront retirés avec la catégorie. Les pictogrammes ne seront pas effacés définitivement.";
+    if(!confirm(msg))return;
     base.addedCats=added.filter((_,i)=>i!==idx);
     base.subcategories=(base.subcategories||[]).filter(sc=>{
       const owner=String(sc.categoryId||sc.catId||sc.category||sc.cat||"");
@@ -4594,7 +4600,7 @@ function adminDeleteCat(cat){
     return;
   }
   // Built-in category: preserve previous soft-delete behavior.
-  if(!confirm("Supprimer cette catégorie ?"))return;
+  if(!confirm("Supprimer cette catégorie ?\n\nCette catégorie fait partie de la base Ma CAA : elle sera retirée de l’affichage, mais ses pictogrammes ne seront pas effacés définitivement."))return;
   base.deletedCats=Array.from(new Set([...(base.deletedCats||[]),rid||rlabel]));
   writeAdminBase(base);
   try{adminRefreshStayV112()}catch(e){}
@@ -8495,7 +8501,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       const n=document.createElement("b");n.textContent=adminCatIcon(cat)+" "+adminCatName(cat);
       const edit=document.createElement("button");edit.textContent="✏️ Modifier catégorie";edit.onclick=()=>adminEditCategory(cat);
       const folders=document.createElement("button");folders.textContent="📁 Arborescence";folders.onclick=()=>adminManageSubcategories(cat);
-      c.append(n,edit,folders);g.appendChild(c);
+      const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.style.cssText="border-color:#efb3b3;background:#fff5f5;color:#a61b1b;font-weight:900";del.onclick=()=>adminDeleteCat(cat);
+      c.append(n,edit,folders,del);g.appendChild(c);
     });
     const add=document.createElement("button");add.textContent="➕ Ajouter une catégorie";add.style.cssText="margin-top:12px;padding:11px 14px;border:0;border-radius:11px;background:#2eaf58;color:#fff;font-weight:900";add.onclick=()=>adminAddCategory();
     s.append(g,add);body.appendChild(s);
@@ -8777,4 +8784,6 @@ body.parent-mode .manage-card{
   });
 })();
 </script>
+
+<!-- BETA200 — suppression catégories : bouton visible dans le nouvel Admin + confirmation sécurisée. -->
 </body></html>

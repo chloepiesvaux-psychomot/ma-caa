@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 203</title>
+<title>Ma CAA v2.0 bêta 204</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -9115,4 +9115,73 @@ body.parent-mode .manage-card{
 })();
 </script>
 
+
+
+<!-- BETA204 — profil cliquable dans la barre latérale + code profil pour Mode Parents. -->
+<style id="beta204-profile-parent-style">
+@media(min-width:901px){
+  #profileBar{display:none!important}
+  .side-user-203{cursor:pointer;user-select:none;transition:background .15s ease,transform .15s ease}
+  .side-user-203:hover{background:#ffffff24}
+  .side-user-203:active{transform:scale(.985)}
+}
+</style>
+<script id="beta204-profile-parent-code">
+(function(){
+  if(window.__beta204Installed)return;window.__beta204Installed=true;
+
+  // Sur Mac/tablette, le nom du profil dans la barre latérale remplace
+  // le bouton séparé « Changer d’utilisateur ».
+  const render203=window.renderProfileBar;
+  function render204(){
+    try{if(typeof render203==='function')render203()}catch(e){}
+    const slot=document.getElementById('side-user-203');
+    if(slot){
+      slot.title='Changer d’utilisateur';
+      slot.setAttribute('role','button');slot.setAttribute('tabindex','0');
+      slot.onclick=()=>{try{openUserHome()}catch(e){console.error(e)}};
+      slot.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();slot.click()}};
+    }
+    // L'affichage mobile reste inchangé : la barre latérale n'y est pas utilisée.
+    const bar=document.getElementById('profileBar');
+    if(bar&&window.matchMedia&&window.matchMedia('(min-width:901px)').matches)bar.style.display='none';
+  }
+  window.renderProfileBar=render204;try{renderProfileBar=render204}catch(e){}
+
+  const oldAdultGate=window.openAdultGate;
+  function unlockParents204(overlay){
+    parentLazyView=null;adultUnlocked=true;
+    if(overlay)overlay.remove();
+    const idx=categories.findIndex(c=>c.name==='Mode parents');if(idx>=0)current=idx;
+    render();render204();showFeedback('Mode parents');
+  }
+
+  // Si le profil actif a un PIN, le Mode Parents utilise exactement ce PIN.
+  // Sans PIN, on conserve le maintien 3 secondes de la version précédente.
+  function openAdultGate204(){
+    const profiles=readProfiles();
+    const profile=profiles.find(p=>String(p.id)===String(activeProfile()));
+    const pin=String(profile?.pin||'').trim();
+    if(!pin){return typeof oldAdultGate==='function'?oldAdultGate():undefined}
+    if(document.getElementById('adult-gate'))return;
+
+    const overlay=document.createElement('div');overlay.className='adult-overlay';overlay.id='adult-gate';
+    const box=document.createElement('div');box.className='adult-box';
+    box.innerHTML='<h2>🔒 Mode parents</h2><p>Entre le code de <b></b> pour accéder aux réglages.</p>';
+    const b=box.querySelector('b');if(b)b.textContent=profile?.name||profileName();
+    const input=document.createElement('input');input.className='pin-input';input.type='password';input.inputMode='numeric';input.maxLength=4;input.placeholder='••••';
+    const row=document.createElement('div');row.className='editor-row';
+    const ok=document.createElement('button');ok.className='saveedit';ok.textContent='Valider';
+    const cancel=document.createElement('button');cancel.className='canceledit';cancel.textContent='Annuler';
+    ok.onclick=()=>{if(input.value===pin){unlockParents204(overlay)}else{input.value='';alert('Code utilisateur incorrect.');input.focus()}};
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')ok.click()});
+    input.addEventListener('input',()=>{if(input.value.length===4)setTimeout(()=>{if(document.body.contains(overlay))ok.click()},60)});
+    cancel.onclick=()=>overlay.remove();
+    row.append(ok,cancel);box.append(input,row);overlay.appendChild(box);document.body.appendChild(overlay);input.focus();
+  }
+  window.openAdultGate=openAdultGate204;try{openAdultGate=openAdultGate204}catch(e){}
+
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(render204,0));setTimeout(render204,0);
+})();
+</script>
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 235</title>
+<title>Ma CAA v2.0 bêta 237</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 235</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 237</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -778,8 +778,11 @@ function adminOverrideFor(x){
   return {};
 }
 const BASE_IMAGE_OVERRIDES_235="ma-caa-base-image-overrides-v235";
+const BASE_IMAGE_META_236="ma-caa-base-image-meta-v236";
 function readBaseImageOverrides235(){try{return JSON.parse(localStorage.getItem(BASE_IMAGE_OVERRIDES_235)||"{}")||{}}catch(e){return {}}}
 function writeBaseImageOverrides235(v){try{localStorage.setItem(BASE_IMAGE_OVERRIDES_235,JSON.stringify(v||{}));localStorage.setItem("ma-caa-last-save",String(Date.now()))}catch(e){}}
+function readBaseImageMeta236(){try{return JSON.parse(localStorage.getItem(BASE_IMAGE_META_236)||"{}")||{}}catch(e){return {}}}
+function writeBaseImageMeta236(v){try{localStorage.setItem(BASE_IMAGE_META_236,JSON.stringify(v||{}))}catch(e){}}
 function permanentRuntimeId235(x){
   try{if(x&&x[6])return String(x[6])}catch(e){}
   try{
@@ -792,8 +795,23 @@ function permanentRuntimeId235(x){
 function getBaseImageOverride235(x){
   try{const id=typeof x==='string'?x:permanentRuntimeId235(x);if(!id)return "";const m=readBaseImageOverrides235();return normalizeCloudImageRef(m[id]||"")}catch(e){return ""}
 }
-function setBaseImageOverride235(id,image){
-  try{if(!id)return;const m=readBaseImageOverrides235();if(image)m[id]=image;else delete m[id];writeBaseImageOverrides235(m)}catch(e){}
+function setBaseImageOverride235(id,image,updatedAt){
+  try{
+    if(!id)return;
+    const m=readBaseImageOverrides235(),meta=readBaseImageMeta236();
+    if(image)m[id]=image;else delete m[id];
+    const stamp=updatedAt||new Date().toISOString();
+    meta[id]={updated_at:stamp,local_edit:!updatedAt};
+    writeBaseImageOverrides235(m);writeBaseImageMeta236(meta);
+  }catch(e){}
+}
+function baseImageTimestamp236(id){
+  try{const x=readBaseImageMeta236()[id];return x&&x.updated_at?Date.parse(x.updated_at)||0:0}catch(e){return 0}
+}
+function canApplyCloudImage236(id,cloudUpdated){
+  const localMs=baseImageTimestamp236(id),cloudMs=cloudUpdated?Date.parse(cloudUpdated)||0:0;
+  // If Safari has a newer local edit, an older media record must never replace it.
+  return !localMs || !cloudMs || cloudMs>=localMs;
 }
 
 function displayLabel(x){
@@ -6974,7 +6992,7 @@ function stripAdminImagesForCloudV182(base){
 // Remplace la canonicalisation précédente : les images ne sont plus placées dans admin_base.
 async function canonicalizeAdminBaseV129(base){return stripAdminImagesForCloudV182(base)}
 
-async function applyMediaRecordV182(rec){
+async function applyMediaRecordV182(rec,rowUpdatedAt){
   if(!rec||!rec.picto_id)return false;
   const base=readAdminBase();
   let target=null;
@@ -7002,9 +7020,12 @@ async function applyMediaRecordV182(rec){
     }
   }
   if(!target)return false;
+  // BETA236: Safari can still receive an older media record after a manual sync.
+  // Never let that older record replace a newer locally-edited historic pictogram image.
+  if(rec.picto_id && !canApplyCloudImage236(rec.picto_id,rec.updated_at||rowUpdatedAt))return false;
   if(rec.deleted||!rec.image){
     delete target.image;
-    try{if(rec.picto_id)setBaseImageOverride235(rec.picto_id,null)}catch(e){}
+    try{if(rec.picto_id)setBaseImageOverride235(rec.picto_id,null,rec.updated_at||rowUpdatedAt)}catch(e){}
     writeAdminBaseLocalV182(base);
     return true
   }
@@ -7013,7 +7034,7 @@ async function applyMediaRecordV182(rec){
     localRef=await storeAdminPictogramImage(rec.image);
   }
   target.image=localRef;
-  try{if(rec.picto_id)setBaseImageOverride235(rec.picto_id,localRef)}catch(e){}
+  try{if(rec.picto_id)setBaseImageOverride235(rec.picto_id,localRef,rec.updated_at||rowUpdatedAt)}catch(e){}
   writeAdminBaseLocalV182(base);
   return true;
 }
@@ -7031,7 +7052,7 @@ async function pullPictoMediaV182(show=false){
     if(r.error)throw r.error;
     let applied=0,missing=0,maxUpdated=cursor;
     for(const row of r.data||[]){
-      try{if(await applyMediaRecordV182(row.data||{}))applied++;else missing++}catch(e){console.warn('Apply media 182',row.key,e)}
+      try{if(await applyMediaRecordV182(row.data||{},row.updated_at||''))applied++;else missing++}catch(e){console.warn('Apply media 182',row.key,e)}
       if(row.updated_at && (!maxUpdated || row.updated_at>maxUpdated))maxUpdated=row.updated_at;
     }
     if(maxUpdated)localStorage.setItem(cursorKey,maxUpdated);
@@ -10872,13 +10893,189 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
 (function(){
   try{
     const base=readAdminBase();
-    const map=readBaseImageOverrides235();
-    let changed=false;
+    const map=readBaseImageOverrides235(),meta=readBaseImageMeta236();
+    let changed=false,metaChanged=false;
     for(const [id,item] of Object.entries(base.items||{})){
       if(item&&item.image && !map[id]){map[id]=item.image;changed=true}
     }
+    for(const id of Object.keys(map)){
+      if(!meta[id]){meta[id]={updated_at:'2000-01-01T00:00:00.000Z',local_edit:false};metaChanged=true}
+    }
     if(changed)writeBaseImageOverrides235(map);
+    if(metaChanged)writeBaseImageMeta236(meta);
   }catch(e){console.warn('BETA235 seed',e)}
+})();
+</script>
+
+
+<!-- BETA236 — Safari Mac : ne plus laisser une ancienne image reprendre la priorité -->
+<script id="beta236-safari-image-freshness">
+(function(){
+  const ONCE='ma-caa-media-refetch-once-v236';
+  try{
+    if(!localStorage.getItem(ONCE)){
+      // Force one lightweight metadata/media refresh on this version.
+      localStorage.removeItem('ma-caa-media-cursor-v197');
+      localStorage.setItem(ONCE,'1');
+      setTimeout(()=>{try{pullPictoMediaV182(false)}catch(e){}},1400);
+    }
+  }catch(e){}
+  window.addEventListener('focus',()=>setTimeout(()=>{try{pullPictoMediaV182(false)}catch(e){}},1200));
+})();
+</script>
+
+
+<!-- BETA237 — réparation unique de l'application Mac installée -->
+<style id="beta237-mac-repair-style">
+#mac-repair-237{
+  position:fixed;left:50%;top:14px;transform:translateX(-50%);
+  z-index:200000;max-width:min(680px,92vw);
+  padding:12px 16px;border-radius:14px;
+  background:#173b72;color:white;font-weight:850;
+  box-shadow:0 8px 28px #0004;text-align:center
+}
+#mac-repair-237.ok{background:#19733e}
+#mac-repair-237.err{background:#9b2c2c}
+</style>
+<script id="beta237-mac-repair">
+(function(){
+  const ONCE237='ma-caa-mac-authoritative-repair-v237';
+  const BACKUP237='ma-caa-mac-admin-backup-v237';
+
+  function isMacApp237(){
+    const mac=/Macintosh|Mac OS X/i.test(navigator.userAgent||'');
+    const standalone=(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)
+      || navigator.standalone===true;
+    return mac&&standalone;
+  }
+
+  function status237(msg,cls){
+    let x=document.getElementById('mac-repair-237');
+    if(!x){
+      x=document.createElement('div');x.id='mac-repair-237';
+      document.body.appendChild(x);
+    }
+    x.className=cls||'';x.textContent=msg;
+    return x;
+  }
+
+  async function waitCloud237(){
+    for(let i=0;i<40;i++){
+      try{
+        if(typeof cloudClient!=='undefined'&&cloudClient)return cloudClient;
+        if(window.cloudClient)return window.cloudClient;
+      }catch(e){}
+      await new Promise(r=>setTimeout(r,150));
+    }
+    return null;
+  }
+
+  async function repairMac237(){
+    if(!isMacApp237())return false;
+    if(localStorage.getItem(ONCE237)==='done')return false;
+
+    // Backup local stale state before replacing anything.
+    try{
+      const old=localStorage.getItem(ADMIN_BASE_KEY);
+      if(old&&!localStorage.getItem(BACKUP237))localStorage.setItem(BACKUP237,old);
+    }catch(e){}
+
+    // IMPORTANT: prevent this stale Mac app from publishing its old local state
+    // while the authoritative cloud copy is being restored.
+    try{
+      clearTimeout(adminBasePushTimer);
+      adminBaseLocalDirty=false;
+      localStorage.removeItem(ADMIN_LOCAL_EDIT_TS_V149);
+      localStorage.removeItem(ADMIN_PICTO_GUARD_232);
+    }catch(e){}
+
+    // Clear ONLY local caches/layers that can resurrect historical pictograms/images.
+    // The cloud data itself is untouched.
+    try{
+      localStorage.removeItem('ma-caa-picto-meta-v234');
+      localStorage.removeItem('ma-caa-picto-meta-pending-v234');
+      localStorage.removeItem('ma-caa-picto-meta-cursor-v234');
+      localStorage.removeItem('ma-caa-base-image-overrides-v235');
+      localStorage.removeItem('ma-caa-base-image-meta-v236');
+      localStorage.removeItem('ma-caa-media-cursor-v197');
+      localStorage.removeItem('ma-caa-media-refetch-once-v236');
+    }catch(e){}
+
+    status237('🔄 Application Mac : reconstruction depuis la synchronisation…');
+
+    try{
+      const cc=await waitCloud237();
+      if(!cc)throw new Error('Connexion cloud indisponible');
+
+      // User/session check: do not erase the local app if it cannot read the cloud.
+      let u=null;
+      try{u=await cloudUser()}catch(e){}
+      if(!u)throw new Error('L’application Mac doit être connectée au compte de synchronisation');
+
+      // 1. Fetch the COMPLETE authoritative Admin snapshot.
+      const r=await cc.from('app_config')
+        .select('data,updated_at')
+        .eq('key','admin_base')
+        .maybeSingle();
+      if(r.error)throw r.error;
+      if(!r.data?.data)throw new Error('Base commune introuvable dans le cloud');
+
+      let remote=r.data.data||{};
+      try{
+        if(typeof materializeAdminBaseV129==='function'){
+          remote=await materializeAdminBaseV129(remote);
+        }
+      }catch(e){console.warn('BETA237 materialize',e)}
+
+      // Replace, do NOT merge: this is what removes locally resurrected built-in pictograms.
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(remote));
+      try{ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(remote))}catch(e){}
+      adminBaseLocalDirty=false;
+      try{markAdminBaseSynced(r.data.updated_at||new Date().toISOString())}catch(e){}
+      try{localStorage.removeItem(ADMIN_LOCAL_EDIT_TS_V149)}catch(e){}
+
+      // 2. Rebuild category/user rendering from this exact snapshot.
+      try{syncAdminCategories()}catch(e){}
+      try{syncCustomCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{renderProfileBar()}catch(e){}
+
+      // 3. Force a COMPLETE media download. Correct cloud media is already
+      // validated by iPhone/tablet, so Mac must stop preferring its old local images.
+      localStorage.removeItem('ma-caa-media-cursor-v197');
+      try{await pullPictoMediaV182(false)}catch(e){console.warn('BETA237 media',e)}
+
+      // 4. Let the modern metadata layer repopulate from cloud with an empty cursor.
+      localStorage.removeItem('ma-caa-picto-meta-cursor-v234');
+
+      try{syncAdminCategories()}catch(e){}
+      try{syncCustomCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{renderProfileBar()}catch(e){}
+      try{await hydrateAllCloudPictures()}catch(e){}
+
+      localStorage.setItem(ONCE237,'done');
+      const x=status237('✅ Application Mac remise à jour depuis le cloud','ok');
+      setTimeout(()=>x?.remove(),3500);
+      return true;
+    }catch(err){
+      console.error('Réparation Mac 237',err);
+      const x=status237('⚠️ Réparation Mac impossible : '+(err?.message||String(err)),'err');
+      // Do not mark as done: it can retry after reconnecting.
+      setTimeout(()=>x?.remove(),7000);
+      return false;
+    }
+  }
+
+  // Run immediately enough to neutralize stale local state, but after DOM/cloud init.
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>setTimeout(repairMac237,250),{once:true});
+  }else{
+    setTimeout(repairMac237,250);
+  }
+
+  // Expose a manual retry only for troubleshooting.
+  window.repairInstalledMac237=repairMac237;
 })();
 </script>
 

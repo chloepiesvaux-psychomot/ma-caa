@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 246</title>
+<title>Ma CAA v2.0 bêta 247</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 246</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 247</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -4893,39 +4893,63 @@ function adminEditItem(cat,x){
   });
 }
 function adminDeleteCat(cat){
-  const ref=cat;
   const base=readAdminBase();
-  const rid=adminCatIdentityV113(ref), rlabel=adminCatLabelV113(ref);
-  const added=base.addedCats||[];
+  const rid=adminCatIdentityV113(cat), rlabel=adminCatLabelV113(cat);
+  const added=Array.isArray(base.addedCats)?base.addedCats:[];
   let idx=added.findIndex(c=>rid && adminCatIdentityV113(c)===rid);
-  if(idx<0 && rlabel){
-    // Prefer a user-created category with this label. This allows deleting the
-    // duplicate "École" without touching a built-in category of the same name.
-    idx=added.findIndex(c=>adminCatLabelV113(c)===rlabel);
-  }
+  if(idx<0 && rlabel)idx=added.findIndex(c=>adminCatLabelV113(c)===rlabel);
+  const now=new Date().toISOString();
+
   if(idx>=0){
-    const victim=added[idx], vid=adminCatIdentityV113(victim), vl=adminCatLabelV113(victim);
-    const pictoCount=(base.addedItems||[]).filter(x=>!x.deleted && String(x.category||"")===vl).length;
-    const folderCount=(base.subcategories||[]).filter(x=>!x.deleted && String(x.category||x.categoryId||x.cat||x.catId||"")===vl).length;
-    let msg="Supprimer la catégorie « "+vl+" » ?";
-    if(pictoCount||folderCount)msg+="\n\nElle contient actuellement "+pictoCount+" pictogramme(s) ajouté(s) et "+folderCount+" dossier(s).\nLes dossiers seront retirés avec la catégorie. Les pictogrammes ne seront pas effacés définitivement.";
+    const victim=added[idx];
+    const vid=adminCatIdentityV113(victim), vl=adminCatLabelV113(victim);
+    const pictoCount=(base.addedItems||[]).filter(x=>!x.deleted &&
+      (String(x.category||"")===vl || (Array.isArray(x.categories)&&x.categories.includes(vl)))
+    ).length;
+    const folderCount=(base.subcategories||[]).filter(x=>!x.deleted &&
+      [x.categoryId,x.catId,x.category,x.cat].some(v=>String(v||"")===vid || String(v||"")===vl)
+    ).length;
+
+    let msg='Supprimer la catégorie « '+vl+' » ?';
+    if(pictoCount||folderCount){
+      msg+='\n\nElle contient actuellement '+pictoCount+' pictogramme(s) et '+folderCount+' dossier(s).';
+      msg+='\nLes dossiers seront retirés avec la catégorie. Les pictogrammes ne seront pas effacés définitivement.';
+    }
     if(!confirm(msg))return;
-    base.addedCats=added.filter((_,i)=>i!==idx);
-    base.subcategories=(base.subcategories||[]).filter(sc=>{
-      const owner=String(sc.categoryId||sc.catId||sc.category||sc.cat||"");
-      return owner!==vid && !(vid===vl && owner===vl);
+
+    base.addedCats[idx]={...victim,deleted:true,deleted_at:now,updated_at:now};
+    base.subcategories=(base.subcategories||[]).map(sc=>{
+      const owners=[sc.categoryId,sc.catId,sc.category,sc.cat].map(v=>String(v||""));
+      if(owners.includes(vid)||owners.includes(vl)){
+        return {...sc,deleted:true,deleted_at:now,updated_at:now};
+      }
+      return sc;
     });
     writeAdminBase(base);
-    // Stay on Categories; remove/re-render only the category view, never home.
-    try{adminRefreshStayV112()}catch(e){}
-    return;
+  }else{
+    const key=rid||rlabel;
+    if(!confirm('Supprimer la catégorie « '+(rlabel||key)+' » ?\n\nElle sera retirée de l’Administrateur et du mode utilisateur. Ses pictogrammes ne seront pas effacés définitivement.'))return;
+    base.deletedCats=Array.from(new Set([...(base.deletedCats||[]),key]));
+    writeAdminBase(base);
   }
-  // Built-in category: preserve previous soft-delete behavior.
-  if(!confirm("Supprimer cette catégorie ?\n\nCette catégorie fait partie de la base Ma CAA : elle sera retirée de l’affichage, mais ses pictogrammes ne seront pas effacés définitivement."))return;
-  base.deletedCats=Array.from(new Set([...(base.deletedCats||[]),rid||rlabel]));
-  writeAdminBase(base);
-  try{adminRefreshStayV112()}catch(e){}
+
+  try{syncAdminCategories()}catch(e){}
+  try{render()}catch(e){}
+
+  try{
+    if(typeof window.renderAdmin195==="function"){
+      setTimeout(()=>window.renderAdmin195("categories"),30);
+    }
+  }catch(e){}
+
+  try{scheduleAdminBasePush()}catch(e){}
+  try{
+    if(typeof window.publishCatalog190==="function"){
+      setTimeout(()=>window.publishCatalog190(),180);
+    }
+  }catch(e){}
 }
+window.adminDeleteCat=adminDeleteCat;
 
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
 function adminDeleteItem(cat,x){
@@ -7949,7 +7973,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const add=document.createElement("button");add.textContent="➕ Ajouter un pictogramme permanent";add.style.cssText="padding:11px 14px;border:0;border-radius:11px;background:#2eaf58;color:white;font-weight:900";add.onclick=()=>adminAddPictogram();s.appendChild(add);
     const nav=document.createElement("div");nav.className="catrow";s.appendChild(nav);
     const host=document.createElement("div");host.className="grid";s.appendChild(host);
-    const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents");
+    const baseP195=readAdminBase();
+    const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!(baseP195.deletedCats||[]).includes(c.name));
     if(!selectedCat195||!cats.some(c=>c.name===selectedCat195.name))selectedCat195=cats[0]||null;
     cats.forEach(cat=>{const b=document.createElement("button");b.textContent=adminCatIcon(cat)+" "+adminCatName(cat);b.onclick=()=>{selectedCat195=cat;render195("pictos")};nav.appendChild(b)});
     if(selectedCat195){
@@ -7963,7 +7988,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     setTitle195("Catégories et dossiers");
     const s=section195();s.innerHTML="<h2>📁 Catégories et sous-catégories</h2>";
     const g=document.createElement("div");g.className="grid";
-    categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").forEach(cat=>{
+    const base195=readAdminBase();
+    categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!(base195.deletedCats||[]).includes(c.name)).forEach(cat=>{
       const c=document.createElement("div");c.className="piccard";
       const n=document.createElement("b");n.textContent=adminCatIcon(cat)+" "+adminCatName(cat);
       const edit=document.createElement("button");edit.textContent="✏️ Modifier catégorie";edit.onclick=()=>adminEditCategory(cat);

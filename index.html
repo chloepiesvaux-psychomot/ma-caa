@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 247</title>
+<title>Ma CAA v2.0 bêta 249</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 247</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 249</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -295,11 +295,13 @@ const el=id=>document.getElementById(id);
 function renderNav(target){target.innerHTML="";
 const favCatNames=readFavCats();
 const hiddenCatNames=readHiddenCats();
-const adminHiddenCatNames=(typeof readAdminBase==="function"?(readAdminBase().hiddenCats||[]):[]);
+const adminBaseNav248=(typeof readAdminBase==="function"?readAdminBase():{});
+const adminHiddenCatNames=adminBaseNav248.hiddenCats||[];
+const adminDeletedCatNames=adminBaseNav248.deletedCats||[];
 const catOrder=orderedCategoryNames();
 const ordered=categories
   .map((c,i)=>({c,i}))
-  .filter(({c})=>c.name==="Favoris"||c.name==="Mode parents"||(!hiddenCatNames.includes(c.name)&&!adminHiddenCatNames.includes(c.name)))
+  .filter(({c})=>c.name==="Favoris"||c.name==="Mode parents"||(!hiddenCatNames.includes(c.name)&&!adminHiddenCatNames.includes(c.name)&&!adminDeletedCatNames.includes(c.name)))
   .sort((a,b)=>{
  if(a.c.name==="Favoris")return -1;if(b.c.name==="Favoris")return 1;
  if(a.c.name==="Mode parents")return 1;if(b.c.name==="Mode parents")return -1;
@@ -3671,7 +3673,19 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
   items.forEach(x=>createNormalCard(x,box));
 }
 function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
-function render(){const c=categories[current],cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};el("title").textContent=cd.name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase();if(c.name!=="École")setTimeout(hydrateAllCloudPictures,0)}
+function render(){
+  try{
+    const b248=readAdminBase();
+    const cur248=categories[current];
+    if(cur248 && cur248.name!=="Favoris" && cur248.name!=="Mode parents" && (b248.deletedCats||[]).includes(cur248.name)){
+      const next248=categories.findIndex(c=>c.name==="Favoris" || (c.name!=="Mode parents"&&!(b248.deletedCats||[]).includes(c.name)));
+      if(next248>=0)current=next248;
+    }
+  }catch(e){}
+  const c=categories[current],cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};
+  el("title").textContent=cd.name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase();
+  if(c.name!=="École")setTimeout(hydrateAllCloudPictures,0)
+}
 starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});
 el("search").oninput=renderGrid;el("speak").onclick=el("speak2").onclick=speak;el("clear").onclick=el("clear2").onclick=()=>{phrase=[];renderPhrase()};el("undo").onclick=()=>{phrase.pop();renderPhrase()};el("cats").onclick=()=>el("drawer").classList.add("open");el("close").onclick=()=>el("drawer").classList.remove("open");
 render();
@@ -7921,10 +7935,20 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     body.appendChild(s);
   }
 
-  function entryCard195(e,cat,host){
+  function entryCard195(e,cat,host,index195,total195){
     const c=document.createElement("div");c.className="piccard";
     const vis=document.createElement("div");vis.className="vis";vis.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️");
     const n=document.createElement("b");n.textContent=e.label||"Pictogramme";
+
+    // BETA249 : réorganisation Admin restaurée. Cet ordre est le même que celui
+    // lu par le mode utilisateur via adminOrder.
+    const orderRow=document.createElement("div");orderRow.className="admin249-order";
+    const up=document.createElement("button");up.type="button";up.textContent="↑ Monter";up.disabled=index195<=0;
+    const down=document.createElement("button");down.type="button";down.textContent="↓ Descendre";down.disabled=index195>=total195-1;
+    up.onclick=()=>{adminMovePermanent(cat,e.id,-1);setTimeout(()=>render195("pictos"),20)};
+    down.onclick=()=>{adminMovePermanent(cat,e.id,1);setTimeout(()=>render195("pictos"),20)};
+    orderRow.append(up,down);
+
     const edit=document.createElement("button");edit.textContent="✏️ Modifier";
     const hide=document.createElement("button");hide.textContent=e.hidden?"👁️ Réafficher":"🙈 Masquer";
     const del=document.createElement("button");del.textContent="🗑️ Supprimer";
@@ -7964,7 +7988,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         setTimeout(()=>render195("pictos"),40);
       };
     }
-    c.append(vis,n,edit,hide,del);host.appendChild(c);
+    c.append(vis,n,orderRow,edit,hide,del);host.appendChild(c);
   }
 
   function renderPictos195(body){
@@ -7979,7 +8003,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     cats.forEach(cat=>{const b=document.createElement("button");b.textContent=adminCatIcon(cat)+" "+adminCatName(cat);b.onclick=()=>{selectedCat195=cat;render195("pictos")};nav.appendChild(b)});
     if(selectedCat195){
       const entries=adminPermanentEntries(selectedCat195);
-      entries.forEach(e=>entryCard195(e,selectedCat195,host));
+      entries.forEach((e,i)=>entryCard195(e,selectedCat195,host,i,entries.length));
     }
     body.appendChild(s);setTimeout(hydrateAllCloudPictures,0);
   }
@@ -8744,7 +8768,7 @@ body.parent-mode .manage-card{
   // Rendu automatique après changement de catégorie / sous-catégorie.
   try{const old=renderGrid;renderGrid=function(){const r=old.apply(this,arguments);setTimeout(renderStarters209,0);return r};window.renderGrid=renderGrid}catch(e){}
 
-  function cats(){return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents')}
+  function cats(){const b=readAdminBase();return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&!(b.deletedCats||[]).includes(c.name))}
   function subsFor(cat){return (readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name)}
   function targetText(s){if(s.subcatId){const sc=(readAdminBase().subcategories||[]).find(v=>v.id===s.subcatId);return (s.category||'')+' › '+(sc?.name||'Sous-catégorie')}return s.category==='*'?'Toutes les catégories':s.category}
   function editor(s0){
@@ -8808,7 +8832,7 @@ body.parent-mode .manage-card{
   const KEY='ma-caa-sentence-starters-v209';
   const CLOUD_KEY='sentence_starters_v209';
   const EMOJIS=['💬','👤','👉','🙅','🙏','➕','🛑','🙂','😊','😢','😡','😰','🤢','❤️','🏠','📍','🍽️','🥤','🚽','🛏️','🎒','🏫','👋','❓','✅','❌','➡️','🧠','🤝','🗣️'];
-  function cats210(){return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents')}
+  function cats210(){const b=readAdminBase();return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&!(b.deletedCats||[]).includes(c.name))}
   function subs210(cat){return (readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name)}
   function migrateStarter(s){
     if(Array.isArray(s.targets))return s;
@@ -8935,7 +8959,7 @@ body.parent-mode .manage-card{
   function pref(x){const id=pid();x.profiles[id]=x.profiles[id]||{};const p=x.profiles[id];p.hidden=p.hidden||{};p.personalStarters=Array.isArray(p.personalStarters)?p.personalStarters:[];p.starterFavorites=p.starterFavorites||{};if(typeof p.bandHidden!=='boolean')p.bandHidden=false;return p}
   let pushTimer=null;
   function save(x){x.updated_at=new Date().toISOString();localStorage.setItem(KEY,JSON.stringify(x));clearTimeout(pushTimer);pushTimer=setTimeout(async()=>{try{if(typeof cloudClient==='undefined'||!cloudClient)return;const r=await cloudClient.from('app_config').upsert({key:CLOUD_KEY,data:read(),updated_at:read().updated_at},{onConflict:'key'});if(r.error)throw r.error}catch(e){console.warn('BETA211 push',e)}},800);try{renderStarters211()}catch(e){}}
-  function cats(){return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents')}
+  function cats(){const b=readAdminBase();return categories.filter(c=>c.name!=='Favoris'&&c.name!=='Mode parents'&&!(b.deletedCats||[]).includes(c.name))}
   function subs(cat){return (readAdminBase().subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name)}
   function loc(cat,sub){return sub?'sub:'+sub:'cat:'+cat}
   function catNow(){return categories[current]||null}
@@ -9089,7 +9113,7 @@ body.parent-mode .manage-card{
     function drawAll(){drawPersonal();draw()}catSel.onchange=draw;drawAll();const close=document.createElement('button');close.className='saveedit';close.textContent='✓ Terminer';close.style.marginTop='12px';close.onclick=()=>{ov.remove();renderGrid();setTimeout(renderStarters211,30)};panel.appendChild(close);ov.appendChild(panel);document.body.appendChild(ov)
   };
 
-  function installAdminSearch(){const admin=document.getElementById('admin195');if(!admin)return;const body=admin.querySelector('.body');if(!body||body.querySelector('#admin211-search'))return;const sec=document.createElement('div');sec.id='admin211-search';sec.innerHTML='<b>🔎 Recherche globale Administrateur</b><input type="search" placeholder="Rechercher un pictogramme, une catégorie, une sous-catégorie, un début de phrase…"><div id="admin211-results"></div>';body.insertBefore(sec,body.firstChild);const input=sec.querySelector('input'),res=sec.querySelector('#admin211-results');input.oninput=()=>{const q=input.value.trim().toLowerCase();res.innerHTML='';if(q.length<2)return;const rows=[];cats().forEach(cat=>{const cn=(adminCatName(cat)||cat.name);if((cn+' '+cat.name).toLowerCase().includes(q))rows.push({ico:'📁',title:cn,sub:'Catégorie',go:()=>{try{adminEditCategory(cat)}catch(e){window.renderAdmin195('categories')}}});subs(cat).forEach(sc=>{const sn=adminSubcatPath(sc);if((sn+' '+cat.name).toLowerCase().includes(q))rows.push({ico:'🗂️',title:sn,sub:'Sous-catégorie · '+cn,go:()=>adminManageSubcategories(cat)})});try{adminPermanentEntries(cat).forEach(e=>{if(String(e.label||'').toLowerCase().includes(q))rows.push({ico:e.emoji||'🧩',title:e.label,sub:'Pictogramme · '+cn,go:()=>e.kind==='added'?adminEditAddedItem(e.item):adminEditItem(cat,e.x)})})}catch(e){}});const xx=read();(xx.starters||[]).filter(s=>!s.deleted).forEach(s=>{if((String(s.label||'')+' '+String(s.speech||'')).toLowerCase().includes(q))rows.push({ico:s.emoji||'💬',title:s.label,sub:'Début de phrase permanent',go:()=>window.renderAdmin195('starters')})});rows.slice(0,60).forEach(r=>{const b=document.createElement('button');b.className='admin211-result';b.innerHTML='<span style="font-size:25px">'+r.ico+'</span><span><b></b><small></small></span>';b.querySelector('b').textContent=r.title;b.querySelector('small').textContent=r.sub;b.onclick=r.go;res.appendChild(b)});if(!rows.length)res.innerHTML='<div style="color:#667085;padding:8px">Aucun résultat.</div>'}}
+  function installAdminSearch(){const admin=document.getElementById('admin195');if(!admin)return;const body=admin.querySelector('.body');if(!body||body.querySelector('#admin211-search'))return;const sec=document.createElement('div');sec.id='admin211-search';sec.innerHTML='<b>🔎 Recherche globale Administrateur</b><input type="search" placeholder="Rechercher un pictogramme, une catégorie, une sous-catégorie, un début de phrase…"><div id="admin211-results"></div>';body.insertBefore(sec,body.firstChild);const input=sec.querySelector('input'),res=sec.querySelector('#admin211-results');input.oninput=()=>{const q=input.value.trim().toLowerCase();res.innerHTML='';if(q.length<2)return;const rows=[];const deleted248=readAdminBase().deletedCats||[];cats().filter(cat=>!deleted248.includes(cat.name)).forEach(cat=>{const cn=(adminCatName(cat)||cat.name);if((cn+' '+cat.name).toLowerCase().includes(q))rows.push({ico:'📁',title:cn,sub:'Catégorie',go:()=>{try{adminEditCategory(cat)}catch(e){window.renderAdmin195('categories')}}});subs(cat).forEach(sc=>{const sn=adminSubcatPath(sc);if((sn+' '+cat.name).toLowerCase().includes(q))rows.push({ico:'🗂️',title:sn,sub:'Sous-catégorie · '+cn,go:()=>adminManageSubcategories(cat)})});try{adminPermanentEntries(cat).forEach(e=>{if(String(e.label||'').toLowerCase().includes(q))rows.push({ico:e.emoji||'🧩',title:e.label,sub:'Pictogramme · '+cn,go:()=>e.kind==='added'?adminEditAddedItem(e.item):adminEditItem(cat,e.x)})})}catch(e){}});const xx=read();(xx.starters||[]).filter(s=>!s.deleted).forEach(s=>{if((String(s.label||'')+' '+String(s.speech||'')).toLowerCase().includes(q))rows.push({ico:s.emoji||'💬',title:s.label,sub:'Début de phrase permanent',go:()=>window.renderAdmin195('starters')})});rows.slice(0,60).forEach(r=>{const b=document.createElement('button');b.className='admin211-result';b.innerHTML='<span style="font-size:25px">'+r.ico+'</span><span><b></b><small></small></span>';b.querySelector('b').textContent=r.title;b.querySelector('small').textContent=r.sub;b.onclick=r.go;res.appendChild(b)});if(!rows.length)res.innerHTML='<div style="color:#667085;padding:8px">Aucun résultat.</div>'}}
   const mo=new MutationObserver(()=>installAdminSearch());mo.observe(document.body,{childList:true,subtree:true});setTimeout(()=>{installAdminSearch();renderStarters211()},80);
 })();
 </script>
@@ -11410,6 +11434,26 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
   #quick-choices-pop.quick246{width:calc(100vw - 18px)!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;padding:9px!important;gap:7px!important}
   #quick-choices-pop.quick246 button{min-height:92px!important}
 }
+</style>
+
+
+<!-- BETA248 — catégorie supprimée ignorée partout -->
+<script id="beta248-deleted-category-readers">
+(function(){
+  window.categoryDeleted248=function(catOrName){
+    try{
+      const name=typeof catOrName==="string"?catOrName:catOrName?.name;
+      return !!name&&(readAdminBase().deletedCats||[]).includes(name);
+    }catch(e){return false}
+  };
+})();
+</script>
+
+
+<style id="beta249-admin-order-style">
+#admin195 .admin249-order{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
+#admin195 .admin249-order button{min-height:38px;font-weight:850}
+#admin195 .admin249-order button:disabled{opacity:.35;cursor:default}
 </style>
 
 </body></html>

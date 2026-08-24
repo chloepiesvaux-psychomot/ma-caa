@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 245</title>
+<title>Ma CAA v2.0 bêta 246</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 245</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 246</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -583,29 +583,18 @@ function closeAllUserChoiceBubbles233(){
 function openQuickChoicesBubble(x,anchor){
   closeAllUserChoiceBubbles233();
   const choices=quickChoicesFor(x);if(!choices.length)return;
-  const pop=document.createElement("div");pop.id="quick-choices-pop";pop.className="submenu-bubble";
-  pop.style.cssText="position:fixed;z-index:100300;background:white;border:2px solid #dfe4ec;border-radius:20px;box-shadow:0 12px 34px rgba(20,35,65,.22);padding:10px;display:grid;grid-template-columns:repeat("+Math.min(4,choices.length)+",minmax(92px,120px));gap:9px;max-width:calc(100vw - 24px);max-height:min(72vh,640px);overflow:auto";
+  const pop=document.createElement("div");pop.id="quick-choices-pop";pop.className="submenu-bubble quick246";
+  pop.style.cssText="position:fixed;z-index:100300;left:50%;top:50%;transform:translate(-50%,-50%);background:white;border:2px solid #dfe4ec;border-radius:20px;box-shadow:0 12px 34px rgba(20,35,65,.22);padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:9px;width:min(600px,calc(100vw - 24px));max-height:min(76vh,680px);overflow:auto";
   choices.forEach(c=>{
     const b=document.createElement("button");b.type="button";
     b.style.cssText="border:1px solid #e2e6ee;border-radius:15px;background:#fff;padding:9px 7px;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:800";
     b.innerHTML="<div style='font-size:34px'>"+(c.emoji||"💬")+"</div><div style='font-size:14px;text-align:center'>"+(c.label||"Choix")+"</div>";
-    b.onclick=ev=>{ev.stopPropagation();add([c.emoji||"💬",c.label||"Choix",c.speech||c.label||"Choix",null,c.image||null]);closeQuickChoicesBubble()};
+    b.onclick=ev=>{ev.stopPropagation();addQuickChoice246(c);closeQuickChoicesBubble()};
     pop.appendChild(b);
   });
   document.body.appendChild(pop);
-
-  const target=anchor&&anchor.getBoundingClientRect?anchor.getBoundingClientRect():null;
-  const pr=pop.getBoundingClientRect();
-  let left=Math.max(12,(window.innerWidth-pr.width)/2),top=Math.max(12,(window.innerHeight-pr.height)/2);
-  if(target){
-    left=Math.min(window.innerWidth-pr.width-12,Math.max(12,target.left+target.width/2-pr.width/2));
-    top=target.bottom+8;
-    if(top+pr.height>window.innerHeight-12)top=Math.max(12,target.top-pr.height-8);
-  }else if(window.innerWidth<=700){
-    top=Math.max(12,window.innerHeight-pr.height-88);
-  }
-  pop.style.left=left+"px";pop.style.top=top+"px";
-  setTimeout(()=>document.addEventListener("pointerdown",quickChoicesOutsideClose,true),0);
+  setTimeout(hydrateAllCloudPictures,0);
+  setTimeout(()=>document.addEventListener("pointerdown",quickChoicesOutsideClose,true),80);
 }
 function closeQuickChoicesBubble(){
   closeAllUserChoiceBubbles233();
@@ -2587,6 +2576,54 @@ function picHtml(x){
   const p=displayImage(x), label=displayLabel(x);
   return imageHtml(p,displayEmoji(x))+'<b>'+label+'</b>';
 }
+function appendPhraseOnly246(x){
+  const d=displayItem(x);
+  showFeedback(d[1]);
+  const hasExplicitVisual=d.length>=5;
+  const picto=hasExplicitVisual?(d[4]||null):(localPictos[d[1]]||null);
+  phrase.push({icon:d[0],label:d[1],speech:d[2],picto});
+  renderPhrase();
+  return d;
+}
+function speakFresh246(text){
+  if(!text||!("speechSynthesis" in window))return;
+  try{speechSynthesis.cancel()}catch(e){}
+  try{speechSynthesis.speak(makeUtterance(text))}catch(e){}
+}
+function speakQueued246(text){
+  if(!text||!("speechSynthesis" in window))return;
+  // Ne jamais annuler la voix du pictogramme parent : le choix de la suite
+  // rapide est placé derrière dans la file de lecture.
+  try{speechSynthesis.speak(makeUtterance(text))}catch(e){}
+}
+function addQuickChoice246(c){
+  const x=[c.emoji||"💬",c.label||"Choix",c.speech||c.label||"Choix",null,c.image||null];
+  showFeedback(x[1]);
+  phrase.push({icon:x[0],label:x[1],speech:x[2],picto:x[4]||null});
+  renderPhrase();
+  speakQueued246(x[2]);
+}
+function activateUserPicto246(x,anchor,ev){
+  try{ev?.stopPropagation?.()}catch(e){}
+  closeAllUserChoiceBubbles233();
+
+  // Tous les pictogrammes passent désormais exactement par le même chemin.
+  const d=appendPhraseOnly246(x);
+  const parentSpeech=spokenText(x)||d[2]||d[1];
+  speakFresh246(parentSpeech);
+
+  const quick=quickChoicesFor(x);
+  if(quick.length){
+    // Ouvrir immédiatement : aucune temporisation pouvant être rattrapée par
+    // un ancien rafraîchissement de l'interface.
+    openQuickChoicesBubble(x,anchor);
+    return;
+  }
+  if(submenuFor(x).length||expandSubmenuEntries(x).length){
+    openSubmenuBubble(x,anchor);
+  }
+}
+
 function createNormalCard(x,box){
   const b=document.createElement("button");b.className="pic";b.innerHTML=picHtml(x);
   // Les enfants ne voient jamais le bouton étoile.
@@ -2598,42 +2635,7 @@ function createNormalCard(x,box){
     star.onclick=(e)=>{e.stopPropagation();toggleFav(x)};
     b.appendChild(star);
   }
-  b.onclick=(ev)=>{
-    const quick243=quickChoicesFor(x);
-    const submenu243=submenuFor(x).length||expandSubmenuEntries(x).length;
-    if(quick243.length){
-      // BETA245 : comportement uniforme pour TOUS les pictogrammes avec suite rapide.
-      // On ajoute le parent à la phrase sans dépendre d'un ancien chemin d'action,
-      // puis on prononce explicitement son texte configuré avant d'ouvrir la suite.
-      ev.stopPropagation();
-
-      const parent245=displayItem(x);
-      showFeedback(parent245[1]);
-
-      const hasExplicitVisual245=parent245.length>=5;
-      const picto245=hasExplicitVisual245?(parent245[4]||null):(localPictos[parent245[1]]||null);
-      phrase.push({
-        icon:parent245[0],
-        label:parent245[1],
-        speech:parent245[2],
-        picto:picto245
-      });
-      renderPhrase();
-
-      // Le texte "Ce que la voix prononce" du pictogramme parent est prioritaire.
-      const speech245=spokenText(x)||parent245[2]||parent245[1];
-      speakText(speech245);
-
-      // La fenêtre s'ouvre ensuite, sans lancer ni annuler une autre voix.
-      setTimeout(()=>openQuickChoicesBubble(x,b),90);
-    }else if(submenu243){
-      ev.stopPropagation();
-      openSubmenuBubble(x,b);
-    }else{
-      add(displayItem(x));
-      closeAllUserChoiceBubbles233();
-    }
-  };box.appendChild(b);
+  b.onclick=(ev)=>{activateUserPicto246(x,b,ev)};box.appendChild(b);
   if(b.querySelector("img[data-cloud-path],img[data-local-image-key]")){
     const cc=categories[current]?.name||"";
     if(cc!=="École")setTimeout(hydrateAllCloudPictures,0);
@@ -11373,6 +11375,15 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
 .submenu242-choice{width:100%;display:flex;align-items:center;gap:10px;border:0;border-top:1px solid #edf0f4;background:#fff;padding:9px 14px 9px 48px;text-align:left;cursor:pointer}
 .submenu242-choice:hover{background:#f4f8ff}
 .submenu242-choice span{font-size:22px;min-width:28px}
+</style>
+
+
+<style id="beta246-unified-user-action">
+#quick-choices-pop.quick246{overscroll-behavior:contain}
+@media(max-width:650px){
+  #quick-choices-pop.quick246{width:calc(100vw - 18px)!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;padding:9px!important;gap:7px!important}
+  #quick-choices-pop.quick246 button{min-height:92px!important}
+}
 </style>
 
 </body></html>

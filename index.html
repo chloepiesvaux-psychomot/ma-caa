@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 251</title>
+<title>Ma CAA v2.0 bêta 252</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 251</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 252</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3507,9 +3507,11 @@ function renderSubcategoryFilters(box,cat,items){
  if(!selected)return items;
  let filtered=items.filter(x=>itemInSubcat(x,selected));
  try{
-   const m=readSubOrder228(), ids=m[String(selected.id)]||[];
+   const profileMap=readSubOrder228(), profileIds=profileMap[String(selected.id)]||[];
+   const adminIds=(readAdminBase().adminSubOrderV252||{})[String(selected.id)]||[];
+   const ids=profileIds.length?profileIds:adminIds;
    if(ids.length){
-     const by=new Map(filtered.map(x=>[String(itemId2(x)),x])), ordered=[];
+     const by=new Map(filtered.map(x=>[String(permanentItemId(x)||itemId2(x)),x])), ordered=[];
      ids.forEach(id=>{id=String(id);if(by.has(id)){ordered.push(by.get(id));by.delete(id)}});
      by.forEach(x=>ordered.push(x));filtered=ordered;
    }
@@ -8106,79 +8108,75 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     cb.onchange=()=>onchange(cb.checked);return row;
   }
 
+  function lazyNode252(label,key,level,builder){
+    const n=document.createElement("div");n.className="adm251-node level-"+level;
+    const h=document.createElement("div");h.className="adm251-head";
+    const toggle=document.createElement("button");toggle.type="button";toggle.className="adm251-toggle";
+    const title=document.createElement("span");title.className="adm251-title";title.textContent=label;
+    const body=document.createElement("div");body.className="adm251-body";
+    let built=false;
+    const build=()=>{if(built)return;built=true;try{builder&&builder(body)}catch(e){console.warn("BETA252 lazy node",e)}};
+    const set=on=>{open251[key]=!!on;n.classList.toggle("open",!!on);toggle.textContent=on?"▾":"▸";if(on)build()};
+    h.append(toggle,title);n.append(h,body);toggle.onclick=()=>set(!n.classList.contains("open"));
+    if(open251[key])set(true);else set(false);
+    return {n,h,body,set,build,key};
+  }
+
+  function emojiThumb252(e){
+    const em=(e&&e.emoji)||"🖼️";
+    return '<span style="font-size:28px;line-height:1">'+em+'</span>';
+  }
+
   function renderVisibility251(host){
     const tools=document.createElement("div");tools.className="adm251-tools";
     const op=document.createElement("button");op.textContent="▾ Tout ouvrir";
     const cl=document.createElement("button");cl.textContent="▸ Tout fermer";
     tools.append(op,cl);host.appendChild(tools);
-
     const tree=document.createElement("div");tree.className="adm251-tree";host.appendChild(tree);
     const nodes=[];
 
     adminCats251().forEach(cat=>{
-      const base=readAdminBase();
-      const cn=node251((adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat),"vcat:"+cat.name,0);nodes.push(cn);
+      const cn=lazyNode252((adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat),"vcat:"+cat.name,0,body=>{
+        let base=readAdminBase();
+        const cv=check251("Afficher la catégorie",!(base.hiddenCats||[]).includes(cat.name),on=>{
+          const b=readAdminBase();b.hiddenCats=Array.isArray(b.hiddenCats)?b.hiddenCats:[];
+          b.hiddenCats=b.hiddenCats.filter(v=>v!==cat.name);if(!on)b.hiddenCats.push(cat.name);
+          writeAdminBase(b);render();
+        });cv.classList.add("adm251-master");body.appendChild(cv);
 
-      // Checkbox catégorie entière
-      const catVisible=!(base.hiddenCats||[]).includes(cat.name);
-      const cv=check251("Afficher la catégorie",catVisible,on=>{
-        const b=readAdminBase();b.hiddenCats=Array.isArray(b.hiddenCats)?b.hiddenCats:[];
-        b.hiddenCats=b.hiddenCats.filter(v=>v!==cat.name);if(!on)b.hiddenCats.push(cat.name);
-        writeAdminBase(b);render();
-      });
-      cv.classList.add("adm251-master");cn.body.appendChild(cv);
-
-      const entries=adminPermanentEntries(cat);
-      const entryMap=new Map(entries.map(e=>[String(e.id),e]));
-
-      // Sous-catégories d'abord
-      adminSubs251(cat).forEach(sc=>{
-        const sn=node251((sc.icon||"📁")+" "+adminSubcatPath(sc),"vsub:"+sc.id,1);nodes.push(sn);
-        const subVisible=!sc.hidden;
-        const sv=check251("Afficher cette sous-catégorie",subVisible,on=>{
-          const b=readAdminBase(),t=(b.subcategories||[]).find(x=>String(x.id)===String(sc.id));
-          if(t)t.hidden=!on;writeAdminBase(b);renderGrid();
+        const entries=adminPermanentEntries(cat),entryMap=new Map(entries.map(e=>[String(e.id),e]));
+        adminSubs251(cat).forEach(sc=>{
+          const sn=lazyNode252((sc.icon||"📁")+" "+adminSubcatPath(sc),"vsub:"+sc.id,1,sbody=>{
+            const fresh=(readAdminBase().subcategories||[]).find(x=>String(x.id)===String(sc.id))||sc;
+            const sv=check251("Afficher cette sous-catégorie",!fresh.hidden,on=>{
+              const b=readAdminBase(),t=(b.subcategories||[]).find(x=>String(x.id)===String(sc.id));if(t)t.hidden=!on;writeAdminBase(b);renderGrid();
+            });sv.classList.add("adm251-master");sbody.appendChild(sv);
+            adminSubcatItemsDeep(sc).map(String).forEach(id=>{
+              const e=entryMap.get(id);if(!e)return;
+              const loc=readAdminBase().locationHiddenV213||{cats:{},subs:{}};
+              sbody.appendChild(check251(e.label,!arrHas251(loc.subs||{},sc.id,e.id),on=>{
+                const bb=readAdminBase(),v=bb.locationHiddenV213||{cats:{},subs:{}};v.cats=v.cats||{};v.subs=v.subs||{};
+                arrSet251(v.subs,sc.id,e.id,!on);bb.locationHiddenV213=v;bb.hiddenItems=(bb.hiddenItems||[]).filter(x=>String(x)!==String(e.id));
+                if(e.kind==="added"){const it=(bb.addedItems||[]).find(x=>String(x.id)===String(e.id));if(it)it.hidden=false}writeAdminBase(bb);renderGrid();
+              },emojiThumb252(e)));
+            });
+          });nodes.push(sn);body.appendChild(sn.n);
         });
-        sv.classList.add("adm251-master");sn.body.appendChild(sv);
 
-        const ids=adminSubcatItemsDeep(sc).map(String);
-        ids.forEach(id=>{
-          const e=entryMap.get(id);if(!e)return;
-          const b=readAdminBase(),loc=b.locationHiddenV213||{cats:{},subs:{}};
-          const visible=!arrHas251(loc.subs||{},sc.id,e.id);
-          sn.body.appendChild(check251(e.label,visible,on=>{
-            const bb=readAdminBase(),v=bb.locationHiddenV213||{cats:{},subs:{}};
-            v.cats=v.cats||{};v.subs=v.subs||{};
-            arrSet251(v.subs,sc.id,e.id,!on);bb.locationHiddenV213=v;
-            bb.hiddenItems=(bb.hiddenItems||[]).filter(x=>String(x)!==String(e.id));
-            if(e.kind==="added"){const it=(bb.addedItems||[]).find(x=>String(x.id)===String(e.id));if(it)it.hidden=false}
-            writeAdminBase(bb);renderGrid();
-          },imageHtml(e.image||"",e.emoji||"🖼️")));
-        });
-        cn.body.appendChild(sn.n);
+        const an=lazyNode252("🖼️ Tous les pictogrammes de "+adminCatName(cat),"vall:"+cat.name,1,abody=>{
+          entries.forEach(e=>{
+            const loc=readAdminBase().locationHiddenV213||{cats:{},subs:{}};
+            abody.appendChild(check251(e.label,!arrHas251(loc.cats||{},cat.name,e.id),on=>{
+              const bb=readAdminBase(),v=bb.locationHiddenV213||{cats:{},subs:{}};v.cats=v.cats||{};v.subs=v.subs||{};
+              arrSet251(v.cats,cat.name,e.id,!on);bb.locationHiddenV213=v;bb.hiddenItems=(bb.hiddenItems||[]).filter(x=>String(x)!==String(e.id));
+              if(e.kind==="added"){const it=(bb.addedItems||[]).find(x=>String(x.id)===String(e.id));if(it)it.hidden=false}writeAdminBase(bb);renderGrid();
+            },emojiThumb252(e)));
+          });
+        });nodes.push(an);body.appendChild(an.n);
       });
-
-      // Tous les pictogrammes de la catégorie = visibilité exacte à la racine catégorie
-      const an=node251("🖼️ Tous les pictogrammes de "+adminCatName(cat),"vall:"+cat.name,1);nodes.push(an);
-      entries.forEach(e=>{
-        const b=readAdminBase(),loc=b.locationHiddenV213||{cats:{},subs:{}};
-        const visible=!arrHas251(loc.cats||{},cat.name,e.id);
-        an.body.appendChild(check251(e.label,visible,on=>{
-          const bb=readAdminBase(),v=bb.locationHiddenV213||{cats:{},subs:{}};
-          v.cats=v.cats||{};v.subs=v.subs||{};
-          arrSet251(v.cats,cat.name,e.id,!on);bb.locationHiddenV213=v;
-          bb.hiddenItems=(bb.hiddenItems||[]).filter(x=>String(x)!==String(e.id));
-          if(e.kind==="added"){const it=(bb.addedItems||[]).find(x=>String(x.id)===String(e.id));if(it)it.hidden=false}
-          writeAdminBase(bb);renderGrid();
-        },imageHtml(e.image||"",e.emoji||"🖼️")));
-      });
-      cn.body.appendChild(an.n);
-      tree.appendChild(cn.n);
+      nodes.push(cn);tree.appendChild(cn.n);
     });
-
-    op.onclick=()=>nodes.forEach(n=>n.set(true));
-    cl.onclick=()=>nodes.forEach(n=>n.set(false));
-    setTimeout(hydrateAllCloudPictures,0);
+    op.onclick=()=>nodes.forEach(n=>n.set(true));cl.onclick=()=>nodes.forEach(n=>n.set(false));
   }
 
   function dragRows251(wrap,onSave){
@@ -8211,67 +8209,44 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const cl=document.createElement("button");cl.textContent="▸ Tout fermer";tools.append(op,cl);host.appendChild(tools);
     const tree=document.createElement("div");tree.className="adm251-tree";host.appendChild(tree);const nodes=[];
 
-    // Catégories : liste globale ordonnable
-    const catNode=node251("📚 Ordre des catégories","ocat:all",0);nodes.push(catNode);
-    const catWrap=document.createElement("div");catWrap.className="adm251-dragwrap";
-    adminCats251().forEach(cat=>catWrap.appendChild(dragRow251(cat.name,(adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat))));
-    catNode.body.appendChild(catWrap);
-    dragRows251(catWrap,ids=>{
-      const b=readAdminBase();b.adminCategoryOrderV251=ids;writeAdminBase(b);render();
-    });
-    tree.appendChild(catNode.n);
+    const catNode=lazyNode252("📚 Ordre des catégories","ocat:all",0,body=>{
+      const w=document.createElement("div");w.className="adm251-dragwrap";
+      adminCats251().forEach(cat=>w.appendChild(dragRow251(cat.name,(adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat))));body.appendChild(w);
+      dragRows251(w,ids=>{const b=readAdminBase();b.adminCategoryOrderV251=ids;writeAdminBase(b);render()});
+    });nodes.push(catNode);tree.appendChild(catNode.n);
 
     adminCats251().forEach(cat=>{
-      const cn=node251((adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat),"ocat:"+cat.name,0);nodes.push(cn);
-
-      // Ordre des sous-catégories (par fratries : racines puis enfants gardent leur parent)
-      const subs=adminSubs251(cat);
-      const byParent={};subs.forEach(sc=>{const k=String(sc.parentId||"");(byParent[k]||(byParent[k]=[])).push(sc)});
-      Object.entries(byParent).forEach(([parentId,list])=>{
-        if(!list.length)return;
-        const parent=parentId?subs.find(s=>String(s.id)===String(parentId)):null;
-        const sn=node251("📁 Ordre "+(parent?("dans "+parent.name):"des sous-catégories"),"osubs:"+cat.name+":"+parentId,1);nodes.push(sn);
-        const w=document.createElement("div");w.className="adm251-dragwrap";
-        list.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(sc=>w.appendChild(dragRow251(sc.id,(sc.icon||"📁")+" "+sc.name)));
-        sn.body.appendChild(w);
-        dragRows251(w,ids=>{
-          const b=readAdminBase();ids.forEach((id,i)=>{const t=(b.subcategories||[]).find(x=>String(x.id)===String(id));if(t)t.order=i});writeAdminBase(b);renderGrid();
+      const cn=lazyNode252((adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat),"ocat:"+cat.name,0,body=>{
+        const subs=adminSubs251(cat),byParent={};subs.forEach(sc=>{const k=String(sc.parentId||"");(byParent[k]||(byParent[k]=[])).push(sc)});
+        Object.entries(byParent).forEach(([parentId,list])=>{
+          if(!list.length)return;const parent=parentId?subs.find(s=>String(s.id)===String(parentId)):null;
+          const sn=lazyNode252("📁 Ordre "+(parent?("dans "+parent.name):"des sous-catégories"),"osubs:"+cat.name+":"+parentId,1,sbody=>{
+            const w=document.createElement("div");w.className="adm251-dragwrap";
+            list.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(sc=>w.appendChild(dragRow251(sc.id,(sc.icon||"📁")+" "+sc.name)));sbody.appendChild(w);
+            dragRows251(w,ids=>{const b=readAdminBase();ids.forEach((id,i)=>{const t=(b.subcategories||[]).find(x=>String(x.id)===String(id));if(t)t.order=i});writeAdminBase(b);renderGrid()});
+          });nodes.push(sn);body.appendChild(sn.n);
         });
-        cn.body.appendChild(sn.n);
-      });
 
-      // Ordre dans chaque sous-catégorie exacte
-      const entries=adminPermanentEntries(cat),emap=new Map(entries.map(e=>[String(e.id),e]));
-      subs.forEach(sc=>{
-        const sn=node251((sc.icon||"📁")+" "+adminSubcatPath(sc)+" — pictogrammes","opsub:"+sc.id,1);nodes.push(sn);
-        const direct=(sc.itemIds||[]).map(String).map(id=>emap.get(id)).filter(Boolean);
-        const w=document.createElement("div");w.className="adm251-dragwrap";
-        direct.forEach(e=>w.appendChild(dragRow251(e.id,e.label,imageHtml(e.image||"",e.emoji||"🖼️"))));
-        sn.body.appendChild(w);
-        dragRows251(w,ids=>{
-          const b=readAdminBase(),t=(b.subcategories||[]).find(x=>String(x.id)===String(sc.id));
-          if(t){
-            const current=(t.itemIds||[]).map(String);
-            const set=new Set(ids),rest=current.filter(id=>!set.has(id));
-            t.itemIds=[...ids,...rest];
-          }
-          writeAdminBase(b);renderGrid();
+        const entries=adminPermanentEntries(cat),emap=new Map(entries.map(e=>[String(e.id),e]));
+        subs.forEach(sc=>{
+          const sn=lazyNode252((sc.icon||"📁")+" "+adminSubcatPath(sc)+" — pictogrammes","opsub:"+sc.id,1,sbody=>{
+            const b0=readAdminBase(),saved=(b0.adminSubOrderV252||{})[String(sc.id)]||[];
+            let direct=(sc.itemIds||[]).map(String).map(id=>emap.get(id)).filter(Boolean);
+            if(saved.length){const m=new Map(direct.map(e=>[String(e.id),e])),o=[];saved.forEach(id=>{id=String(id);if(m.has(id)){o.push(m.get(id));m.delete(id)}});m.forEach(e=>o.push(e));direct=o}
+            const w=document.createElement("div");w.className="adm251-dragwrap";
+            direct.forEach(e=>w.appendChild(dragRow251(e.id,e.label,emojiThumb252(e))));sbody.appendChild(w);
+            dragRows251(w,ids=>{const b=readAdminBase();b.adminSubOrderV252=b.adminSubOrderV252||{};b.adminSubOrderV252[String(sc.id)]=ids;writeAdminBase(b);renderGrid()});
+          });nodes.push(sn);body.appendChild(sn.n);
         });
-        cn.body.appendChild(sn.n);
-      });
 
-      // Ordre global des pictogrammes de la catégorie
-      const an=node251("↕️ Tous les pictogrammes de "+adminCatName(cat),"opall:"+cat.name,1);nodes.push(an);
-      const w=document.createElement("div");w.className="adm251-dragwrap";
-      entries.forEach(e=>w.appendChild(dragRow251(e.id,e.label,imageHtml(e.image||"",e.emoji||"🖼️"))));
-      an.body.appendChild(w);
-      dragRows251(w,ids=>{const b=readAdminBase();b.adminOrder=b.adminOrder||{};b.adminOrder[cat.name]=ids;writeAdminBase(b);renderGrid()});
-      cn.body.appendChild(an.n);
-      tree.appendChild(cn.n);
+        const an=lazyNode252("↕️ Tous les pictogrammes de "+adminCatName(cat),"opall:"+cat.name,1,abody=>{
+          const current=adminPermanentEntries(cat),w=document.createElement("div");w.className="adm251-dragwrap";
+          current.forEach(e=>w.appendChild(dragRow251(e.id,e.label,emojiThumb252(e))));abody.appendChild(w);
+          dragRows251(w,ids=>{const b=readAdminBase();b.adminOrder=b.adminOrder||{};b.adminOrder[cat.name]=ids;writeAdminBase(b);renderGrid()});
+        });nodes.push(an);body.appendChild(an.n);
+      });nodes.push(cn);tree.appendChild(cn.n);
     });
-
     op.onclick=()=>nodes.forEach(n=>n.set(true));cl.onclick=()=>nodes.forEach(n=>n.set(false));
-    setTimeout(hydrateAllCloudPictures,0);
   }
 
   function renderCustomize251(body){
@@ -11742,6 +11717,11 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
 @media(max-width:650px){
   #admin195 .adm251-check,#admin195 .adm251-drag{padding-left:28px}
 }
+</style>
+
+
+<style id="beta252-performance">
+#admin195 .adm251-thumb>span{display:grid;place-items:center;width:36px;height:36px}
 </style>
 
 </body></html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 253</title>
+<title>Ma CAA v2.0 bêta 254</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 253</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 254</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -11745,5 +11745,364 @@ function writeSubOrderFor253(subId,ids){
 <style id="beta252-performance">
 #admin195 .adm251-thumb>span{display:grid;place-items:center;width:36px;height:36px}
 </style>
+
+
+<!-- =========================================================
+     BETA 254 — BASE MA CAA PUBLIÉE / BOOTSTRAP APPAREIL NEUF
+     ========================================================= -->
+<style id="beta254-bootstrap-style">
+#ma-caa-bootstrap-254{
+  position:fixed;inset:0;z-index:2147483000;background:#f4f7fb;
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+#ma-caa-bootstrap-254 .box{
+  width:min(520px,100%);background:white;border-radius:22px;padding:24px;
+  box-shadow:0 14px 45px rgba(25,42,70,.18);text-align:center;
+}
+#ma-caa-bootstrap-254 .spinner{
+  width:38px;height:38px;margin:0 auto 14px;border:4px solid #dbe5f4;
+  border-top-color:#315b9b;border-radius:50%;animation:spin254 .8s linear infinite;
+}
+@keyframes spin254{to{transform:rotate(360deg)}}
+</style>
+
+<script id="beta254-canonical-snapshot">
+(function(){
+  const SNAP_KEY_254="admin_snapshot_v254";
+  const LOCAL_SNAPSHOT_254="ma-caa-canonical-snapshot-v254";
+  const LOCAL_STAMP_254="ma-caa-canonical-snapshot-stamp-v254";
+  const STARTERS_KEY_254="ma-caa-sentence-starters-v209";
+  const LAST_BOOT_254="ma-caa-bootstrap-254-done";
+  let publishTimer254=0;
+  let publishBusy254=false;
+  let bootstrapBusy254=false;
+  let applying254=false;
+  let originalSetItem254=null;
+
+  function clone254(v){
+    try{return JSON.parse(JSON.stringify(v))}catch(e){return v}
+  }
+
+  function snapshotRichness254(base){
+    if(!base||typeof base!=="object")return 0;
+    return (
+      (Array.isArray(base.addedCats)?base.addedCats.filter(x=>x&&!x.deleted).length:0)*20+
+      (Array.isArray(base.subcategories)?base.subcategories.filter(x=>x&&!x.deleted).length:0)*5+
+      (Array.isArray(base.addedItems)?base.addedItems.filter(x=>x&&!x.deleted).length:0)*8+
+      Object.keys(base.items||{}).length*3+
+      Object.keys(base.catEdits||{}).length*2+
+      Object.keys(base.quickChoices||{}).length*2+
+      Object.keys(base.submenus||{}).length*2+
+      Object.keys(base.adminOrder||{}).length+
+      (Array.isArray(base.deletedCats)?base.deletedCats.length:0)+
+      (Array.isArray(base.deletedItems)?base.deletedItems.length:0)
+    );
+  }
+
+  function readStarters254(){
+    try{return JSON.parse(localStorage.getItem(STARTERS_KEY_254)||"null")}catch(e){return null}
+  }
+
+  function readBaseImages254(){
+    try{
+      return (typeof readBaseImageOverrides235==="function")
+        ? clone254(readBaseImageOverrides235())
+        : JSON.parse(localStorage.getItem("ma-caa-base-image-overrides-v235")||"{}");
+    }catch(e){return {}}
+  }
+
+  function makeSnapshot254(){
+    const base=(typeof readAdminBase==="function")?clone254(readAdminBase()):{};
+    return {
+      schema:254,
+      base,
+      baseImageOverrides:readBaseImages254(),
+      sentenceStarters:readStarters254(),
+      published_at:new Date().toISOString(),
+      richness:snapshotRichness254(base)
+    };
+  }
+
+  function portableImageValue254(v){
+    if(typeof v==="string"){
+      if(/^https?:\/\//i.test(v))return v;
+      if(v.startsWith("data:image/"))return null;
+      return v;
+    }
+    // IndexedDB/local-only refs must never become the canonical value
+    // for a brand-new patient device.
+    if(v&&typeof v==="object"&&(v.__local_image===true||v.key))return null;
+    return v||null;
+  }
+
+  function sanitizeSnapshot254(s){
+    const out=clone254(s||{});
+    out.schema=254;
+    out.base=out.base||{};
+    const imgs={};
+    for(const [id,v] of Object.entries(out.baseImageOverrides||{})){
+      const p=portableImageValue254(v);
+      if(p)imgs[id]=p;
+    }
+    out.baseImageOverrides=imgs;
+    return out;
+  }
+
+  async function publishCanonical254(reason){
+    if(publishBusy254||applying254||typeof cloudClient==="undefined"||!cloudClient)return false;
+    let u=null;
+    try{u=await cloudUser()}catch(e){}
+    // Only the connected administrator is allowed to publish the canonical base.
+    if(!u)return false;
+
+    publishBusy254=true;
+    try{
+      // First let the existing Admin publisher migrate local image blobs to
+      // portable Storage URLs. Never recurse if called from adminBasePush wrapper.
+      const snap=sanitizeSnapshot254(makeSnapshot254());
+      if(snapshotRichness254(snap.base)<1)return false;
+
+      const stamp=new Date().toISOString();
+      snap.published_at=stamp;
+      snap.reason=reason||"admin-change";
+      snap.richness=snapshotRichness254(snap.base);
+
+      const r=await cloudClient.from("app_config").upsert(
+        {key:SNAP_KEY_254,data:snap,updated_at:stamp},
+        {onConflict:"key"}
+      );
+      if(r.error)throw r.error;
+
+      applying254=true;
+      try{
+        localStorage.setItem(LOCAL_SNAPSHOT_254,JSON.stringify(snap));
+        localStorage.setItem(LOCAL_STAMP_254,stamp);
+      }finally{applying254=false}
+      return true;
+    }catch(e){
+      console.warn("BETA254 publication base canonique",e);
+      return false;
+    }finally{
+      publishBusy254=false;
+    }
+  }
+
+  function scheduleCanonical254(reason,delay=900){
+    clearTimeout(publishTimer254);
+    publishTimer254=setTimeout(()=>publishCanonical254(reason),delay);
+  }
+
+  function applySnapshot254(snap,source){
+    if(!snap||!snap.base)return false;
+    try{
+      applying254=true;
+      const base=clone254(snap.base);
+
+      // Canonical means REPLACE, not additive merge. Tombstones, renamed
+      // categories and current ordering are therefore respected on a new device.
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+      try{ADMIN_LAST_BASE_V113=clone254(base)}catch(e){}
+      try{adminBaseRemoteCanonicalV129=clone254(base)}catch(e){}
+      try{adminBaseLocalDirty=false}catch(e){}
+      try{localStorage.removeItem(ADMIN_LOCAL_EDIT_TS_V149)}catch(e){}
+
+      if(snap.sentenceStarters){
+        localStorage.setItem(STARTERS_KEY_254,JSON.stringify(snap.sentenceStarters));
+      }
+
+      if(snap.baseImageOverrides&&typeof snap.baseImageOverrides==="object"){
+        const current=(typeof readBaseImageOverrides235==="function")?readBaseImageOverrides235():{};
+        const merged={...current,...snap.baseImageOverrides};
+        localStorage.setItem("ma-caa-base-image-overrides-v235",JSON.stringify(merged));
+      }
+
+      localStorage.setItem(LOCAL_SNAPSHOT_254,JSON.stringify(snap));
+      localStorage.setItem(LOCAL_STAMP_254,snap.published_at||new Date().toISOString());
+      localStorage.setItem(LAST_BOOT_254,source||"snapshot");
+
+      try{syncAdminCategories()}catch(e){}
+      try{syncCustomCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{renderProfileBar()}catch(e){}
+      try{renderStarters211()}catch(e){}
+      try{scheduleUiHydration253(30)}catch(e){}
+      return true;
+    }catch(e){
+      console.warn("BETA254 application snapshot",e);
+      return false;
+    }finally{
+      applying254=false;
+    }
+  }
+
+  function showBootstrap254(){
+    if(document.getElementById("ma-caa-bootstrap-254"))return;
+    const ov=document.createElement("div");
+    ov.id="ma-caa-bootstrap-254";
+    ov.innerHTML='<div class="box"><div class="spinner"></div><h2 style="margin:0 0 8px">Initialisation de Ma CAA</h2><div id="ma-caa-bootstrap-status-254" style="color:#5d6980;line-height:1.45">Récupération de la base commune…</div></div>';
+    document.body.appendChild(ov);
+  }
+  function bootStatus254(t){
+    const e=document.getElementById("ma-caa-bootstrap-status-254");if(e)e.textContent=t;
+  }
+  function hideBootstrap254(){
+    const e=document.getElementById("ma-caa-bootstrap-254");if(e)e.remove();
+  }
+
+  async function fetchCloudSnapshot254(){
+    if(typeof cloudClient==="undefined"||!cloudClient)return null;
+
+    // IMPORTANT: no cloudUser() requirement here. New patient devices must be
+    // able to READ the published base without possessing the Admin login.
+    try{
+      const r=await cloudClient.from("app_config")
+        .select("data,updated_at")
+        .eq("key",SNAP_KEY_254)
+        .maybeSingle();
+      if(!r.error&&r.data?.data){
+        const s=r.data.data;
+        if(!s.published_at)s.published_at=r.data.updated_at||"";
+        return s;
+      }
+    }catch(e){console.warn("BETA254 snapshot cloud",e)}
+
+    // Migration fallback: before the Mac has published its first 254 snapshot,
+    // use the existing complete admin_base rather than the primitive HTML base.
+    try{
+      const r=await cloudClient.from("app_config")
+        .select("data,updated_at")
+        .eq("key","admin_base")
+        .maybeSingle();
+      if(!r.error&&r.data?.data){
+        return {
+          schema:254,
+          base:r.data.data,
+          baseImageOverrides:{},
+          sentenceStarters:null,
+          published_at:r.data.updated_at||"",
+          richness:snapshotRichness254(r.data.data),
+          migration_fallback:true
+        };
+      }
+    }catch(e){console.warn("BETA254 fallback admin_base",e)}
+    return null;
+  }
+
+  async function bootstrapCanonical254(){
+    if(bootstrapBusy254)return false;
+    bootstrapBusy254=true;
+
+    const hasLocalAdmin=(()=>{
+      try{
+        const raw=localStorage.getItem(ADMIN_BASE_KEY);
+        if(!raw)return false;
+        return snapshotRichness254(JSON.parse(raw))>0;
+      }catch(e){return false}
+    })();
+
+    // On a truly new device, hold the UI briefly so the user does not see a
+    // flash of the primitive built-in catalogue.
+    if(!hasLocalAdmin)showBootstrap254();
+
+    try{
+      let cloudSnap=null;
+      bootStatus254("Récupération de la base commune…");
+      cloudSnap=await fetchCloudSnapshot254();
+
+      let localSnap=null;
+      try{localSnap=JSON.parse(localStorage.getItem(LOCAL_SNAPSHOT_254)||"null")}catch(e){}
+
+      const cloudAt=Date.parse(cloudSnap?.published_at||0)||0;
+      const localAt=Date.parse(localSnap?.published_at||0)||0;
+
+      if(cloudSnap && (!localSnap || cloudAt>=localAt || !hasLocalAdmin)){
+        bootStatus254("Installation des catégories, pictogrammes et réglages…");
+        applySnapshot254(cloudSnap,"cloud");
+      }else if(localSnap && !hasLocalAdmin){
+        bootStatus254("Restauration de la dernière base enregistrée…");
+        applySnapshot254(localSnap,"local-cache");
+      }
+
+      // Profiles remain a separate patient directory; retrieve them after the
+      // common base without making them part of the global catalogue.
+      try{if(typeof pullProfilesDirectory==="function")await pullProfilesDirectory()}catch(e){}
+
+      // New devices may not have the Admin login. The snapshot itself therefore
+      // contains all structural/meta data; cloud image URLs hydrate normally.
+      try{scheduleUiHydration253(30)}catch(e){}
+
+      // On the primary authenticated Mac, opening 254 automatically publishes
+      // the CURRENT local Admin configuration as the new canonical snapshot.
+      let u=null;try{u=await cloudUser()}catch(e){}
+      if(u){
+        bootStatus254("Publication de la base actuelle…");
+        // Let legacy admin_base image migration finish first if required.
+        try{
+          if(typeof adminBaseLocalDirty!=="undefined"&&adminBaseLocalDirty && typeof adminBasePush==="function"){
+            await adminBasePush();
+          }
+        }catch(e){}
+        await publishCanonical254("startup-primary-device");
+      }
+
+      return true;
+    }catch(e){
+      console.warn("BETA254 bootstrap",e);
+      return false;
+    }finally{
+      hideBootstrap254();
+      bootstrapBusy254=false;
+    }
+  }
+
+  // Every successful Admin base publication also refreshes the canonical 254 snapshot.
+  try{
+    const prevAdminPush254=adminBasePush;
+    adminBasePush=async function(){
+      const ok=await prevAdminPush254.apply(this,arguments);
+      if(ok)scheduleCanonical254("admin-base-save",180);
+      return ok;
+    };
+    window.adminBasePush=adminBasePush;
+  }catch(e){console.warn("BETA254 wrap adminBasePush",e)}
+
+  // Sentence starters and the dedicated early-built-in image map live outside
+  // ADMIN_BASE_KEY. Detect their Admin saves too and republish the snapshot.
+  try{
+    originalSetItem254=Storage.prototype.setItem;
+    Storage.prototype.setItem=function(k,v){
+      const r=originalSetItem254.apply(this,arguments);
+      if(!applying254 && (
+        k===STARTERS_KEY_254 ||
+        k==="ma-caa-base-image-overrides-v235"
+      )){
+        scheduleCanonical254("admin-extra-save",950);
+      }
+      return r;
+    };
+  }catch(e){console.warn("BETA254 storage hook",e)}
+
+  // Publish on leaving Admin as an extra safety checkpoint.
+  document.addEventListener("click",e=>{
+    const b=e.target?.closest?.("#admin195 .top button,#admin-panel-beta25 button");
+    if(!b)return;
+    const t=(b.textContent||"").toLowerCase();
+    if(t.includes("quitter"))scheduleCanonical254("admin-exit",250);
+  },true);
+
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="hidden")scheduleCanonical254("app-background",50);
+  });
+
+  window.publishCanonical254=publishCanonical254;
+  window.bootstrapCanonical254=bootstrapCanonical254;
+  window.applySnapshot254=applySnapshot254;
+
+  const start=()=>setTimeout(bootstrapCanonical254,40);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
+  else start();
+})();
+</script>
 
 </body></html>

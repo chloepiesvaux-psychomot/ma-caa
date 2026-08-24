@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 234</title>
+<title>Ma CAA v2.0 bêta 235</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 234</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 235</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -777,6 +777,25 @@ function adminOverrideFor(x){
   }
   return {};
 }
+const BASE_IMAGE_OVERRIDES_235="ma-caa-base-image-overrides-v235";
+function readBaseImageOverrides235(){try{return JSON.parse(localStorage.getItem(BASE_IMAGE_OVERRIDES_235)||"{}")||{}}catch(e){return {}}}
+function writeBaseImageOverrides235(v){try{localStorage.setItem(BASE_IMAGE_OVERRIDES_235,JSON.stringify(v||{}));localStorage.setItem("ma-caa-last-save",String(Date.now()))}catch(e){}}
+function permanentRuntimeId235(x){
+  try{if(x&&x[6])return String(x[6])}catch(e){}
+  try{
+    for(const c of categories){
+      if((c.items||[]).includes(x))return adminItemId(c,x);
+    }
+  }catch(e){}
+  return "";
+}
+function getBaseImageOverride235(x){
+  try{const id=typeof x==='string'?x:permanentRuntimeId235(x);if(!id)return "";const m=readBaseImageOverrides235();return normalizeCloudImageRef(m[id]||"")}catch(e){return ""}
+}
+function setBaseImageOverride235(id,image){
+  try{if(!id)return;const m=readBaseImageOverrides235();if(image)m[id]=image;else delete m[id];writeBaseImageOverrides235(m)}catch(e){}
+}
+
 function displayLabel(x){
   const ae=adminOverrideFor(x);
   return ae.label||customFor(x).label||x[1];
@@ -810,10 +829,12 @@ function pictoImageNodeV116(x,size=86){
 function displayImage(x){
   const cu=customFor(x);
 
-  // BETA145: for permanent/base pictograms, the Administrator image is the
-  // canonical image. Legacy per-profile custom images must not mask a newer
-  // Administrator edit (this caused J’ai chaud / J’ai froid to differ).
+  // BETA235: for the very first built-in pictograms, keep a dedicated local
+  // image-override layer. It becomes immediately authoritative in Admin and
+  // User mode, even if an older built-in image/emoji still exists.
   if(!isAdded(x)){
+    const forced235=getBaseImageOverride235(x);
+    if(forced235)return normalizeCloudImageRef(forced235);
     const ae0=adminOverrideFor(x);
     if(ae0.image)return normalizeCloudImageRef(ae0.image);
   }
@@ -4194,7 +4215,8 @@ function adminCatName(c){return readAdminBase().catEdits?.[c.name]?.name||c.name
 function adminCatIcon(c){return readAdminBase().catEdits?.[c.name]?.icon||c.icon}
 function adminItemData(cat,x){
   const id=adminItemId(cat,x),e=readAdminBase().items?.[id]||{};
-  const resolvedImage=e.image||x[4]||"";
+  const forced235=getBaseImageOverride235(id);
+  const resolvedImage=forced235||e.image||x[4]||"";
   return [e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],resolvedImage,false,id];
 }
 function adminItemAvailable(cat,x){
@@ -4599,6 +4621,7 @@ function adminToggleCat(cat){
 
 function adminEditItem(cat,x){
   const a=readAdminBase(),id=(x&&x[6])||adminItemId(cat,x),e=a.items[id]||{};
+  const forced235=getBaseImageOverride235(id);
   adminPermanentPictogramForm({
     _baseItem:true,
     _baseId:id,
@@ -4607,7 +4630,7 @@ function adminEditItem(cat,x){
     label:e.label||x[1],
     speech:e.speech||x[2],
     emoji:e.emoji||x[0],
-    image:e.image||x[4]||"",
+    image:forced235||e.image||x[4]||"",
     action:e.action||((a.submenus?.[id]||[]).some(v=>!v.deleted)?"submenu":"phrase")
   });
 }
@@ -5212,6 +5235,9 @@ function adminPermanentPictogramForm(existing){
         cur.label=l;cur.speech=speechText;cur.emoji=emojiText;cur.category=cat.value;cur.categories=cats;cur.action=action.value;
         if(finalImage)cur.image=finalImage;else delete cur.image;
         base.items[existing._baseId]=cur;
+        // BETA235: the first built-in pictograms also keep a direct local image map.
+        // This prevents the historical built-in visual from masking the new image.
+        try{setBaseImageOverride235(existing._baseId,finalImage||null)}catch(e){console.warn('Base image 235',e)}
       }else if(existing){
         savedItemId=existing.id;
         const cur=(base.addedItems||[]).find(x=>x.id===existing.id);
@@ -6976,12 +7002,18 @@ async function applyMediaRecordV182(rec){
     }
   }
   if(!target)return false;
-  if(rec.deleted||!rec.image){delete target.image;writeAdminBaseLocalV182(base);return true}
+  if(rec.deleted||!rec.image){
+    delete target.image;
+    try{if(rec.picto_id)setBaseImageOverride235(rec.picto_id,null)}catch(e){}
+    writeAdminBaseLocalV182(base);
+    return true
+  }
   let localRef=rec.image;
   if(typeof rec.image==='string'&&rec.image.startsWith('data:image/')){
     localRef=await storeAdminPictogramImage(rec.image);
   }
   target.image=localRef;
+  try{if(rec.picto_id)setBaseImageOverride235(rec.picto_id,localRef)}catch(e){}
   writeAdminBaseLocalV182(base);
   return true;
 }
@@ -10831,6 +10863,22 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
     setTimeout(flush234,180);
     setTimeout(pull234,550);
   });
+})();
+</script>
+
+
+<!-- BETA235 — déverrouillage des images des pictogrammes historiques -->
+<script id="beta235-historic-picto-images">
+(function(){
+  try{
+    const base=readAdminBase();
+    const map=readBaseImageOverrides235();
+    let changed=false;
+    for(const [id,item] of Object.entries(base.items||{})){
+      if(item&&item.image && !map[id]){map[id]=item.image;changed=true}
+    }
+    if(changed)writeBaseImageOverrides235(map);
+  }catch(e){console.warn('BETA235 seed',e)}
 })();
 </script>
 

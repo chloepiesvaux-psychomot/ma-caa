@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 252</title>
+<title>Ma CAA v2.0 bêta 253</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 252</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 253</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1584,6 +1584,14 @@ async function hydrateAllCloudPictures(){
     cloudPictureHydrationBusy=false;
   }
 }
+let hydrateUiTimer253=0;
+function scheduleUiHydration253(delay=24){
+  clearTimeout(hydrateUiTimer253);
+  hydrateUiTimer253=setTimeout(()=>{
+    hydrateUiTimer253=0;
+    try{hydrateAllCloudPictures()}catch(e){}
+  },delay);
+}
 document.addEventListener("DOMContentLoaded",()=>{
   hydrateAllCloudPictures();
 });
@@ -2508,8 +2516,9 @@ function openAddPicto(){
 }
 
 function normalCategories(){
-  syncCustomCategories();
-  if(typeof syncAdminCategories==="function")syncAdminCategories();
+  // BETA253 : lecture légère. Les catégories sont déjà reconstruites au moment
+  // des écritures Admin et des pulls cloud ; inutile de les resynchroniser
+  // à chaque recherche ou changement d'écran.
   const a=readAdminBase();
   return categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!a.hiddenCats.includes(c.name)&&!a.deletedCats.includes(c.name));
 }
@@ -2683,10 +2692,6 @@ function createNormalCard(x,box){
     b.appendChild(star);
   }
   b.onclick=(ev)=>{activateUserPicto246(x,b,ev)};box.appendChild(b);
-  if(b.querySelector("img[data-cloud-path],img[data-local-image-key]")){
-    const cc=categories[current]?.name||"";
-    if(cc!=="École")setTimeout(hydrateAllCloudPictures,0);
-  }
 }
 let parentLazyView=null;
 function renderPersonalize(box){
@@ -3508,8 +3513,14 @@ function renderSubcategoryFilters(box,cat,items){
  let filtered=items.filter(x=>itemInSubcat(x,selected));
  try{
    const profileMap=readSubOrder228(), profileIds=profileMap[String(selected.id)]||[];
-   const adminIds=(readAdminBase().adminSubOrderV252||{})[String(selected.id)]||[];
-   const ids=profileIds.length?profileIds:adminIds;
+   const profileMeta=readSubOrderMeta253(), profileAt=Number(profileMeta[String(selected.id)]||0);
+   const adminBase253=readAdminBase();
+   const adminIds=(adminBase253.adminSubOrderV252||{})[String(selected.id)]||[];
+   const adminAt=Number((adminBase253.adminSubOrderUpdatedV253||{})[String(selected.id)]||0);
+   // Un ancien ordre profil sans date est considéré antérieur à la nouvelle
+   // organisation Admin. Dès qu'un parent réordonne ensuite ce dossier,
+   // son réglage personnel redevient prioritaire pour ce profil uniquement.
+   const ids=(profileIds.length && profileAt>adminAt)?profileIds:adminIds.length?adminIds:profileIds;
    if(ids.length){
      const by=new Map(filtered.map(x=>[String(permanentItemId(x)||itemId2(x)),x])), ordered=[];
      ids.forEach(id=>{id=String(id);if(by.has(id)){ordered.push(by.get(id));by.delete(id)}});
@@ -3680,12 +3691,6 @@ function globalSearchItemsV198(query){
 
 function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdultBadge();renderProfileBar();
   const __caaBeforeScroll=window.scrollY||0;
-  const __caaCurrentCat=categories[current]?.name||"";
-  if(__caaCurrentCat==="École"){
-    setTimeout(async()=>{try{await hydrateAllCloudPictures()}catch(e){}},60);
-  }else{
-    setTimeout(hydrateAllCloudPictures,0);
-  }
   const q=el("search").value.trim().toLowerCase(), box=el("grid");box.innerHTML="";
   const c=categories[current];
   if(c.name==="Mode parents"){
@@ -3718,6 +3723,7 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
     box.appendChild(msg);return;
   }
   items.forEach(x=>createNormalCard(x,box));
+  scheduleUiHydration253(30);
 }
 function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
 function render(){
@@ -3731,7 +3737,6 @@ function render(){
   }catch(e){}
   const c=categories[current],cd=(typeof adminCategoryDisplay==="function")?adminCategoryDisplay(c):{name:c.name,icon:c.icon};
   el("title").textContent=cd.name;renderNav(el("nav"));renderNav(el("nav2"));renderGrid();renderPhrase();
-  if(c.name!=="École")setTimeout(hydrateAllCloudPictures,0)
 }
 starters.forEach(x=>{const b=document.createElement("button");b.className="starter";b.textContent=x[0]+" "+x[1];b.onclick=()=>add(x);el("starterrow").appendChild(b)});
 el("search").oninput=renderGrid;el("speak").onclick=el("speak2").onclick=speak;el("clear").onclick=el("clear2").onclick=()=>{phrase=[];renderPhrase()};el("undo").onclick=()=>{phrase.pop();renderPhrase()};el("cats").onclick=()=>el("drawer").classList.add("open");el("close").onclick=()=>el("drawer").classList.remove("open");
@@ -8031,7 +8036,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       const entries=adminPermanentEntries(selectedCat195);
       entries.forEach((e,i)=>entryCard195(e,selectedCat195,host,i,entries.length));
     }
-    body.appendChild(s);setTimeout(hydrateAllCloudPictures,0);
+    body.appendChild(s);scheduleUiHydration253(35);
   }
 
   function renderCategories195(body){
@@ -8235,7 +8240,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
             if(saved.length){const m=new Map(direct.map(e=>[String(e.id),e])),o=[];saved.forEach(id=>{id=String(id);if(m.has(id)){o.push(m.get(id));m.delete(id)}});m.forEach(e=>o.push(e));direct=o}
             const w=document.createElement("div");w.className="adm251-dragwrap";
             direct.forEach(e=>w.appendChild(dragRow251(e.id,e.label,emojiThumb252(e))));sbody.appendChild(w);
-            dragRows251(w,ids=>{const b=readAdminBase();b.adminSubOrderV252=b.adminSubOrderV252||{};b.adminSubOrderV252[String(sc.id)]=ids;writeAdminBase(b);renderGrid()});
+            dragRows251(w,ids=>{
+              const b=readAdminBase();
+              b.adminSubOrderV252=b.adminSubOrderV252||{};
+              b.adminSubOrderUpdatedV253=b.adminSubOrderUpdatedV253||{};
+              b.adminSubOrderV252[String(sc.id)]=ids;
+              b.adminSubOrderUpdatedV253[String(sc.id)]=Date.now();
+              writeAdminBase(b);
+              try{scheduleAdminBasePush()}catch(e){}
+              renderGrid();
+            });
           });nodes.push(sn);body.appendChild(sn.n);
         });
 
@@ -10197,8 +10211,16 @@ body.parent-mode .manage-card{
 
 <script id="beta228-suborder-storage">
 const SUB_ORDER_KEY_228="ma-caa-subcategory-order-v228";
+const SUB_ORDER_META_KEY_253="ma-caa-subcategory-order-meta-v253";
 function readSubOrder228(){try{return JSON.parse(localStorage.getItem(profiledKey(SUB_ORDER_KEY_228))||"{}")||{}}catch(e){return {}}}
+function readSubOrderMeta253(){try{return JSON.parse(localStorage.getItem(profiledKey(SUB_ORDER_META_KEY_253))||"{}")||{}}catch(e){return {}}}
 function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228),JSON.stringify(v));try{localStorage.setItem("ma-caa-last-save",String(Date.now()))}catch(e){};try{scheduleProfileAutoPush()}catch(e){}}
+function writeSubOrderFor253(subId,ids){
+  const v=readSubOrder228();v[String(subId)]=ids;writeSubOrder228(v);
+  const m=readSubOrderMeta253();m[String(subId)]=Date.now();
+  localStorage.setItem(profiledKey(SUB_ORDER_META_KEY_253),JSON.stringify(m));
+  try{scheduleProfileAutoPush()}catch(e){}
+}
 </script>
 <!-- BETA220 — refonte Mode Parents : accueil, personnalisation, glisser-déposer, gestion contenu -->
 <style id="beta220-parent-style">
@@ -10546,7 +10568,7 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
         if(saved.length){const by=new Map(items.map(x=>[String(itemId2(x)),x])),z=[];saved.forEach(id=>{id=String(id);if(by.has(id)){z.push(by.get(id));by.delete(id)}});by.forEach(x=>z.push(x));items=z}
         const sn=node((sc.icon||'📁')+' '+adminSubcatPath(sc)+' — ordre','228-psub:'+sc.id,1);
         items.forEach(x=>sn.body.appendChild(rowFor(x)));
-        attachDrag(sn.body,items,arr=>{const m=readSubOrder228();m[String(sc.id)]=arr.map(itemId2);writeSubOrder228(m)});
+        attachDrag(sn.body,items,arr=>{writeSubOrderFor253(sc.id,arr.map(itemId2))});
         cn.body.appendChild(sn.n);
       });
       const all=orderedItems(cat),an=node('↕️ Tous les pictogrammes de '+adminCatName(cat)+' — ordre','228-pall:'+cat.name,1);

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 228</title>
+<title>Ma CAA v2.0 bêta 229</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 228</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 229</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8358,6 +8358,8 @@ body.parent-mode .manage-card{
     cats().forEach(cat=>{const ss=subsFor(cat);if(!ss.length)return;const h=document.createElement('h4');h.textContent=adminCatIcon(cat)+' '+adminCatName(cat);h.style.marginBottom='5px';inh.appendChild(h);ss.forEach(sc=>{const l=document.createElement('label');l.className='starter209-check';const cb=document.createElement('input');cb.type='checkbox';cb.checked=x.inherit?.[sc.id]!==false;cb.onchange=()=>{x.inherit=x.inherit||{};x.inherit[sc.id]=cb.checked;save(x)};const t=document.createElement('span');t.innerHTML='<b>'+adminSubcatPath(sc)+'</b><br><small>'+(cb.checked?'Reprend les phrases de la catégorie':'Utilise uniquement ses propres phrases')+'</small>';cb.onchange=()=>{x.inherit=x.inherit||{};x.inherit[sc.id]=cb.checked;t.querySelector('small').textContent=cb.checked?'Reprend les phrases de la catégorie':'Utilise uniquement ses propres phrases';save(x)};l.append(cb,t);inh.appendChild(l)})});sec.appendChild(inh);body.appendChild(sec);
   };
 
+  window.openPersonalStarterEditor211=personalEditor;
+
   window.openParentStarters209=function(){
     const x=read(),p=pref(x);const ov=document.createElement('div');ov.className='editor-overlay';const panel=document.createElement('div');panel.className='editor';panel.style.maxWidth='720px';panel.style.maxHeight='88vh';panel.style.overflow='auto';panel.innerHTML='<h2>💬 Débuts de phrases</h2><p style="color:#667085">Choisis ce qui sera visible pour cet utilisateur. Une phrase peut être masquée dans une catégorie sans être masquée dans une sous-catégorie.</p>';
     const band=document.createElement('label');band.className='starter209-check';const bc=document.createElement('input');bc.type='checkbox';bc.checked=!p.bandHidden;const bt=document.createElement('span');bt.innerHTML='<b>Afficher la bande « Débuts de phrase »</b><br><small>L’utilisateur pourra aussi la masquer ou la réafficher lui-même.</small>';bc.onchange=()=>{p.bandHidden=!bc.checked;save(x)};band.append(bc,bt);panel.appendChild(band);
@@ -9868,34 +9870,102 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
     })
   }
   function managePhrases220(box){
-    const b=mk220('button','p220-add','＋ Gérer / créer les phrases');
-    b.onclick=()=>openParentStarters211?openParentStarters211():openParentStarters209();
+    const x=starterData220(),p=starterPref220(x);
+
+    const b=mk220('button','p220-add','＋ Créer une phrase personnelle');
+    b.onclick=()=>{
+      if(typeof window.openPersonalStarterEditor211==='function'){
+        window.openPersonalStarterEditor211(null,()=>draw220(box));
+      }else if(typeof window.openParentStarters209==='function'){
+        window.openParentStarters209();
+      }
+    };
     box.appendChild(b);
-    const x=starterData220(),p=starterPref220(x),tree=mk220('div','p220-tree');box.appendChild(tree);
+
+    const info=mk220('div','p220-order-note',
+      'ℹ️ Les phrases personnelles de ce profil peuvent être créées, modifiées et supprimées ici. Les phrases permanentes se modifient dans le Mode Administrateur.');
+    box.appendChild(info);
+
+    const tree=mk220('div','p220-tree');box.appendChild(tree);
+
+    function isPersonal(s){
+      return (p.personalStarters||[]).some(v=>String(v.id)===String(s.id)&&!v.deleted);
+    }
+    function personalRef(s){
+      return (p.personalStarters||[]).find(v=>String(v.id)===String(s.id));
+    }
+    function deletePersonal(s){
+      const ref=personalRef(s);if(!ref)return;
+      if(!confirm('Supprimer cette phrase personnelle ?'))return;
+      ref.deleted=true;
+      delete p.starterFavorites[ref.id];
+      saveStarter220(x);
+      draw220(box);
+    }
+    function editPersonal(s){
+      const ref=personalRef(s);if(!ref)return;
+      if(typeof window.openPersonalStarterEditor211==='function'){
+        window.openPersonalStarterEditor211(ref,()=>draw220(box));
+      }else if(typeof window.openParentStarters209==='function'){
+        window.openParentStarters209();
+      }
+    }
+    function phraseRow(o,direct){
+      const s=o.s;
+      const r=mk220('div','p220-item'+(direct?' direct':''));
+      r.appendChild(mk220('span','', (s.emoji||'💬')+' '+s.label));
+
+      const a=mk220('div','p220-actions');
+      if(isPersonal(s)){
+        const ed=mk220('button','','✏️ Modifier');
+        ed.onclick=()=>editPersonal(s);
+        const del=mk220('button','del','🗑️ Supprimer');
+        del.onclick=()=>deletePersonal(s);
+        a.append(ed,del);
+      }else{
+        const badge=mk220('span','p229-permanent','🔒 Permanente');
+        a.appendChild(badge);
+      }
+      r.appendChild(a);
+      return r;
+    }
 
     cats220().forEach(cat=>{
       const cg=mk220('div','p220-cat');
       cg.appendChild(mk220('div','p220-cathead','💬 '+adminCatName(cat)));
 
+      // Sous-catégories d'abord.
       subs220(cat).forEach(sc=>{
         const sh=mk220('div','p220-subhead',(sc.icon||'📁')+' '+adminSubcatPath(sc));
-        sh.dataset.p223kind='sub';sh.dataset.p223key=String(sc.id);
+        sh.dataset.p223kind='sub';sh.dataset.p223key='manage-phrases:'+sc.id;
         cg.appendChild(sh);
-        phraseListForLoc220(x,p,cat,sc).forEach(o=>{
-          cg.appendChild(mk220('div','p220-item',(o.s.emoji||'💬')+' '+o.s.label));
-        });
+
+        const list=phraseListForLoc220(x,p,cat,sc);
+        if(!list.length){
+          cg.appendChild(mk220('div','p220-item','Aucune phrase'));
+        }else{
+          list.forEach(o=>cg.appendChild(phraseRow(o,false)));
+        }
       });
 
+      // Toutes les phrases proposées dans la catégorie.
       const ah=mk220('div','p220-subhead p223-allhead','💬 Toutes les phrases de '+adminCatName(cat));
-      ah.dataset.p223kind='all';ah.dataset.p223key='manage-phrases:'+cat.name;
+      ah.dataset.p223kind='all';ah.dataset.p223key='manage-phrases-all:'+cat.name;
       cg.appendChild(ah);
-      phraseListForLoc220(x,p,cat,null).forEach(o=>{
-        cg.appendChild(mk220('div','p220-item direct',(o.s.emoji||'💬')+' '+o.s.label));
-      });
+
+      const all=phraseListForLoc220(x,p,cat,null);
+      if(!all.length){
+        cg.appendChild(mk220('div','p220-item direct','Aucune phrase'));
+      }else{
+        all.forEach(o=>cg.appendChild(phraseRow(o,true)));
+      }
 
       tree.appendChild(cg);
     });
+
+    try{window.enhanceTrees223?.(tree)}catch(e){}
   }
+
   function drawManage220(box){
     head220(box,'Créer / modifier / supprimer','Gère le contenu du profil.');
     const tabs=mk220('div','p220-manage-tabs');
@@ -10290,4 +10360,15 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
 <style id="beta228-order-style">
 .o228-tree{border:1px solid #dce3ed;border-radius:15px;overflow:hidden;background:#fff}.o228-node{border-bottom:1px solid #e8edf3}.o228-head{width:100%;border:0;display:flex;align-items:center;gap:8px;padding:11px 13px;background:#f6f9fd;font:inherit;font-weight:900;text-align:left;cursor:pointer;color:#17213a}.o228-node.level-1>.o228-head{padding-left:34px;background:#eef4ff;color:#274b7a}.o228-arrow{width:20px}.o228-title,.o228-name{display:block!important;visibility:visible!important;opacity:1!important;color:inherit!important}.o228-body{display:none}.o228-node.open>.o228-body{display:block}.o228-row{display:flex!important;align-items:center!important;gap:10px;padding:10px 12px 10px 48px;border-top:1px solid #edf0f4;background:#fff;cursor:grab;min-height:54px}.o228-row.dragging{opacity:.42;background:#edf5ff}.o228-handle{font-size:22px;color:#6d7b92;cursor:grab;padding:2px 8px;touch-action:none;flex:0 0 auto}.o228-name{font-size:16px!important;font-weight:650!important;flex:1!important;min-width:0!important}.o228-row .p220-thumb{flex:0 0 38px!important}
 </style>
+
+<style id="beta229-phrases-style">
+.p229-permanent{
+  display:inline-flex;align-items:center;
+  padding:6px 9px;border-radius:9px;
+  background:#f2f4f7;color:#667085;
+  font-size:12px;font-weight:850;
+  white-space:nowrap
+}
+</style>
+
 </body></html>

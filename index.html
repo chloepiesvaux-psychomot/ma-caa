@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 249</title>
+<title>Ma CAA v2.0 bêta 251</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 249</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 251</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -298,7 +298,11 @@ const hiddenCatNames=readHiddenCats();
 const adminBaseNav248=(typeof readAdminBase==="function"?readAdminBase():{});
 const adminHiddenCatNames=adminBaseNav248.hiddenCats||[];
 const adminDeletedCatNames=adminBaseNav248.deletedCats||[];
-const catOrder=orderedCategoryNames();
+const profileCatOrder=orderedCategoryNames();
+const adminCatOrder251=Array.isArray(adminBaseNav248.adminCategoryOrderV251)?adminBaseNav248.adminCategoryOrderV251:[];
+const catOrder=adminCatOrder251.length
+  ? [...adminCatOrder251,...profileCatOrder.filter(n=>!adminCatOrder251.includes(n))]
+  : profileCatOrder;
 const ordered=categories
   .map((c,i)=>({c,i}))
   .filter(({c})=>c.name==="Favoris"||c.name==="Mode parents"||(!hiddenCatNames.includes(c.name)&&!adminHiddenCatNames.includes(c.name)&&!adminDeletedCatNames.includes(c.name)))
@@ -1254,6 +1258,46 @@ function adminDeleteUser(id){
   if(activeProfile()===id)localStorage.setItem(ACTIVE_PROFILE_KEY,next[0].id);
   scheduleProfilesDirectoryPush();syncCustomCategories();render();renderProfileBar();adminRefreshStayV112();
 }
+
+function adminDuplicateUser251(sourceId){
+  const profiles=readProfiles(),src=profiles.find(x=>x.id===sourceId);
+  if(!src)return;
+
+  const suggested=(src.name||"Profil")+" - copie";
+  const name=prompt("Nom du nouveau profil :",suggested);
+  if(name===null)return;
+  const clean=name.trim();
+  if(!clean)return alert("Le nom ne peut pas être vide.");
+  if(profiles.some(p=>String(p.name||"").trim().toLocaleLowerCase("fr-FR")===clean.toLocaleLowerCase("fr-FR"))){
+    return alert("Un profil porte déjà ce nom.");
+  }
+
+  const newId="u"+Date.now()+Math.random().toString(36).slice(2,7);
+
+  // Copie de TOUTES les données profilées, y compris les réglages ajoutés
+  // dans les versions récentes, sans dépendre d'une liste de clés figée.
+  const suffix="::"+sourceId;
+  const copies=[];
+  for(let i=0;i<localStorage.length;i++){
+    const k=localStorage.key(i);
+    if(k&&k.endsWith(suffix)){
+      copies.push([k.slice(0,-suffix.length)+"::"+newId,localStorage.getItem(k)]);
+    }
+  }
+  copies.forEach(([k,v])=>{if(v!==null)localStorage.setItem(k,v)});
+
+  // Photo et PIN ne sont volontairement PAS dupliqués.
+  profiles.push({id:newId,name:clean,pin:"",avatar:""});
+  writeProfiles(profiles);
+  scheduleProfilesDirectoryPush();
+
+  // Le profil copié peut être envoyé au cloud sans changer le profil actif.
+  setTimeout(()=>{try{syncPushOne(newId,true)}catch(e){}},500);
+
+  showFeedback("Profil dupliqué : "+clean);
+  adminRefreshStayV112();
+}
+
 function adminUsersSection(){
   const section=document.createElement("section");section.style.cssText="background:white;border-radius:16px;padding:16px";
   const h=document.createElement("h3");h.textContent="👤 Utilisateurs et codes PIN";section.appendChild(h);
@@ -1267,9 +1311,10 @@ function adminUsersSection(){
     const actions=document.createElement("div");actions.style.cssText="display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:auto;width:100%";
     const edit=document.createElement("button");edit.textContent="✏️ Modifier";edit.onclick=()=>adminEditUser(p.id);
     const reset=document.createElement("button");reset.textContent=p.pin?"🔑 Changer PIN":"🔑 Créer PIN";reset.onclick=()=>adminResetUserPin(p.id);
+    const dup=document.createElement("button");dup.textContent="⧉ Dupliquer";dup.onclick=()=>adminDuplicateUser251(p.id);
     const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.onclick=()=>adminDeleteUser(p.id);
-    [edit,reset,del].forEach(b=>b.style.cssText="border:0;border-radius:10px;padding:9px;font-weight:800;cursor:pointer");
-    actions.append(edit,reset,del);card.append(avatar,n,status,actions);grid.appendChild(card);
+    [edit,reset,dup,del].forEach(b=>b.style.cssText="border:0;border-radius:10px;padding:9px;font-weight:800;cursor:pointer");
+    actions.append(edit,reset,dup,del);card.append(avatar,n,status,actions);grid.appendChild(card);
   });
   const add=document.createElement("button");add.className="saveedit";add.textContent="➕ Ajouter un utilisateur";add.onclick=adminCreateUser;
   section.append(grid,add);return section;
@@ -7924,7 +7969,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const s=section195();s.innerHTML="<h2>Que veux-tu gérer ?</h2>";
     const g=document.createElement("div");g.className="cards";
     const mk=(ico,l,v,bg)=>{const x=document.createElement("button");x.className="card";x.style.background=bg;x.innerHTML="<div style='font-size:44px'>"+ico+"</div>"+l;x.onclick=()=>render195(v);return x};
-    g.append(mk("👤","Profils / utilisateurs","profiles","#4f7fd8"),mk("🧩","Pictogrammes","pictos","#8b63d9"),mk("📁","Catégories","categories","#20a464"),mk("💬","Débuts de phrases","starters","#b05bb7"),mk("⚙️","Paramètres","settings","#6b7280"));
+    g.append(mk("👤","Profils / utilisateurs","profiles","#4f7fd8"),mk("🧩","Pictogrammes","pictos","#8b63d9"),mk("📁","Catégories","categories","#20a464"),mk("💬","Débuts de phrases","starters","#b05bb7"),mk("🎨","Personnaliser la vue","customize","#ef8f3a"),mk("⚙️","Paramètres","settings","#6b7280"));
     s.appendChild(g);body.appendChild(s);
   }
 
@@ -7939,56 +7984,35 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const c=document.createElement("div");c.className="piccard";
     const vis=document.createElement("div");vis.className="vis";vis.innerHTML=imageHtml(e.image||"",e.emoji||"🖼️");
     const n=document.createElement("b");n.textContent=e.label||"Pictogramme";
-
-    // BETA249 : réorganisation Admin restaurée. Cet ordre est le même que celui
-    // lu par le mode utilisateur via adminOrder.
-    const orderRow=document.createElement("div");orderRow.className="admin249-order";
-    const up=document.createElement("button");up.type="button";up.textContent="↑ Monter";up.disabled=index195<=0;
-    const down=document.createElement("button");down.type="button";down.textContent="↓ Descendre";down.disabled=index195>=total195-1;
-    up.onclick=()=>{adminMovePermanent(cat,e.id,-1);setTimeout(()=>render195("pictos"),20)};
-    down.onclick=()=>{adminMovePermanent(cat,e.id,1);setTimeout(()=>render195("pictos"),20)};
-    orderRow.append(up,down);
-
     const edit=document.createElement("button");edit.textContent="✏️ Modifier";
-    const hide=document.createElement("button");hide.textContent=e.hidden?"👁️ Réafficher":"🙈 Masquer";
-    const del=document.createElement("button");del.textContent="🗑️ Supprimer";
-    del.className="delete238";
+    const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.className="delete238";
+
     if(e.kind==="base"){
       edit.onclick=()=>adminEditItem(e.source,e.x);
-      hide.onclick=()=>{if(typeof window.openLocationTreeV215==='function')window.openLocationTreeV215(e.x,cat,'admin');else adminToggleItem(e.source,e.x)};
       del.onclick=()=>{
         const name=e.label||"ce pictogramme";
         if(!confirm("Supprimer définitivement « "+name+" » de la base commune ?\n\nIl ne sera plus affiché dans le mode utilisateur et ne devra pas réapparaître après synchronisation."))return;
-        const a=readAdminBase();
-        const id=(e.x&&e.x[6])||adminItemId(e.source,e.x);
+        const a=readAdminBase(),id=(e.x&&e.x[6])||adminItemId(e.source,e.x);
         a.deletedItems=Array.isArray(a.deletedItems)?a.deletedItems:[];
         if(!a.deletedItems.includes(id))a.deletedItems.push(id);
         a.hiddenItems=(a.hiddenItems||[]).filter(v=>v!==id);
-        (a.subcategories||[]).forEach(sc=>{
-          if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>v!==id);
-        });
-        writeAdminBase(a);
-        try{scheduleAdminBasePush()}catch(err){}
+        (a.subcategories||[]).forEach(sc=>{if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>v!==id)});
+        writeAdminBase(a);try{scheduleAdminBasePush()}catch(err){}
         setTimeout(()=>render195("pictos"),40);
       };
     }else{
       edit.onclick=()=>adminEditAddedItem(e.item);
-      hide.onclick=()=>{if(typeof window.openLocationTreeV215==='function')window.openLocationTreeV215(e.item,cat,'admin');else adminToggleAddedItem(e.item)};
       del.onclick=()=>{
         const name=e.label||"ce pictogramme";
         if(!confirm("Supprimer définitivement « "+name+" » de la base commune ?"))return;
-        const a=readAdminBase();
-        const cur=(a.addedItems||[]).find(x=>x&&x.id===e.item.id);
+        const a=readAdminBase(),cur=(a.addedItems||[]).find(x=>x&&x.id===e.item.id);
         if(cur)cur.deleted=true;
-        (a.subcategories||[]).forEach(sc=>{
-          if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>v!==e.item.id);
-        });
-        writeAdminBase(a);
-        try{scheduleAdminBasePush()}catch(err){}
+        (a.subcategories||[]).forEach(sc=>{if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>v!==e.item.id)});
+        writeAdminBase(a);try{scheduleAdminBasePush()}catch(err){}
         setTimeout(()=>render195("pictos"),40);
       };
     }
-    c.append(vis,n,orderRow,edit,hide,del);host.appendChild(c);
+    c.append(vis,n,edit,del);host.appendChild(c);
   }
 
   function renderPictos195(body){
@@ -8033,6 +8057,238 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     s.appendChild(pin);body.appendChild(s);
   }
 
+
+  let customize251Mode="visibility";
+  const open251=window.__adminCustomizeOpen251=window.__adminCustomizeOpen251||{};
+
+  function adminCats251(){
+    const b=readAdminBase();
+    const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!(b.deletedCats||[]).includes(c.name));
+    const ord=Array.isArray(b.adminCategoryOrderV251)?b.adminCategoryOrderV251:[];
+    return [...cats].sort((a,b2)=>{
+      const ia=ord.indexOf(a.name),ib=ord.indexOf(b2.name);
+      return (ia<0?9999:ia)-(ib<0?9999:ib);
+    });
+  }
+  function adminSubs251(cat){
+    return (readAdminBase().subcategories||[])
+      .filter(sc=>!sc.deleted&&sc.category===cat.name)
+      .sort((a,b)=>(a.order||0)-(b.order||0)||String(a.name||"").localeCompare(String(b.name||""),"fr"));
+  }
+  function arrHas251(map,key,id){
+    return Array.isArray(map?.[key])&&map[key].map(String).includes(String(id));
+  }
+  function arrSet251(map,key,id,hidden){
+    let a=Array.isArray(map[key])?map[key].map(String):[];
+    a=a.filter(v=>v!==String(id));
+    if(hidden)a.push(String(id));
+    if(a.length)map[key]=[...new Set(a)];else delete map[key];
+  }
+  function node251(label,key,level){
+    const n=document.createElement("div");n.className="adm251-node level-"+level;
+    const h=document.createElement("div");h.className="adm251-head";
+    const toggle=document.createElement("button");toggle.type="button";toggle.className="adm251-toggle";
+    const title=document.createElement("span");title.className="adm251-title";title.textContent=label;
+    const body=document.createElement("div");body.className="adm251-body";
+    const set=on=>{open251[key]=!!on;n.classList.toggle("open",!!on);toggle.textContent=on?"▾":"▸"};
+    set(!!open251[key]);toggle.onclick=()=>set(!n.classList.contains("open"));
+    h.append(toggle,title);n.append(h,body);return {n,h,body,set};
+  }
+  function picEntry251(e){
+    return e.kind==="base"?e.x:e.item;
+  }
+  function check251(label,checked,onchange,thumb){
+    const row=document.createElement("label");row.className="adm251-check";
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=!!checked;
+    if(thumb){const v=document.createElement("span");v.className="adm251-thumb";v.innerHTML=thumb;row.append(cb,v)}
+    else row.appendChild(cb);
+    const tx=document.createElement("span");tx.textContent=label;row.appendChild(tx);
+    cb.onchange=()=>onchange(cb.checked);return row;
+  }
+
+  function renderVisibility251(host){
+    const tools=document.createElement("div");tools.className="adm251-tools";
+    const op=document.createElement("button");op.textContent="▾ Tout ouvrir";
+    const cl=document.createElement("button");cl.textContent="▸ Tout fermer";
+    tools.append(op,cl);host.appendChild(tools);
+
+    const tree=document.createElement("div");tree.className="adm251-tree";host.appendChild(tree);
+    const nodes=[];
+
+    adminCats251().forEach(cat=>{
+      const base=readAdminBase();
+      const cn=node251((adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat),"vcat:"+cat.name,0);nodes.push(cn);
+
+      // Checkbox catégorie entière
+      const catVisible=!(base.hiddenCats||[]).includes(cat.name);
+      const cv=check251("Afficher la catégorie",catVisible,on=>{
+        const b=readAdminBase();b.hiddenCats=Array.isArray(b.hiddenCats)?b.hiddenCats:[];
+        b.hiddenCats=b.hiddenCats.filter(v=>v!==cat.name);if(!on)b.hiddenCats.push(cat.name);
+        writeAdminBase(b);render();
+      });
+      cv.classList.add("adm251-master");cn.body.appendChild(cv);
+
+      const entries=adminPermanentEntries(cat);
+      const entryMap=new Map(entries.map(e=>[String(e.id),e]));
+
+      // Sous-catégories d'abord
+      adminSubs251(cat).forEach(sc=>{
+        const sn=node251((sc.icon||"📁")+" "+adminSubcatPath(sc),"vsub:"+sc.id,1);nodes.push(sn);
+        const subVisible=!sc.hidden;
+        const sv=check251("Afficher cette sous-catégorie",subVisible,on=>{
+          const b=readAdminBase(),t=(b.subcategories||[]).find(x=>String(x.id)===String(sc.id));
+          if(t)t.hidden=!on;writeAdminBase(b);renderGrid();
+        });
+        sv.classList.add("adm251-master");sn.body.appendChild(sv);
+
+        const ids=adminSubcatItemsDeep(sc).map(String);
+        ids.forEach(id=>{
+          const e=entryMap.get(id);if(!e)return;
+          const b=readAdminBase(),loc=b.locationHiddenV213||{cats:{},subs:{}};
+          const visible=!arrHas251(loc.subs||{},sc.id,e.id);
+          sn.body.appendChild(check251(e.label,visible,on=>{
+            const bb=readAdminBase(),v=bb.locationHiddenV213||{cats:{},subs:{}};
+            v.cats=v.cats||{};v.subs=v.subs||{};
+            arrSet251(v.subs,sc.id,e.id,!on);bb.locationHiddenV213=v;
+            bb.hiddenItems=(bb.hiddenItems||[]).filter(x=>String(x)!==String(e.id));
+            if(e.kind==="added"){const it=(bb.addedItems||[]).find(x=>String(x.id)===String(e.id));if(it)it.hidden=false}
+            writeAdminBase(bb);renderGrid();
+          },imageHtml(e.image||"",e.emoji||"🖼️")));
+        });
+        cn.body.appendChild(sn.n);
+      });
+
+      // Tous les pictogrammes de la catégorie = visibilité exacte à la racine catégorie
+      const an=node251("🖼️ Tous les pictogrammes de "+adminCatName(cat),"vall:"+cat.name,1);nodes.push(an);
+      entries.forEach(e=>{
+        const b=readAdminBase(),loc=b.locationHiddenV213||{cats:{},subs:{}};
+        const visible=!arrHas251(loc.cats||{},cat.name,e.id);
+        an.body.appendChild(check251(e.label,visible,on=>{
+          const bb=readAdminBase(),v=bb.locationHiddenV213||{cats:{},subs:{}};
+          v.cats=v.cats||{};v.subs=v.subs||{};
+          arrSet251(v.cats,cat.name,e.id,!on);bb.locationHiddenV213=v;
+          bb.hiddenItems=(bb.hiddenItems||[]).filter(x=>String(x)!==String(e.id));
+          if(e.kind==="added"){const it=(bb.addedItems||[]).find(x=>String(x.id)===String(e.id));if(it)it.hidden=false}
+          writeAdminBase(bb);renderGrid();
+        },imageHtml(e.image||"",e.emoji||"🖼️")));
+      });
+      cn.body.appendChild(an.n);
+      tree.appendChild(cn.n);
+    });
+
+    op.onclick=()=>nodes.forEach(n=>n.set(true));
+    cl.onclick=()=>nodes.forEach(n=>n.set(false));
+    setTimeout(hydrateAllCloudPictures,0);
+  }
+
+  function dragRows251(wrap,onSave){
+    let drag=null;
+    const rows=()=>[...wrap.querySelectorAll(":scope > .adm251-drag")];
+    rows().forEach(r=>{
+      r.draggable=true;
+      r.addEventListener("dragstart",e=>{drag=r;r.classList.add("dragging");try{e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",r.dataset.id||"move")}catch(err){}});
+      r.addEventListener("dragover",e=>{e.preventDefault();if(!drag||drag===r)return;const q=r.getBoundingClientRect();wrap.insertBefore(drag,e.clientY>q.top+q.height/2?r.nextSibling:r)});
+      r.addEventListener("drop",e=>e.preventDefault());
+      r.addEventListener("dragend",()=>{if(drag)drag.classList.remove("dragging");drag=null;onSave(rows().map(x=>x.dataset.id))});
+      const h=r.querySelector(".adm251-handle");let active=false,pid=null;
+      h?.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse")return;active=true;pid=e.pointerId;r.classList.add("dragging");try{h.setPointerCapture(pid)}catch(err){}});
+      h?.addEventListener("pointermove",e=>{if(!active||e.pointerId!==pid)return;e.preventDefault();const el=document.elementFromPoint(e.clientX,e.clientY),t=el?.closest?.(".adm251-drag");if(!t||t===r||t.parentElement!==wrap)return;const q=t.getBoundingClientRect();wrap.insertBefore(r,e.clientY>q.top+q.height/2?t.nextSibling:t)});
+      const end=e=>{if(!active||e.pointerId!==pid)return;active=false;r.classList.remove("dragging");onSave(rows().map(x=>x.dataset.id))};
+      h?.addEventListener("pointerup",end);h?.addEventListener("pointercancel",end);
+    });
+  }
+  function dragRow251(id,label,thumb){
+    const r=document.createElement("div");r.className="adm251-drag";r.dataset.id=String(id);
+    const h=document.createElement("span");h.className="adm251-handle";h.textContent="☰";r.appendChild(h);
+    if(thumb){const v=document.createElement("span");v.className="adm251-thumb";v.innerHTML=thumb;r.appendChild(v)}
+    const t=document.createElement("span");t.textContent=label;r.appendChild(t);return r;
+  }
+
+  function renderOrder251(host){
+    const note=document.createElement("div");note.className="adm251-note";note.textContent="☰ Fais glisser pour modifier l’ordre. L’enregistrement est automatique.";host.appendChild(note);
+    const tools=document.createElement("div");tools.className="adm251-tools";
+    const op=document.createElement("button");op.textContent="▾ Tout ouvrir";
+    const cl=document.createElement("button");cl.textContent="▸ Tout fermer";tools.append(op,cl);host.appendChild(tools);
+    const tree=document.createElement("div");tree.className="adm251-tree";host.appendChild(tree);const nodes=[];
+
+    // Catégories : liste globale ordonnable
+    const catNode=node251("📚 Ordre des catégories","ocat:all",0);nodes.push(catNode);
+    const catWrap=document.createElement("div");catWrap.className="adm251-dragwrap";
+    adminCats251().forEach(cat=>catWrap.appendChild(dragRow251(cat.name,(adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat))));
+    catNode.body.appendChild(catWrap);
+    dragRows251(catWrap,ids=>{
+      const b=readAdminBase();b.adminCategoryOrderV251=ids;writeAdminBase(b);render();
+    });
+    tree.appendChild(catNode.n);
+
+    adminCats251().forEach(cat=>{
+      const cn=node251((adminCatIcon(cat)||cat.icon||"📁")+" "+adminCatName(cat),"ocat:"+cat.name,0);nodes.push(cn);
+
+      // Ordre des sous-catégories (par fratries : racines puis enfants gardent leur parent)
+      const subs=adminSubs251(cat);
+      const byParent={};subs.forEach(sc=>{const k=String(sc.parentId||"");(byParent[k]||(byParent[k]=[])).push(sc)});
+      Object.entries(byParent).forEach(([parentId,list])=>{
+        if(!list.length)return;
+        const parent=parentId?subs.find(s=>String(s.id)===String(parentId)):null;
+        const sn=node251("📁 Ordre "+(parent?("dans "+parent.name):"des sous-catégories"),"osubs:"+cat.name+":"+parentId,1);nodes.push(sn);
+        const w=document.createElement("div");w.className="adm251-dragwrap";
+        list.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(sc=>w.appendChild(dragRow251(sc.id,(sc.icon||"📁")+" "+sc.name)));
+        sn.body.appendChild(w);
+        dragRows251(w,ids=>{
+          const b=readAdminBase();ids.forEach((id,i)=>{const t=(b.subcategories||[]).find(x=>String(x.id)===String(id));if(t)t.order=i});writeAdminBase(b);renderGrid();
+        });
+        cn.body.appendChild(sn.n);
+      });
+
+      // Ordre dans chaque sous-catégorie exacte
+      const entries=adminPermanentEntries(cat),emap=new Map(entries.map(e=>[String(e.id),e]));
+      subs.forEach(sc=>{
+        const sn=node251((sc.icon||"📁")+" "+adminSubcatPath(sc)+" — pictogrammes","opsub:"+sc.id,1);nodes.push(sn);
+        const direct=(sc.itemIds||[]).map(String).map(id=>emap.get(id)).filter(Boolean);
+        const w=document.createElement("div");w.className="adm251-dragwrap";
+        direct.forEach(e=>w.appendChild(dragRow251(e.id,e.label,imageHtml(e.image||"",e.emoji||"🖼️"))));
+        sn.body.appendChild(w);
+        dragRows251(w,ids=>{
+          const b=readAdminBase(),t=(b.subcategories||[]).find(x=>String(x.id)===String(sc.id));
+          if(t){
+            const current=(t.itemIds||[]).map(String);
+            const set=new Set(ids),rest=current.filter(id=>!set.has(id));
+            t.itemIds=[...ids,...rest];
+          }
+          writeAdminBase(b);renderGrid();
+        });
+        cn.body.appendChild(sn.n);
+      });
+
+      // Ordre global des pictogrammes de la catégorie
+      const an=node251("↕️ Tous les pictogrammes de "+adminCatName(cat),"opall:"+cat.name,1);nodes.push(an);
+      const w=document.createElement("div");w.className="adm251-dragwrap";
+      entries.forEach(e=>w.appendChild(dragRow251(e.id,e.label,imageHtml(e.image||"",e.emoji||"🖼️"))));
+      an.body.appendChild(w);
+      dragRows251(w,ids=>{const b=readAdminBase();b.adminOrder=b.adminOrder||{};b.adminOrder[cat.name]=ids;writeAdminBase(b);renderGrid()});
+      cn.body.appendChild(an.n);
+      tree.appendChild(cn.n);
+    });
+
+    op.onclick=()=>nodes.forEach(n=>n.set(true));cl.onclick=()=>nodes.forEach(n=>n.set(false));
+    setTimeout(hydrateAllCloudPictures,0);
+  }
+
+  function renderCustomize251(body){
+    setTitle195("Personnaliser la vue");
+    const s=section195();
+    s.innerHTML="<h2>🎨 Personnaliser la vue</h2><p style='color:#667085'>Gère ici la visibilité et l’ordre de la base commune. Catégories, sous-catégories et pictogrammes restent indépendants.</p>";
+    const tabs=document.createElement("div");tabs.className="adm251-tabs";
+    const v=document.createElement("button");v.textContent="👁️ Visibilité";v.className=customize251Mode==="visibility"?"active":"";
+    const o=document.createElement("button");o.textContent="↕️ Ordonner";o.className=customize251Mode==="order"?"active":"";
+    v.onclick=()=>{customize251Mode="visibility";render195("customize")};
+    o.onclick=()=>{customize251Mode="order";render195("customize")};
+    tabs.append(v,o);s.appendChild(tabs);
+    const host=document.createElement("div");host.className="adm251-host";s.appendChild(host);
+    if(customize251Mode==="visibility")renderVisibility251(host);else renderOrder251(host);
+    body.appendChild(s);
+  }
+
   function render195(v){
     view195=v||"home";
     const body=document.getElementById("body195");if(!body)return;
@@ -8042,6 +8298,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       else if(view195==="pictos")renderPictos195(body);
       else if(view195==="categories")renderCategories195(body);
       else if(view195==="starters")renderAdminStarters209(body);
+      else if(view195==="customize")renderCustomize251(body);
       else if(view195==="settings")renderSettings195(body);
       else renderHome195(body);
     }catch(e){
@@ -11454,6 +11711,37 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
 #admin195 .admin249-order{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
 #admin195 .admin249-order button{min-height:38px;font-weight:850}
 #admin195 .admin249-order button:disabled{opacity:.35;cursor:default}
+</style>
+
+
+<style id="beta251-admin-customize-style">
+#admin195 .adm251-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0}
+#admin195 .adm251-tabs button{border:1px solid #d7dfeb;background:#f7f9fc;border-radius:12px;padding:11px 16px;font-weight:900;cursor:pointer}
+#admin195 .adm251-tabs button.active{background:#244b91;color:white;border-color:#244b91}
+#admin195 .adm251-tools{display:flex;gap:8px;flex-wrap:wrap;margin:9px 0}
+#admin195 .adm251-tools button{border:1px solid #ccd6e5;background:#f8faff;border-radius:10px;padding:8px 11px;font-weight:850}
+#admin195 .adm251-note{padding:10px 12px;background:#eef5ff;border-radius:11px;color:#34527e;font-weight:750;margin:8px 0}
+#admin195 .adm251-tree{border:1px solid #dce3ed;border-radius:15px;overflow:hidden;background:#fff}
+#admin195 .adm251-node{border-bottom:1px solid #e8edf3}
+#admin195 .adm251-node:last-child{border-bottom:0}
+#admin195 .adm251-head{display:flex;align-items:center;gap:7px;padding:10px 12px;background:#f6f9fd;font-weight:900}
+#admin195 .adm251-node.level-1>.adm251-head{padding-left:29px;background:#fbfcfe}
+#admin195 .adm251-toggle{width:30px;height:30px;border:0;border-radius:8px;background:#e9eef7;font-weight:900;cursor:pointer}
+#admin195 .adm251-title{flex:1}
+#admin195 .adm251-body{display:none}
+#admin195 .adm251-node.open>.adm251-body{display:block}
+#admin195 .adm251-check{display:flex;align-items:center;gap:10px;padding:9px 13px 9px 48px;border-top:1px solid #edf0f4;background:#fff;cursor:pointer}
+#admin195 .adm251-check.adm251-master{padding-left:48px;background:#f7fbff;font-weight:900}
+#admin195 .adm251-check input{width:21px;height:21px;accent-color:#2563eb;flex:0 0 auto}
+#admin195 .adm251-thumb{width:38px;height:38px;display:grid;place-items:center;overflow:hidden;flex:0 0 38px}
+#admin195 .adm251-thumb img{max-width:36px!important;max-height:36px!important}
+#admin195 .adm251-dragwrap{background:#fff}
+#admin195 .adm251-drag{display:flex;align-items:center;gap:10px;padding:9px 13px 9px 45px;border-top:1px solid #edf0f4;background:#fff;cursor:grab;user-select:none;-webkit-user-select:none;min-height:50px}
+#admin195 .adm251-drag.dragging{opacity:.4;background:#edf5ff}
+#admin195 .adm251-handle{font-size:22px;color:#6c7890;padding:3px 8px;cursor:grab;touch-action:none}
+@media(max-width:650px){
+  #admin195 .adm251-check,#admin195 .adm251-drag{padding-left:28px}
+}
 </style>
 
 </body></html>

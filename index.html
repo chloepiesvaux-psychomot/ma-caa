@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 256</title>
+<title>Ma CAA v2.0 bêta 257</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 256</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 257</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -11924,6 +11924,173 @@ function writeSubOrderFor253(subId,ids){
   window.fullMediaRepair255=fullMediaRepair255;
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",addButton255,{once:true});
   else addButton255();
+})();
+</script>
+
+
+<!-- =========================================================
+     BETA 257 — CACHE IMAGE PERSISTANT / ANTI-FLICKER EMOJI
+     ========================================================= -->
+<script id="beta257-image-cache">
+(function(){
+  const IMG_URL_CACHE_257=new Map();
+  const IMG_PENDING_257=new Map();
+  const IMG_FAIL_257=new Map();
+
+  function normalizeKey257(v){
+    if(!v)return "";
+    if(typeof v==="string")return v;
+    if(v&&typeof v==="object"){
+      if(v.url)return String(v.url);
+      if(v.path)return String(v.path);
+      if(v.key)return String(v.key);
+      if(v.__local_image&&v.id)return String(v.id);
+    }
+    return "";
+  }
+
+  async function blobFromRemote257(url){
+    try{
+      const r=await fetch(url,{cache:"force-cache"});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      return await r.blob();
+    }catch(e){
+      return null;
+    }
+  }
+
+  async function cacheImage257(value){
+    const key=normalizeKey257(value);
+    if(!key)return null;
+    if(IMG_URL_CACHE_257.has(key))return IMG_URL_CACHE_257.get(key);
+    if(IMG_PENDING_257.has(key))return IMG_PENDING_257.get(key);
+
+    const p=(async()=>{
+      try{
+        // Existing local references should be resolved by the app's own helpers.
+        if(typeof value==="string"&&value.startsWith("data:image/")){
+          IMG_URL_CACHE_257.set(key,value);
+          return value;
+        }
+
+        // Blob/object URL already local enough.
+        if(typeof value==="string"&&(value.startsWith("blob:")||value.startsWith("file:"))){
+          IMG_URL_CACHE_257.set(key,value);
+          return value;
+        }
+
+        // Remote URLs: fetch once, convert to local object URL for instant reuse
+        // during this app session. Browser HTTP cache handles persistence across reloads.
+        if(typeof value==="string"&&/^https?:\/\//i.test(value)){
+          const blob=await blobFromRemote257(value);
+          if(blob){
+            const local=URL.createObjectURL(blob);
+            IMG_URL_CACHE_257.set(key,local);
+            return local;
+          }
+        }
+
+        // Try app-local image resolver if available.
+        try{
+          if(typeof resolveLocalImageValue==="function"){
+            const r=await resolveLocalImageValue(value);
+            if(r){
+              IMG_URL_CACHE_257.set(key,r);
+              return r;
+            }
+          }
+        }catch(e){}
+
+        return null;
+      }finally{
+        IMG_PENDING_257.delete(key);
+      }
+    })();
+
+    IMG_PENDING_257.set(key,p);
+    return p;
+  }
+
+  function imgElement257(img,value){
+    if(!img)return;
+    const key=normalizeKey257(value);
+    if(!key)return;
+
+    const cached=IMG_URL_CACHE_257.get(key);
+    if(cached){
+      if(img.src!==cached)img.src=cached;
+      return;
+    }
+
+    cacheImage257(value).then(local=>{
+      if(local && document.contains(img)){
+        img.src=local;
+        img.dataset.imageCached257="1";
+      }
+    }).catch(()=>{});
+  }
+
+  function hydrateVisible257(root=document){
+    const imgs=[...root.querySelectorAll("img")];
+    imgs.forEach(img=>{
+      const original=
+        img.dataset.cloudPath ||
+        img.dataset.localImageKey ||
+        img.dataset.srcOriginal ||
+        img.getAttribute("src");
+      if(!original)return;
+      imgElement257(img,original);
+    });
+  }
+
+  // Wrap grouped hydration: after the legacy/app-specific pass assigns the
+  // correct image values, pin them into the session-local cache immediately.
+  try{
+    const prevHydrate257=hydrateAllCloudPictures;
+    hydrateAllCloudPictures=async function(force=false){
+      const r=await prevHydrate257(force);
+      setTimeout(()=>hydrateVisible257(document),0);
+      return r;
+    };
+    window.hydrateAllCloudPictures=hydrateAllCloudPictures;
+  }catch(e){}
+
+  // Also pin images after every grid render, but WITHOUT another cloud pull.
+  try{
+    const prevRenderGrid257=renderGrid;
+    renderGrid=function(){
+      const r=prevRenderGrid257.apply(this,arguments);
+      setTimeout(()=>hydrateVisible257(document.getElementById("grid")||document),0);
+      return r;
+    };
+    window.renderGrid=renderGrid;
+  }catch(e){}
+
+  // Mutation observer catches images added by Admin/Parents/submenus without
+  // forcing a full image rehydration.
+  const obs=new MutationObserver(muts=>{
+    const roots=[];
+    muts.forEach(m=>m.addedNodes&&m.addedNodes.forEach(n=>{
+      if(n&&n.nodeType===1)roots.push(n);
+    }));
+    roots.forEach(r=>{
+      if(r.tagName==="IMG"){
+        const v=r.dataset.cloudPath||r.dataset.localImageKey||r.getAttribute("src");
+        if(v)imgElement257(r,v);
+      }else hydrateVisible257(r);
+    });
+  });
+
+  const start257=()=>{
+    try{obs.observe(document.body,{childList:true,subtree:true})}catch(e){}
+    setTimeout(()=>hydrateVisible257(document),50);
+  };
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start257,{once:true});
+  else start257();
+
+  window.hydrateVisible257=hydrateVisible257;
+  window.cacheImage257=cacheImage257;
 })();
 </script>
 

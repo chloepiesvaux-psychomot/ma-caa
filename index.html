@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 233</title>
+<title>Ma CAA v2.0 bêta 234</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 233</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 234</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5234,6 +5234,10 @@ function adminPermanentPictogramForm(existing){
       });
 
       commitAdminPictogram232(base,savedItemId);
+
+      // BETA234: fiche légère et durable des paramètres du pictogramme.
+      // Elle reste prioritaire sur les anciennes copies admin_base.
+      try{window.publishSavedPicto234?.(savedItemId)}catch(e){console.warn("Meta 234",e)}
 
       // BETA182: l’image est synchronisée séparément de la base Admin générale.
       // Le pictogramme garde un identifiant stable et son média possède sa propre entrée cloud.
@@ -10614,6 +10618,219 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
     window.renderGrid=wrapped233;
     try{renderGrid=wrapped233}catch(e){}
   }catch(e){}
+})();
+</script>
+
+
+<!-- BETA234 — métadonnées pictogrammes durables, indépendantes de l'ancienne admin_base -->
+<script id="beta234-picto-metadata">
+(function(){
+  const PREFIX234='picto_meta_v234::';
+  const LOCAL234='ma-caa-picto-meta-v234';
+  const PENDING234='ma-caa-picto-meta-pending-v234';
+  const CURSOR234='ma-caa-picto-meta-cursor-v234';
+  let busy234=false;
+
+  function readLocal234(){
+    try{return JSON.parse(localStorage.getItem(LOCAL234)||'{}')||{}}catch(e){return {}}
+  }
+  function writeLocal234(v){
+    try{localStorage.setItem(LOCAL234,JSON.stringify(v||{}))}catch(e){}
+  }
+  function readPending234(){
+    try{return JSON.parse(localStorage.getItem(PENDING234)||'[]')||[]}catch(e){return []}
+  }
+  function writePending234(v){
+    try{localStorage.setItem(PENDING234,JSON.stringify(v||[]))}catch(e){}
+  }
+  function stableFields234(x,id,kind){
+    x=x||{};
+    return {
+      schema:234,
+      id:String(id||x.id||''),
+      kind:kind||'base',
+      label:String(x.label||''),
+      speech:String(x.speech||x.label||''),
+      emoji:String(x.emoji||''),
+      category:String(x.category||''),
+      categories:Array.isArray(x.categories)?[...x.categories]:[],
+      action:String(x.action||'phrase'),
+      hidden:!!x.hidden,
+      deleted:!!x.deleted,
+      updated_at:new Date().toISOString()
+    };
+  }
+  function findCurrent234(id){
+    const base=readAdminBase();
+    if(base.items&&base.items[id])return {x:base.items[id],kind:'base'};
+    const x=(base.addedItems||[]).find(v=>v&&String(v.id)===String(id));
+    return x?{x,kind:'added'}:null;
+  }
+  function applyOne234(rec){
+    if(!rec||!rec.id)return false;
+    const base=readAdminBase();
+    let x=null;
+    if(rec.kind==='added'){
+      base.addedItems=Array.isArray(base.addedItems)?base.addedItems:[];
+      x=base.addedItems.find(v=>v&&String(v.id)===String(rec.id));
+      if(!x){x={id:rec.id};base.addedItems.push(x)}
+    }else{
+      base.items=base.items||{};
+      x=base.items[rec.id]||{};
+      base.items[rec.id]=x;
+    }
+    Object.assign(x,{
+      label:rec.label||'',
+      speech:rec.speech||rec.label||'',
+      emoji:rec.emoji||'',
+      category:rec.category||'',
+      categories:Array.isArray(rec.categories)?[...rec.categories]:[],
+      action:rec.action||'phrase'
+    });
+    if(rec.kind==='added'){
+      x.hidden=!!rec.hidden;
+      x.deleted=!!rec.deleted;
+    }
+    // Écriture directe : recevoir/réappliquer une fiche ne doit pas recréer une boucle de push admin_base.
+    localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+    try{ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base))}catch(e){}
+    return true;
+  }
+  function reapplyLocal234(){
+    const all=readLocal234();
+    let changed=false;
+    Object.values(all).forEach(rec=>{try{if(applyOne234(rec))changed=true}catch(e){}});
+    if(changed){
+      try{syncAdminCategories()}catch(e){}
+      try{render()}catch(e){}
+      try{window.__refreshAdminPictos145?.()}catch(e){}
+    }
+  }
+  function queue234(rec){
+    if(!rec||!rec.id)return;
+    const local=readLocal234();
+    local[rec.id]=rec;
+    writeLocal234(local);
+    const q=readPending234().filter(v=>v&&String(v.id)!==String(rec.id));
+    q.push(rec);
+    writePending234(q);
+    setTimeout(flush234,120);
+  }
+  async function publish234(rec){
+    if(!cloudClient)throw new Error('cloud indisponible');
+    const u=await cloudUser();if(!u)throw new Error('compte cloud non connecté');
+    const stamp=rec.updated_at||new Date().toISOString();
+    const key=PREFIX234+encodeURIComponent(rec.id);
+    const r=await cloudClient.from('app_config').upsert(
+      {key,data:{...rec,updated_at:stamp},updated_at:stamp},
+      {onConflict:'key'}
+    );
+    if(r.error)throw r.error;
+    return true;
+  }
+  async function flush234(){
+    if(busy234||!cloudClient)return false;
+    let u=null;try{u=await cloudUser()}catch(e){}
+    if(!u)return false;
+    busy234=true;
+    try{
+      const q=readPending234(),remain=[];
+      for(const rec of q){
+        try{await publish234(rec)}
+        catch(e){console.warn('BETA234 push meta',rec?.label,e);remain.push(rec)}
+      }
+      writePending234(remain);
+      return remain.length===0;
+    }finally{busy234=false}
+  }
+  async function pull234(){
+    if(busy234||!cloudClient)return false;
+    let u=null;try{u=await cloudUser()}catch(e){}
+    if(!u)return false;
+    busy234=true;
+    try{
+      const cursor=localStorage.getItem(CURSOR234)||'';
+      let q=cloudClient.from('app_config')
+        .select('key,data,updated_at')
+        .like('key',PREFIX234+'%')
+        .order('updated_at',{ascending:true});
+      if(cursor)q=q.gt('updated_at',cursor);
+      const r=await q;
+      if(r.error)throw r.error;
+
+      const local=readLocal234();
+      let max=cursor,changed=false;
+      for(const row of r.data||[]){
+        const rec=row.data||{};if(!rec.id)continue;
+        const old=local[rec.id];
+        const oldMs=old?.updated_at?Date.parse(old.updated_at):0;
+        const newMs=rec.updated_at?Date.parse(rec.updated_at):Date.parse(row.updated_at||'');
+        // Une saisie locale plus récente reste prioritaire jusqu'à sa publication.
+        if(!old || !oldMs || newMs>=oldMs){
+          local[rec.id]=rec;
+          if(applyOne234(rec))changed=true;
+        }
+        if(row.updated_at&&(!max||row.updated_at>max))max=row.updated_at;
+      }
+      writeLocal234(local);
+      if(max)localStorage.setItem(CURSOR234,max);
+      if(changed){
+        try{syncAdminCategories()}catch(e){}
+        try{render()}catch(e){}
+        try{window.__refreshAdminPictos145?.()}catch(e){}
+      }
+      return true;
+    }catch(e){
+      console.warn('BETA234 pull meta',e);
+      return false;
+    }finally{busy234=false}
+  }
+
+  // Appelé explicitement après l'enregistrement d'un pictogramme Admin.
+  window.publishSavedPicto234=function(id){
+    try{
+      const found=findCurrent234(id);if(!found)return false;
+      const rec=stableFields234(found.x,id,found.kind);
+      queue234(rec);
+      return true;
+    }catch(e){console.warn('BETA234 capture',e);return false}
+  };
+
+  // CRUCIAL : après toute ancienne réception admin_base, réappliquer immédiatement
+  // les fiches pictogrammes modernes afin qu'un ancien snapshot ne puisse plus
+  // reprendre le nom / la phrase / les catégories / l'action.
+  try{
+    const prevPull234=adminBasePull;
+    adminBasePull=async function(){
+      const r=await prevPull234.apply(this,arguments);
+      reapplyLocal234();
+      setTimeout(()=>pull234(),90);
+      return r;
+    };
+    window.adminBasePull=adminBasePull;
+  }catch(e){console.warn('BETA234 wrap pull',e)}
+
+  // Au démarrage et périodiquement : d'abord envoyer les modifications locales,
+  // puis recevoir uniquement les fiches plus récentes.
+  setTimeout(()=>{reapplyLocal234();flush234();setTimeout(pull234,250)},900);
+  setInterval(()=>{
+    if(document.visibilityState==='visible'){
+      flush234();
+      setTimeout(pull234,250);
+    }
+  },60000);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){
+      reapplyLocal234();
+      setTimeout(flush234,180);
+      setTimeout(pull234,550);
+    }
+  });
+  window.addEventListener('focus',()=>{
+    reapplyLocal234();
+    setTimeout(flush234,180);
+    setTimeout(pull234,550);
+  });
 })();
 </script>
 

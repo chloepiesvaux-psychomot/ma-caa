@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 231</title>
+<title>Ma CAA v2.0 bêta 233</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 231</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 233</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -532,8 +532,15 @@ function quickChoicesFor(x){
   const m=readQuickChoicesMap();return Array.isArray(m[itemId2(x)])?m[itemId2(x)]:[]
 }
 function saveQuickChoices(x,list){const m=readQuickChoicesMap();m[itemId2(x)]=list;localStorage.setItem(QUICK_CHOICES_KEY,JSON.stringify(m));localStorage.setItem("ma-caa-last-save",String(Date.now()));scheduleProfileAutoPush()}
+function closeAllUserChoiceBubbles233(){
+  try{
+    document.querySelectorAll(".submenu-bubble,#quick-choices-pop").forEach(el=>el.remove());
+  }catch(e){}
+  try{document.removeEventListener("pointerdown",quickChoicesOutsideClose,true)}catch(e){}
+  try{document.removeEventListener("pointerdown",submenuOutsideClose,true)}catch(e){}
+}
 function openQuickChoicesBubble(x,anchor){
-  closeQuickChoicesBubble();
+  closeAllUserChoiceBubbles233();
   const choices=quickChoicesFor(x);if(!choices.length)return;
   const pop=document.createElement("div");pop.id="quick-choices-pop";pop.className="submenu-bubble";
   pop.style.cssText="position:fixed;z-index:100300;background:white;border:2px solid #dfe4ec;border-radius:20px;box-shadow:0 12px 34px rgba(20,35,65,.22);padding:10px;display:grid;grid-template-columns:repeat("+Math.min(4,choices.length)+",minmax(92px,120px));gap:9px;max-width:calc(100vw - 24px)";
@@ -560,12 +567,11 @@ function openQuickChoicesBubble(x,anchor){
   setTimeout(()=>document.addEventListener("pointerdown",quickChoicesOutsideClose,true),0);
 }
 function closeQuickChoicesBubble(){
-  document.getElementById("quick-choices-pop")?.remove();
-  document.removeEventListener("pointerdown",quickChoicesOutsideClose,true);
+  closeAllUserChoiceBubbles233();
 }
 function quickChoicesOutsideClose(e){
   const pop=document.getElementById("quick-choices-pop");
-  if(pop&&!pop.contains(e.target))closeQuickChoicesBubble();
+  if(pop&&!pop.contains(e.target))closeAllUserChoiceBubbles233();
 }
 function editQuickChoices(x){
   const existing=quickChoicesFor(x);
@@ -2479,7 +2485,7 @@ function createNormalCard(x,box){
     const ae=adminOverrideFor(x);
     if(ae.action==="quick"&&quickChoicesFor(x).length){ev.stopPropagation();openQuickChoicesBubble(x,b)}
     else if(submenuFor(x).length||expandSubmenuEntries(x).length){ev.stopPropagation();openSubmenuBubble(x,b)}
-    else closeSubmenuBubble();
+    else closeAllUserChoiceBubbles233();
   };box.appendChild(b);
   if(b.querySelector("img[data-cloud-path],img[data-local-image-key]")){
     const cc=categories[current]?.name||"";
@@ -2926,15 +2932,14 @@ function submenuFor(x){
 }
 let activeSubmenu=null;
 function closeSubmenuBubble(){
-  document.querySelector(".submenu-bubble")?.remove();
-  document.removeEventListener("pointerdown",submenuOutsideClose,true);
+  closeAllUserChoiceBubbles233();
 }
 function submenuOutsideClose(e){
   const pop=document.querySelector(".submenu-bubble");
-  if(pop&&!pop.contains(e.target)&&!e.target.closest?.(".pic"))closeSubmenuBubble();
+  if(pop&&!pop.contains(e.target))closeAllUserChoiceBubbles233();
 }
 function openSubmenuBubble(parent,anchor){
-  closeSubmenuBubble();
+  closeAllUserChoiceBubbles233();
   const entries=expandSubmenuEntries(parent).filter(e=>!e.hidden),hidden=hiddenIds();
   const pid=permanentItemId(parent),custom=readCustom(),order=custom["submenu-order:"+pid]||[];
   let list=entries.filter(e=>!hidden.includes("sub:"+e.id));
@@ -4057,6 +4062,22 @@ async function adminBasePush(){
 }
 let IMAGE_RESCUE_PENDING_V169=true;
 async function adminBasePull(showStatus=false){
+  // BETA232 : un pictogramme Admin tout juste enregistré ne doit jamais être
+  // remplacé quelques secondes après par une ancienne copie cloud.
+  try{
+    const g=JSON.parse(localStorage.getItem(ADMIN_PICTO_GUARD_232)||"null");
+    if(g&&g.at&&Date.now()-Number(g.at)<20000){
+      const current=readAdminBase();
+      const stillThere=!!(current.items&&current.items[g.id])||(current.addedItems||[]).some(v=>v&&v.id===g.id&&!v.deleted);
+      if(stillThere){
+        if(showStatus){
+          const st=document.getElementById("admin-sync-live");
+          if(st)st.textContent="⏳ Enregistrement du pictogramme en cours…";
+        }
+        return false;
+      }
+    }
+  }catch(e){}
   // BETA169 emergency image rescue: do not let a cloud PULL erase the tablet's
   // still-valid local image references before the user has had a chance to rescue them.
   if(IMAGE_RESCUE_PENDING_V169){
@@ -4867,6 +4888,49 @@ function safeOpenAdminPermanentPictogramForm(existing){
   try{adminPermanentPictogramForm(existing)}
   catch(err){console.error("Ouverture pictogramme",err);alert("Impossible d’ouvrir le formulaire : "+(err&&err.message?err.message:"erreur inconnue"))}
 }
+
+const ADMIN_PICTO_GUARD_232="ma-caa-admin-picto-guard-232";
+function commitAdminPictogram232(base,savedItemId){
+  // Enregistrement local autoritaire du pictogramme.
+  writeAdminBase(base);
+
+  let saved=readAdminBase();
+  const existsInOverrides=!!(saved.items&&saved.items[savedItemId]);
+  const existsInAdded=(saved.addedItems||[]).some(v=>v&&v.id===savedItemId&&!v.deleted);
+
+  // Safari/localStorage : filet de sécurité si une ancienne couche n'a pas
+  // conservé le tableau addedItems / items tel qu'il vient d'être modifié.
+  if(!existsInOverrides && !existsInAdded){
+    localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(base));
+    ADMIN_LAST_BASE_V113=JSON.parse(JSON.stringify(base));
+    adminBaseLocalDirty=true;
+    localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
+    localStorage.setItem("ma-caa-last-save",String(Date.now()));
+    saved=readAdminBase();
+  }
+
+  try{
+    localStorage.setItem(ADMIN_PICTO_GUARD_232,JSON.stringify({
+      at:Date.now(),
+      id:savedItemId,
+      base:saved
+    }));
+  }catch(e){}
+
+  adminBaseLocalDirty=true;
+  scheduleAdminBasePush();
+
+  // Le mode utilisateur et l'Admin doivent relire immédiatement LA MÊME base.
+  try{syncAdminCategories()}catch(e){}
+  try{render()}catch(e){}
+  setTimeout(()=>{
+    try{window.__refreshAdminPictos145?.()}catch(e){}
+    try{render()}catch(e){}
+  },80);
+
+  return saved;
+}
+
 function adminPermanentPictogramForm(existing){
   const a=readAdminBase();
   const overlay=document.createElement("div");
@@ -5169,7 +5233,7 @@ function adminPermanentPictogramForm(existing){
         if(cats.includes(sc.category)&&selectedFolderIds.has(sc.id))sc.itemIds.push(savedItemId);
       });
 
-      writeAdminBase(base);
+      commitAdminPictogram232(base,savedItemId);
 
       // BETA182: l’image est synchronisée séparément de la base Admin générale.
       // Le pictogramme garde un identifiant stable et son média possède sa propre entrée cloud.
@@ -5198,10 +5262,17 @@ function adminPermanentPictogramForm(existing){
       overlay.remove();
 
       try{
+        if(typeof syncAdminCategories==="function")syncAdminCategories();
         if(typeof window.__refreshAdminPictos145==="function"){
           window.__refreshAdminPictos145();
         }
-      }catch(e){console.warn("BETA145 refresh admin pictos",e)}
+      }catch(e){console.warn("BETA232 refresh admin pictos",e)}
+
+      try{
+        const check232=readAdminBase();
+        const ok232=!!(check232.items&&check232.items[savedItemId])||(check232.addedItems||[]).some(v=>v&&v.id===savedItemId&&!v.deleted);
+        if(ok232 && typeof showFeedback==="function")showFeedback("✅ Pictogramme enregistré");
+      }catch(e){}
 
       // Also refresh the normal user model once so switching back to User mode
       // immediately uses the same saved values.
@@ -10517,6 +10588,32 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
   });
 
   window.addEventListener('focus',()=>setTimeout(finalStarterRender231,350));
+})();
+</script>
+
+
+<!-- BETA233 — une seule fenêtre de choix utilisateur à la fois -->
+<script id="beta233-single-choice-popup">
+(function(){
+  document.addEventListener("pointerdown",function(e){
+    try{
+      const bubbles=[...document.querySelectorAll(".submenu-bubble,#quick-choices-pop")];
+      if(!bubbles.length)return;
+      if(bubbles.some(b=>b.contains(e.target)))return;
+      closeAllUserChoiceBubbles233();
+    }catch(err){}
+  },true);
+
+  // Navigation/changement de catégorie : aucune ancienne fenêtre ne doit rester.
+  try{
+    const prevRender233=window.renderGrid||renderGrid;
+    const wrapped233=function(){
+      try{closeAllUserChoiceBubbles233()}catch(e){}
+      return prevRender233.apply(this,arguments);
+    };
+    window.renderGrid=wrapped233;
+    try{renderGrid=wrapped233}catch(e){}
+  }catch(e){}
 })();
 </script>
 

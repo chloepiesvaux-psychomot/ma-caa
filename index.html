@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 257</title>
+<title>Ma CAA v2.0 bêta 258</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 257</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 258</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -12091,6 +12091,259 @@ function writeSubOrderFor253(subId,ids){
 
   window.hydrateVisible257=hydrateVisible257;
   window.cacheImage257=cacheImage257;
+})();
+</script>
+
+
+<!-- =========================================================
+     BETA 258 — CACHE IMAGE LOCAL PERSISTANT (IndexedDB)
+     ========================================================= -->
+<script id="beta258-persistent-image-cache">
+(function(){
+  const DB_NAME_258="ma-caa-image-cache-v258";
+  const STORE_258="images";
+  const MEM_258=new Map();
+  const PENDING_258=new Map();
+  let dbPromise258=null;
+
+  function openDb258(){
+    if(dbPromise258)return dbPromise258;
+    dbPromise258=new Promise((resolve,reject)=>{
+      const req=indexedDB.open(DB_NAME_258,1);
+      req.onupgradeneeded=()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains(STORE_258)){
+          db.createObjectStore(STORE_258,{keyPath:"key"});
+        }
+      };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error);
+    });
+    return dbPromise258;
+  }
+
+  async function idbGet258(key){
+    try{
+      const db=await openDb258();
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction(STORE_258,"readonly");
+        const rq=tx.objectStore(STORE_258).get(key);
+        rq.onsuccess=()=>resolve(rq.result||null);
+        rq.onerror=()=>reject(rq.error);
+      });
+    }catch(e){return null}
+  }
+
+  async function idbPut258(key,blob){
+    try{
+      const db=await openDb258();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(STORE_258,"readwrite");
+        tx.objectStore(STORE_258).put({key,blob,updatedAt:Date.now()});
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>reject(tx.error);
+      });
+      return true;
+    }catch(e){return false}
+  }
+
+  function key258(v){
+    if(!v)return "";
+    if(typeof v==="string")return v;
+    if(v&&typeof v==="object"){
+      if(v.url)return String(v.url);
+      if(v.path)return String(v.path);
+      if(v.key)return String(v.key);
+      if(v.id)return String(v.id);
+    }
+    return "";
+  }
+
+  function setImg258(img,src){
+    if(!img||!src)return;
+    if(img.src!==src)img.src=src;
+    img.dataset.cache258="1";
+  }
+
+  async function getPersistent258(value){
+    const key=key258(value);
+    if(!key)return null;
+    if(MEM_258.has(key))return MEM_258.get(key);
+    if(PENDING_258.has(key))return PENDING_258.get(key);
+
+    const p=(async()=>{
+      try{
+        // 1. persistent local IndexedDB
+        const saved=await idbGet258(key);
+        if(saved?.blob){
+          const url=URL.createObjectURL(saved.blob);
+          MEM_258.set(key,url);
+          return url;
+        }
+
+        // 2. already local values
+        if(typeof value==="string"&&value.startsWith("data:image/")){
+          MEM_258.set(key,value);
+          return value;
+        }
+        if(typeof value==="string"&&value.startsWith("blob:")){
+          MEM_258.set(key,value);
+          return value;
+        }
+
+        // 3. remote image: download once, persist the blob
+        if(typeof value==="string"&&/^https?:\/\//i.test(value)){
+          const r=await fetch(value,{cache:"force-cache"});
+          if(r.ok){
+            const blob=await r.blob();
+            await idbPut258(key,blob);
+            const url=URL.createObjectURL(blob);
+            MEM_258.set(key,url);
+            return url;
+          }
+        }
+
+        // 4. app-local resolver fallback
+        try{
+          if(typeof resolveLocalImageValue==="function"){
+            const resolved=await resolveLocalImageValue(value);
+            if(resolved){
+              // If resolver returns a data URL, persist it as Blob as well.
+              if(typeof resolved==="string"&&resolved.startsWith("data:image/")){
+                try{
+                  const blob=await (await fetch(resolved)).blob();
+                  await idbPut258(key,blob);
+                }catch(e){}
+              }
+              MEM_258.set(key,resolved);
+              return resolved;
+            }
+          }
+        }catch(e){}
+
+        return null;
+      }catch(e){
+        return null;
+      }finally{
+        PENDING_258.delete(key);
+      }
+    })();
+
+    PENDING_258.set(key,p);
+    return p;
+  }
+
+  function candidate258(img){
+    if(!img)return "";
+    return (
+      img.dataset.cloudPath ||
+      img.dataset.localImageKey ||
+      img.dataset.srcOriginal ||
+      img.getAttribute("data-src") ||
+      img.getAttribute("src") ||
+      ""
+    );
+  }
+
+  async function stabilizeOne258(img){
+    if(!img||!document.contains(img))return;
+    const original=candidate258(img);
+    if(!original)return;
+
+    const stable=await getPersistent258(original);
+    if(stable&&document.contains(img))setImg258(img,stable);
+  }
+
+  function stabilizeRoot258(root=document){
+    const imgs=root.tagName==="IMG"?[root]:[...root.querySelectorAll("img")];
+    imgs.forEach(img=>stabilizeOne258(img));
+  }
+
+  // Important: stabilize BEFORE launching any cloud hydration when possible.
+  try{
+    const prevRenderGrid258=renderGrid;
+    renderGrid=function(){
+      const r=prevRenderGrid258.apply(this,arguments);
+      queueMicrotask(()=>stabilizeRoot258(document.getElementById("grid")||document));
+      return r;
+    };
+    window.renderGrid=renderGrid;
+  }catch(e){}
+
+  // After legacy hydration resolves a cloud/local reference, persist it locally.
+  try{
+    const prevHydrate258=hydrateAllCloudPictures;
+    hydrateAllCloudPictures=async function(force=false){
+      const r=await prevHydrate258(force);
+      setTimeout(()=>stabilizeRoot258(document),0);
+      return r;
+    };
+    window.hydrateAllCloudPictures=hydrateAllCloudPictures;
+  }catch(e){}
+
+  // When a remote image loads successfully, immediately persist the actual bytes.
+  document.addEventListener("load",async e=>{
+    const img=e.target;
+    if(!(img instanceof HTMLImageElement))return;
+    const src=img.currentSrc||img.src||"";
+    if(!src||src.startsWith("blob:")||src.startsWith("data:"))return;
+    if(!/^https?:\/\//i.test(src))return;
+    if(MEM_258.has(src))return;
+    try{
+      const r=await fetch(src,{cache:"force-cache"});
+      if(!r.ok)return;
+      const blob=await r.blob();
+      await idbPut258(src,blob);
+      const local=URL.createObjectURL(blob);
+      MEM_258.set(src,local);
+      if(document.contains(img))setImg258(img,local);
+    }catch(err){}
+  },true);
+
+  // New pictograms appearing during navigation are stabilized without a cloud pull.
+  const obs=new MutationObserver(muts=>{
+    muts.forEach(m=>m.addedNodes&&m.addedNodes.forEach(n=>{
+      if(!n||n.nodeType!==1)return;
+      stabilizeRoot258(n);
+    }));
+  });
+
+  function start258(){
+    try{obs.observe(document.body,{childList:true,subtree:true})}catch(e){}
+    setTimeout(()=>stabilizeRoot258(document),80);
+  }
+
+  // Manual warm-up useful right after image repair or first install.
+  async function warmImageCache258(){
+    const btn=document.getElementById("image-rescue-255");
+    const old=btn?.textContent;
+    if(btn){btn.disabled=true;btn.textContent="⏳ Mise en cache des images…"}
+    try{
+      const imgs=[...document.querySelectorAll("img")];
+      await Promise.allSettled(imgs.map(stabilizeOne258));
+      return true;
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent=old||"🖼️ Réparer les images"}
+    }
+  }
+
+  window.getPersistentImage258=getPersistent258;
+  window.stabilizeImages258=stabilizeRoot258;
+  window.warmImageCache258=warmImageCache258;
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start258,{once:true});
+  else start258();
+
+  // After a successful 255 repair, populate the persistent cache immediately.
+  try{
+    const prevRepair258=fullMediaRepair255;
+    fullMediaRepair255=async function(){
+      const r=await prevRepair258.apply(this,arguments);
+      setTimeout(()=>warmImageCache258(),120);
+      return r;
+    };
+    window.fullMediaRepair255=fullMediaRepair255;
+  }catch(e){}
 })();
 </script>
 

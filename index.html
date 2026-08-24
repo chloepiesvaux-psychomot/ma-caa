@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 258</title>
+<title>Ma CAA v2.0 bêta 259</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 258</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 259</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1538,49 +1538,53 @@ async function hydrateCloudPictures(){
   for(const img of imgs){
     const path=img.getAttribute("data-cloud-path");
     if(!path)continue;
-    if(img.dataset.cloudLoadedPath===path && img.getAttribute("src"))continue;
 
     img.style.background="#fff";
 
-    // 1. URL publique : très stable dans l'application iPhone si le bucket est public.
+    // BETA259: assign public URL immediately — no Image() preflight and no
+    // waiting several seconds before the browser is even allowed to load it.
+    let publicUrl="";
     try{
-      const pub=cloudClient.storage.from("pictograms").getPublicUrl(path);
-      const publicUrl=pub?.data?.publicUrl||"";
-      if(publicUrl){
-        const ok=await new Promise(resolve=>{
-          const test=new Image();
-          const timer=setTimeout(()=>resolve(false),3500);
-          test.onload=()=>{clearTimeout(timer);resolve(true)};
-          test.onerror=()=>{clearTimeout(timer);resolve(false)};
-          test.src=publicUrl+(publicUrl.includes("?")?"&":"?")+"v=125";
-        });
-        if(ok){
-          const old=img.dataset.objectUrl;
-          if(old){try{URL.revokeObjectURL(old)}catch(e){};delete img.dataset.objectUrl}
-          img.src=publicUrl;
-          img.dataset.cloudLoadedPath=path;
-          continue;
-        }
-      }
+      publicUrl=cloudClient.storage.from("pictograms").getPublicUrl(path)?.data?.publicUrl||"";
     }catch(e){}
 
-    // 2. Fallback : téléchargement Supabase (fonctionne si la session/policy l'autorise).
-    try{
-      const dl=await cloudClient.storage.from("pictograms").download(path);
-      if(dl.error)throw dl.error;
-      const old=img.dataset.objectUrl;
-      if(old)try{URL.revokeObjectURL(old)}catch(e){}
-      const url=URL.createObjectURL(dl.data);
-      img.src=url;
-      img.dataset.objectUrl=url;
+    const current=img.getAttribute("src")||"";
+    if(publicUrl && (!current || img.dataset.retry259==="1")){
+      img.dataset.retry259="";
+      img.style.visibility="visible";
+      img.src=publicUrl;
+      // Give the normal browser/cache request a short opportunity.
+      await new Promise(r=>setTimeout(r,0));
+      if(img.complete && img.naturalWidth>0){
+        img.dataset.cloudLoadedPath=path;
+        continue;
+      }
+    }else if(current && img.complete && img.naturalWidth>0){
       img.dataset.cloudLoadedPath=path;
-    }catch(e){
-      console.error("Image cloud inaccessible",path,e);
-      // On garde le cadre blanc ; l'emoji n'écrase pas l'image.
+      continue;
+    }
+
+    // Download fallback only if the direct public URL did not resolve.
+    // This path is uncommon and is intentionally non-destructive.
+    if(!img.complete || img.naturalWidth===0){
+      try{
+        const dl=await cloudClient.storage.from("pictograms").download(path);
+        if(dl.error)throw dl.error;
+        const old=img.dataset.objectUrl;
+        if(old)try{URL.revokeObjectURL(old)}catch(e){}
+        const url=URL.createObjectURL(dl.data);
+        img.src=url;
+        img.style.visibility="visible";
+        img.dataset.objectUrl=url;
+        img.dataset.cloudLoadedPath=path;
+        delete img.dataset.retry259;
+      }catch(e){
+        console.warn("Image cloud temporairement inaccessible",path);
+        // Keep the element/reference intact so a later grouped hydration can retry.
+      }
     }
   }
 }
-
 
 let cloudPictureHydrationBusy=false;
 async function hydrateLocalPictures(){
@@ -2647,21 +2651,46 @@ function moveItem(cat,x,dir){
   const map=readOrder();map[cat.name]=items.map(itemId);writeOrder(map);
   renderGrid();
 }
+function cloudPublicUrl259(path){
+  try{
+    if(!path||!cloudClient)return "";
+    const r=cloudClient.storage.from("pictograms").getPublicUrl(path);
+    return r?.data?.publicUrl||"";
+  }catch(e){return ""}
+}
 function imageHtml(p,emoji){
   const src=normalizeCloudImageRef(p||"");
   const em=emoji||"🖼️";
-  const fallback="this.style.display='none';this.parentElement.textContent="+JSON.stringify(em);
+  const safeEm=String(em).replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
   if(src&&typeof src==="object"&&src.__cloud_image&&src.path){
-    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img data-cloud-path="'+String(src.path).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="'+fallback+'"></span>';
+    const path=String(src.path);
+    const publicUrl=cloudPublicUrl259(path);
+    // BETA259: the browser receives a usable src immediately.
+    // Do NOT destroy the <img> on an intermittent load error: legacy hydration
+    // can retry/download it afterwards.
+    return '<span class="pic-media" data-media-path="'+path.replace(/"/g,"&quot;")+'" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
+      '<img data-cloud-path="'+path.replace(/"/g,"&quot;")+'"'+
+      (publicUrl?' src="'+publicUrl.replace(/"/g,"&quot;")+'" data-public-src-259="'+publicUrl.replace(/"/g,"&quot;")+'"':'')+
+      ' alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
+      'onload="this.dataset.cloudLoadedPath=this.dataset.cloudPath||this.getAttribute(\\'data-cloud-path\\')||\\'\\';this.style.visibility=\\'visible\\'" '+
+      'onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'">'+
+      '<span class="img-fallback-259" aria-hidden="true" style="display:none;font-size:46px">'+safeEm+'</span></span>';
   }
+
   if(src&&typeof src==="object"&&src.__local_image&&src.key){
-    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img data-local-image-key="'+String(src.key).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="'+fallback+'"></span>';
+    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
+      '<img data-local-image-key="'+String(src.key).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
+      'onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'"></span>';
   }
+
   if(typeof src==="string"&&src){
-    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px"><img src="'+src.replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" onerror="'+fallback+'"></span>';
+    return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
+      '<img src="'+src.replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
+      'onload="this.style.visibility=\\'visible\\'" onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'"></span>';
   }
-  return '<span style="font-size:46px">'+em+'</span>';
+
+  return '<span style="font-size:46px">'+safeEm+'</span>';
 }
 function picHtml(x){
   const p=displayImage(x), label=displayLabel(x);
@@ -3758,7 +3787,8 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
     box.appendChild(msg);return;
   }
   items.forEach(x=>createNormalCard(x,box));
-  scheduleUiHydration253(30);
+  const needHydrate259=box.querySelector("img[data-local-image-key],img[data-cloud-path]:not([src]),img[data-cloud-path][data-retry259='1']");
+  if(needHydrate259)scheduleUiHydration253(30);
 }
 function speak(){const text=phrase.map(x=>x.speech).join(" ").trim();if(!text)return;speakText(text)}
 function render(){
@@ -12344,6 +12374,40 @@ function writeSubOrderFor253(subId,ids){
     };
     window.fullMediaRepair255=fullMediaRepair255;
   }catch(e){}
+})();
+</script>
+
+
+<!-- BETA259 — cache wrappers only act on actual image URLs, not cloud paths -->
+<script id="beta259-cache-guard">
+(function(){
+  function settle259(root=document){
+    const imgs=root.querySelectorAll?root.querySelectorAll("img[data-cloud-path]"):[];
+    imgs.forEach(img=>{
+      if(img.getAttribute("src") && img.complete && img.naturalWidth>0){
+        img.dataset.cloudLoadedPath=img.getAttribute("data-cloud-path")||"";
+        img.style.visibility="visible";
+        delete img.dataset.retry259;
+      }
+    });
+  }
+  document.addEventListener("load",e=>{
+    const img=e.target;
+    if(img instanceof HTMLImageElement && img.hasAttribute("data-cloud-path")){
+      img.dataset.cloudLoadedPath=img.getAttribute("data-cloud-path")||"";
+      img.style.visibility="visible";
+      delete img.dataset.retry259;
+    }
+  },true);
+  document.addEventListener("error",e=>{
+    const img=e.target;
+    if(img instanceof HTMLImageElement && img.hasAttribute("data-cloud-path")){
+      img.dataset.retry259="1";
+      // Retry later as a grouped operation; do not replace the card with emoji.
+      setTimeout(()=>{try{scheduleUiHydration253(80)}catch(err){}},80);
+    }
+  },true);
+  setTimeout(()=>settle259(document),100);
 })();
 </script>
 

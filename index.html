@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 241</title>
+<title>Ma CAA v2.0 bêta 242</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 241</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 242</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3083,6 +3083,146 @@ function resolvedSubmenuEntries(parentId){
   });
 }
 function adminSubmenuEntries(parentId){return resolvedSubmenuEntries(parentId)}
+
+function submenuManagerCatalog242(parentId,panel,refresh){
+  const wrap=document.createElement("div");
+  wrap.className="submenu242-wrap";
+
+  const search=document.createElement("input");
+  search.type="search";
+  search.placeholder="🔎 Rechercher un pictogramme, une catégorie ou une sous-catégorie…";
+  search.className="submenu242-search";
+  wrap.appendChild(search);
+
+  const tools=document.createElement("div");
+  tools.className="submenu242-tools";
+  const openAll=document.createElement("button");openAll.type="button";openAll.textContent="▾ Tout ouvrir";
+  const closeAll=document.createElement("button");closeAll.type="button";closeAll.textContent="▸ Tout fermer";
+  tools.append(openAll,closeAll);wrap.appendChild(tools);
+
+  const results=document.createElement("div");
+  results.className="submenu242-tree";
+  wrap.appendChild(results);
+
+  const openState=window.__submenuOpen242=window.__submenuOpen242||{};
+
+  function node(label,key,level){
+    const n=document.createElement("div");n.className="submenu242-node level-"+level;
+    const h=document.createElement("button");h.type="button";h.className="submenu242-head";
+    const a=document.createElement("span");a.className="submenu242-arrow";
+    const t=document.createElement("span");t.textContent=label;
+    const body=document.createElement("div");body.className="submenu242-body";
+    const set=on=>{openState[key]=!!on;n.classList.toggle("open",!!on);a.textContent=on?"▾":"▸"};
+    set(!!openState[key]);
+    h.append(a,t);h.onclick=()=>set(!n.classList.contains("open"));
+    n.append(h,body);return {n,body,set,key};
+  }
+
+  function addPermanent(v){
+    const now=readAdminBase();now.submenus=now.submenus||{};now.submenus[parentId]=now.submenus[parentId]||[];
+    const arr=now.submenus[parentId];
+    const old=arr.find(e=>!e.deleted&&e.sourceId===v.id);
+    if(old)return showFeedback("Ce pictogramme est déjà dans le sous-menu");
+    arr.push({
+      id:"sm"+Date.now()+Math.random().toString(36).slice(2,5),
+      sourceId:v.id,label:v.label,speech:v.speech,emoji:v.emoji,image:v.image||"",
+      order:arr.filter(e=>!e.deleted).length,hidden:false
+    });
+    writeAdminBase(now);refresh();showFeedback("Pictogramme ajouté au sous-menu");
+  }
+
+  function addSubcat(sc){
+    const now=readAdminBase();now.submenus=now.submenus||{};now.submenus[parentId]=now.submenus[parentId]||[];
+    const arr=now.submenus[parentId];
+    const old=arr.find(e=>!e.deleted&&e.kind==="subcategory"&&e.subcategoryId===sc.id);
+    if(old)return showFeedback("Cette sous-catégorie est déjà dans le sous-menu");
+    arr.push({
+      id:"smsc"+Date.now()+Math.random().toString(36).slice(2,5),
+      kind:"subcategory",subcategoryId:sc.id,label:sc.name,emoji:sc.icon||"📁",
+      order:arr.filter(e=>!e.deleted).length,hidden:false
+    });
+    writeAdminBase(now);refresh();showFeedback("Sous-catégorie ajoutée au sous-menu");
+  }
+
+  function addCategory(c){
+    const now=readAdminBase();now.submenus=now.submenus||{};now.submenus[parentId]=now.submenus[parentId]||[];
+    const arr=now.submenus[parentId];
+    const old=arr.find(e=>!e.deleted&&e.kind==="category"&&e.categoryName===c.name);
+    if(old)return showFeedback("Cette catégorie est déjà dans le sous-menu");
+    arr.push({
+      id:"smcat"+Date.now()+Math.random().toString(36).slice(2,5),
+      kind:"category",categoryName:c.name,label:adminCatName(c),emoji:adminCatIcon(c)||c.icon||"📁",
+      order:arr.filter(e=>!e.deleted).length,hidden:false
+    });
+    writeAdminBase(now);refresh();showFeedback("Catégorie ajoutée au sous-menu");
+  }
+
+  function buttonRow(label,emoji,onclick){
+    const b=document.createElement("button");b.type="button";b.className="submenu242-choice";
+    b.innerHTML="<span>"+(emoji||"🖼️")+"</span><b>"+label+"</b>";
+    b.onclick=onclick;return b;
+  }
+
+  function render(){
+    results.innerHTML="";
+    const q=search.value.trim().toLowerCase();
+    const base=readAdminBase();
+    const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!base.deletedCats.includes(c.name));
+    const nodes=[];
+
+    cats.forEach(cat=>{
+      const catName=adminCatName(cat);
+      const subs=(base.subcategories||[]).filter(sc=>!sc.deleted&&!sc.hidden&&sc.category===cat.name);
+      const all=allPermanentPictograms().filter(v=>v.category===catName || v.category===cat.name);
+      const catMatch=!q||catName.toLowerCase().includes(q);
+      const matchingSubs=subs.filter(sc=>!q||sc.name.toLowerCase().includes(q));
+      const matchingPictos=all.filter(v=>!q||[v.label,v.speech].join(" ").toLowerCase().includes(q));
+
+      if(q&&!catMatch&&!matchingSubs.length&&!matchingPictos.length)return;
+
+      const cn=node((adminCatIcon(cat)||cat.icon||"📁")+" "+catName,"sm242-cat:"+cat.name,0);
+      nodes.push(cn);
+
+      // Add the category itself.
+      cn.body.appendChild(buttonRow("Ajouter la catégorie "+catName,"📚",()=>addCategory(cat)));
+
+      // Subcategories first.
+      subs.forEach(sc=>{
+        const scMatch=!q||sc.name.toLowerCase().includes(q)||
+          allPermanentPictograms().some(v=>v.category===catName && adminSubcatItemsDeep(sc).includes(v.id) &&
+            [v.label,v.speech].join(" ").toLowerCase().includes(q));
+        if(q&&!scMatch)return;
+
+        const sn=node((sc.icon||"📁")+" "+sc.name,"sm242-sub:"+sc.id,1);
+        nodes.push(sn);
+        sn.body.appendChild(buttonRow("Ajouter la sous-catégorie "+sc.name,"📁",()=>addSubcat(sc)));
+
+        const ids=new Set(adminSubcatItemsDeep(sc));
+        all.filter(v=>ids.has(v.id)).filter(v=>!q||[v.label,v.speech].join(" ").toLowerCase().includes(q)).forEach(v=>{
+          sn.body.appendChild(buttonRow(v.label,v.emoji||"🖼️",()=>addPermanent(v)));
+        });
+        cn.body.appendChild(sn.n);
+      });
+
+      // All pictograms of category.
+      const an=node("🖼️ Tous les pictogrammes de "+catName,"sm242-all:"+cat.name,1);
+      nodes.push(an);
+      matchingPictos.forEach(v=>an.body.appendChild(buttonRow(v.label,v.emoji||"🖼️",()=>addPermanent(v))));
+      cn.body.appendChild(an.n);
+
+      if(q)cn.set(true);
+      results.appendChild(cn.n);
+    });
+
+    openAll.onclick=()=>nodes.forEach(n=>n.set(true));
+    closeAll.onclick=()=>nodes.forEach(n=>n.set(false));
+  }
+
+  search.oninput=render;
+  render();
+  return wrap;
+}
+
 function adminManageSubmenu(parentId,parentLabel){
   const a=readAdminBase();a.submenus=a.submenus||{};a.submenus[parentId]=a.submenus[parentId]||[];
   // Opening the manager confirms that this pictogram is a submenu.
@@ -3162,91 +3302,8 @@ function adminManageSubmenu(parentId,parentLabel){
     choose.after(picker);
   };
 
-  const chooseSubcat=document.createElement("button");
-  chooseSubcat.textContent="📁 Ajouter une sous-catégorie permanente";
-  chooseSubcat.style.cssText="width:100%;margin-bottom:8px";
-  chooseSubcat.onclick=()=>{
-    panel.querySelector(".submenu-cat-picker")?.remove();
-    const picker=document.createElement("div");picker.className="submenu-cat-picker";
-    picker.style.cssText="max-height:420px;overflow:auto;border:1px solid #dfe3ea;border-radius:12px;padding:10px;margin:4px 0 12px;background:#fafbfe";
-    const base=readAdminBase(),subs=(base.subcategories||[]).filter(x=>!x.deleted);
-    const current=new Set((base.submenus?.[parentId]||[]).filter(e=>!e.deleted&&e.kind==="subcategory").map(e=>e.subcategoryId));
-    if(!subs.length){
-      picker.textContent="Aucune sous-catégorie permanente n’a encore été créée.";
-    }else{
-      const groups=new Map();
-      subs.forEach(sc=>{if(!groups.has(sc.category))groups.set(sc.category,[]);groups.get(sc.category).push(sc)});
-      groups.forEach((items,catName)=>{
-        const h=document.createElement("div");h.textContent=catName;h.style.cssText="font-weight:900;margin:10px 2px 6px;color:#243b6b";picker.appendChild(h);
-        const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:6px";
-        items.forEach(sc=>{
-          const b=document.createElement("button");b.type="button";b.disabled=current.has(sc.id);
-          b.style.cssText="min-height:58px;padding:8px;border:1px solid #dfe3ea;border-radius:10px;background:white;text-align:left;font-weight:800";
-          b.textContent=(sc.icon||"📁")+" "+sc.name;
-          b.onclick=()=>{
-            const now=readAdminBase();now.submenus=now.submenus||{};now.submenus[parentId]=now.submenus[parentId]||[];
-            const arr=now.submenus[parentId];
-            const old=arr.find(e=>e.kind==="subcategory"&&e.subcategoryId===sc.id);
-            if(old){old.deleted=false;old.hidden=false;old.order=arr.filter(e=>!e.deleted).length}
-            else arr.push({
-              id:"smsc"+Date.now()+Math.random().toString(36).slice(2,5),
-              kind:"subcategory",subcategoryId:sc.id,label:sc.name,emoji:sc.icon||"📁",
-              order:arr.filter(e=>!e.deleted).length,hidden:false
-            });
-            writeAdminBase(now);picker.remove();refresh();showFeedback("Sous-catégorie ajoutée");
-          };
-          grid.appendChild(b);
-        });
-        picker.appendChild(grid);
-      });
-    }
-    chooseSubcat.after(picker);
-  };
-  panel.appendChild(chooseSubcat);
-
-  const chooseCategory=document.createElement("button");
-  chooseCategory.type="button";
-  chooseCategory.textContent="📚 Ajouter une catégorie permanente";
-  chooseCategory.style.cssText="width:100%;margin-bottom:8px";
-  chooseCategory.onclick=()=>{
-    panel.querySelector(".submenu-category-picker239")?.remove();
-    const picker=document.createElement("div");picker.className="submenu-category-picker239";
-    picker.style.cssText="max-height:360px;overflow:auto;border:1px solid #dfe3ea;border-radius:12px;padding:10px;margin:4px 0 12px;background:#fafbfe";
-    const base=readAdminBase();
-    const currentCats=new Set((base.submenus?.[parentId]||[]).filter(e=>!e.deleted&&e.kind==="category").map(e=>e.categoryName));
-    const available=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!base.deletedCats.includes(c.name));
-    if(!available.length){
-      picker.textContent="Aucune catégorie permanente disponible.";
-    }else{
-      const grid=document.createElement("div");
-      grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:7px";
-      available.forEach(c=>{
-        const cname=c.name;
-        const b=document.createElement("button");b.type="button";b.disabled=currentCats.has(cname);
-        b.style.cssText="min-height:62px;padding:9px;border:1px solid #dfe3ea;border-radius:11px;background:white;text-align:left;font-weight:850";
-        b.textContent=(adminCatIcon(c)||c.icon||"📁")+" "+adminCatName(c);
-        b.onclick=()=>{
-          const now=readAdminBase();now.submenus=now.submenus||{};now.submenus[parentId]=now.submenus[parentId]||[];
-          const arr=now.submenus[parentId];
-          const old=arr.find(e=>e.kind==="category"&&e.categoryName===cname);
-          if(old){old.deleted=false;old.hidden=false;old.label=adminCatName(c);old.emoji=adminCatIcon(c)||c.icon||"📁";old.order=arr.filter(e=>!e.deleted).length}
-          else arr.push({
-            id:"smcat"+Date.now()+Math.random().toString(36).slice(2,5),
-            kind:"category",categoryName:cname,label:adminCatName(c),emoji:adminCatIcon(c)||c.icon||"📁",
-            order:arr.filter(e=>!e.deleted).length,hidden:false
-          });
-          writeAdminBase(now);
-          // refresh() closes over the original object `a`; update it too so the new row is visible immediately.
-          a.submenus=now.submenus;
-          picker.remove();refresh();showFeedback("Catégorie ajoutée au sous-menu");
-        };
-        grid.appendChild(b);
-      });
-      picker.appendChild(grid);
-    }
-    chooseCategory.after(picker);
-  };
-  panel.appendChild(chooseCategory);
+  const catalog242=submenuManagerCatalog242(parentId,panel,refresh);
+  panel.appendChild(catalog242);
 
   const secondary=document.createElement("div");secondary.style.cssText="display:flex;gap:7px;flex-wrap:wrap;margin-top:4px";
   const create=mini("➕ Nouveau pictogramme permanent",()=>{overlay.remove();adminPermanentPictogramForm(null)});
@@ -11229,6 +11286,23 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
   font-weight:900
 }
 #admin195 .piccard .delete238:hover{background:#ffe5e5}
+</style>
+
+
+<style id="beta242-submenu-tree-style">
+.submenu242-wrap{margin:8px 0 14px}
+.submenu242-search{width:100%;box-sizing:border-box;padding:11px 12px;border:2px solid #dbe3ee;border-radius:12px;font-size:15px;margin-bottom:8px}
+.submenu242-tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.submenu242-tools button{border:1px solid #ccd6e5;background:#f8faff;border-radius:10px;padding:8px 11px;font-weight:850}
+.submenu242-tree{border:1px solid #dce3ed;border-radius:14px;overflow:hidden;max-height:430px;overflow-y:auto;background:#fff}
+.submenu242-node{border-bottom:1px solid #e8edf3}.submenu242-node:last-child{border-bottom:0}
+.submenu242-head{width:100%;border:0;display:flex;align-items:center;gap:8px;padding:11px 12px;background:#f6f9fd;font:inherit;font-weight:900;text-align:left;cursor:pointer}
+.submenu242-node.level-1>.submenu242-head{padding-left:30px;background:#fbfcfe}
+.submenu242-arrow{width:20px;color:#385274}
+.submenu242-body{display:none}.submenu242-node.open>.submenu242-body{display:block}
+.submenu242-choice{width:100%;display:flex;align-items:center;gap:10px;border:0;border-top:1px solid #edf0f4;background:#fff;padding:9px 14px 9px 48px;text-align:left;cursor:pointer}
+.submenu242-choice:hover{background:#f4f8ff}
+.submenu242-choice span{font-size:22px;min-width:28px}
 </style>
 
 </body></html>

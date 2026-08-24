@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 240</title>
+<title>Ma CAA v2.0 bêta 241</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 240</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 241</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -543,7 +543,7 @@ function openQuickChoicesBubble(x,anchor){
   closeAllUserChoiceBubbles233();
   const choices=quickChoicesFor(x);if(!choices.length)return;
   const pop=document.createElement("div");pop.id="quick-choices-pop";pop.className="submenu-bubble";
-  pop.style.cssText="position:fixed;z-index:100300;background:white;border:2px solid #dfe4ec;border-radius:20px;box-shadow:0 12px 34px rgba(20,35,65,.22);padding:10px;display:grid;grid-template-columns:repeat("+Math.min(4,choices.length)+",minmax(92px,120px));gap:9px;max-width:calc(100vw - 24px)";
+  pop.style.cssText="position:fixed;z-index:100300;background:white;border:2px solid #dfe4ec;border-radius:20px;box-shadow:0 12px 34px rgba(20,35,65,.22);padding:10px;display:grid;grid-template-columns:repeat("+Math.min(4,choices.length)+",minmax(92px,120px));gap:9px;max-width:calc(100vw - 24px);max-height:min(72vh,640px);overflow:auto";
   choices.forEach(c=>{
     const b=document.createElement("button");b.type="button";
     b.style.cssText="border:1px solid #e2e6ee;border-radius:15px;background:#fff;padding:9px 7px;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:inherit;font-weight:800";
@@ -577,7 +577,7 @@ function editQuickChoices(x){
   const existing=quickChoicesFor(x);
   const ov=document.createElement("div");ov.className="editor-overlay";ov.style.zIndex="100740";
   const p=document.createElement("div");p.className="editor";p.style.maxWidth="620px";
-  p.innerHTML="<h2>💬 Suite rapide — "+displayLabel(x)+"</h2><div style='margin-bottom:10px;color:#667085'>Pour 2 à 4 choix courts, sans créer de sous-dossier.</div>";
+  p.innerHTML="<h2>💬 Suite rapide — "+displayLabel(x)+"</h2><div style='margin-bottom:10px;color:#667085'>Pour 2 à 15 choix courts, sans créer de sous-dossier.</div>";
   const list=document.createElement("div");
   function draw(){
     list.innerHTML="";
@@ -596,117 +596,155 @@ function editQuickChoices(x){
     });
   }
   const add=document.createElement("button");add.textContent="＋ Ajouter un choix";add.style.cssText="padding:10px;border-radius:10px;border:1px solid #ccd5e2;background:#f8faff;font-weight:800";
-  add.onclick=()=>{const a=quickChoicesFor(x);if(a.length>=4){alert("La suite rapide est prévue pour 4 choix maximum. Pour davantage de choix, utilise un sous-dossier.");return}a.push({emoji:"💬",label:"Nouveau choix",speech:"Nouveau choix"});saveQuickChoices(x,a);draw()};
+  add.onclick=()=>{const a=quickChoicesFor(x);if(a.length>=15){alert("La suite rapide est limitée à 15 choix maximum.");return}a.push({emoji:"💬",label:"Nouveau choix",speech:"Nouveau choix"});saveQuickChoices(x,a);draw()};
   const close=document.createElement("button");close.className="canceledit";close.textContent="Fermer";close.onclick=()=>ov.remove();
   p.append(list,add,close);ov.appendChild(p);document.body.appendChild(ov);draw();
 }
 
 function adminManageQuickChoices(parentId,parentLabel){
-  // Les catégories restent ouvertes/fermées jusqu'à ce que l'administrateur
-  // clique lui-même sur leur en-tête.
-  const quickOpenCategories=new Set();
+  const QUICK_MAX_241=15;
+  const openCats241=new Set();
+  const openSubs241=new Set();
+  const openAll241=new Set();
 
   const overlay=document.createElement("div");overlay.className="editor-overlay";overlay.style.zIndex="100660";
-  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="900px";
-  panel.innerHTML="<h2>💬 Suite rapide : "+parentLabel+"</h2><div style='color:#667085;margin-bottom:12px'>Choisis 2 à 4 pictogrammes permanents. Ils sont classés par catégories et conservent automatiquement leur image, leur nom et leur phrase prononcée.</div>";
+  const panel=document.createElement("div");panel.className="editor";panel.style.maxWidth="940px";
+  panel.innerHTML="<h2>💬 Suite rapide : "+parentLabel+"</h2><div style='color:#667085;margin-bottom:12px'>Choisis jusqu’à <b>15 pictogrammes permanents</b>. Ouvre une catégorie puis une sous-catégorie, ou « Tous les pictogrammes de… ».</div>";
 
   const search=document.createElement("input");search.type="text";search.placeholder="🔎 Rechercher un pictogramme permanent…";search.style.cssText="width:100%;padding:12px;border:2px solid #d9dee8;border-radius:12px;margin-bottom:12px";panel.appendChild(search);
   const selectedBox=document.createElement("div");selectedBox.style.cssText="padding:10px;border-radius:12px;background:#f6f8fb;margin-bottom:12px;font-weight:800";panel.appendChild(selectedBox);
+
+  const tools=document.createElement('div');tools.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px';
+  const openAllBtn=document.createElement('button');openAllBtn.type='button';openAllBtn.textContent='▾ Tout ouvrir';
+  const closeAllBtn=document.createElement('button');closeAllBtn.type='button';closeAllBtn.textContent='▸ Tout fermer';
+  tools.append(openAllBtn,closeAllBtn);panel.appendChild(tools);
+
   const browser=document.createElement("div");panel.appendChild(browser);
 
   const base=readAdminBase();base.quickChoices=base.quickChoices||{};
-  let selected=(base.quickChoices[parentId]||[]).map(c=>c.sourceId||c.id).filter(Boolean);
+  let selected=(base.quickChoices[parentId]||[]).map(c=>c.sourceId||c.id).filter(Boolean).slice(0,QUICK_MAX_241);
 
   function permanentRows(){
-    // BETA125 : même catalogue que Administrateur > Pictogrammes.
-    // On parcourt chaque catégorie et adminPermanentEntries(cat), qui contient :
-    // - les pictogrammes permanents d'origine,
-    // - les pictogrammes ajoutés,
-    // - les pictogrammes affectés à plusieurs catégories,
-    // - les pictogrammes masqués (mais pas supprimés).
-    syncCustomCategories();
-    syncAdminCategories();
+    syncCustomCategories();syncAdminCategories();
     const a=readAdminBase(),out=[],seenPlacement=new Set();
-
-    const cats=categories.filter(c=>
-      c.name!=="Favoris" &&
-      c.name!=="Mode parents" &&
-      !(a.deletedCats||[]).includes(c.name)
-    );
-
+    const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!(a.deletedCats||[]).includes(c.name));
     cats.forEach(cat=>{
-      let entries=[];
-      try{entries=adminPermanentEntries(cat)||[]}catch(e){console.warn("Suite rapide catalogue",cat.name,e)}
+      let entries=[];try{entries=adminPermanentEntries(cat)||[]}catch(e){console.warn("Suite rapide catalogue",cat.name,e)}
       entries.forEach(v=>{
         if(!v||!v.id||v.id===parentId)return;
-        const placementKey=cat.name+"||"+v.id;
-        if(seenPlacement.has(placementKey))return;
-        seenPlacement.add(placementKey);
-
-        let item=null, speech="", emoji=v.emoji||"🖼️", image=v.image||"";
-        if(v.kind==="base" && v.source && v.x){
-          item=adminItemData(v.source,v.x);
-          speech=spokenText(item);
-          emoji=displayEmoji(item);
-          image=displayImage(item)||image||"";
-        }else if(v.kind==="added" && v.item){
-          const ai=v.item;
-          item=[ai.emoji||"🖼️",ai.label||"Pictogramme",ai.speech||ai.label||"Pictogramme",ai.id,ai.image||null,true,ai.id];
-          speech=ai.speech||ai.label||"Pictogramme";
-          emoji=ai.emoji||"🖼️";
-          image=ai.image||image||"";
-        }else{
-          speech=v.speech||v.label||"Pictogramme";
-        }
-
-        out.push({
-          id:v.id,
-          cat:adminCategoryDisplay(cat).name||cat.name,
-          sourceCat:cat.name,
-          item,
-          label:v.label||"Pictogramme",
-          speech,
-          emoji,
-          image,
-          hidden:!!v.hidden
-        });
+        const placementKey=cat.name+"||"+v.id;if(seenPlacement.has(placementKey))return;seenPlacement.add(placementKey);
+        let item=null,speech="",emoji=v.emoji||"🖼️",image=v.image||"";
+        if(v.kind==="base"&&v.source&&v.x){
+          item=adminItemData(v.source,v.x);speech=spokenText(item);emoji=displayEmoji(item);image=displayImage(item)||image||"";
+        }else if(v.kind==="added"&&v.item){
+          const ai=v.item;item=[ai.emoji||"🖼️",ai.label||"Pictogramme",ai.speech||ai.label||"Pictogramme",ai.id,ai.image||null,true,ai.id];
+          speech=ai.speech||ai.label||"Pictogramme";emoji=ai.emoji||"🖼️";image=ai.image||image||"";
+        }else speech=v.speech||v.label||"Pictogramme";
+        out.push({id:v.id,cat:adminCategoryDisplay(cat).name||cat.name,sourceCat:cat.name,item,label:v.label||"Pictogramme",speech,emoji,image,hidden:!!v.hidden});
       });
     });
     return out;
   }
+
+  function rowMap(){return new Map(permanentRows().map(r=>[String(r.id),r]))}
+
   function updateSelected(){
-    selectedBox.textContent="Sélection : "+selected.length+"/4"+(selected.length?" — "+selected.map(id=>permanentRows().find(r=>r.id===id)?.label||"").filter(Boolean).join(" · "):"");
+    const map=rowMap();
+    selectedBox.textContent="Sélection : "+selected.length+"/"+QUICK_MAX_241+(selected.length?" — "+selected.map(id=>map.get(String(id))?.label||"").filter(Boolean).join(" · "):"");
   }
+
+  function toggleSelected241(r){
+    if(selected.includes(r.id))selected=selected.filter(x=>x!==r.id);
+    else{
+      if(selected.length>=QUICK_MAX_241){alert("Maximum "+QUICK_MAX_241+" pictogrammes dans une suite rapide.");return}
+      selected.push(r.id);
+    }
+    updateSelected();renderBrowser();
+  }
+
+  function picGrid241(items){
+    const grid=document.createElement('div');
+    grid.style.cssText='display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;padding:8px 10px 14px 42px;background:#fff';
+    if(!items.length){
+      const empty=document.createElement('div');empty.textContent='Aucun pictogramme.';empty.style.cssText='color:#667085;padding:10px';grid.appendChild(empty);return grid;
+    }
+    items.forEach(r=>{
+      const card=document.createElement('button');card.type='button';
+      card.style.cssText="min-height:125px;border:2px solid "+(selected.includes(r.id)?"#2eaf58":"#e1e5ed")+";border-radius:14px;background:"+(selected.includes(r.id)?"#effaf2":"white")+";padding:8px;display:grid;place-items:center;gap:5px;font-weight:800";
+      const vis=document.createElement('div');vis.style.cssText='height:70px;display:grid;place-items:center;font-size:42px;background:#fff';
+      if(r.image){vis.innerHTML=imageHtml(r.image,r.emoji||'🖼️');const im=vis.querySelector('img');if(im)im.style.cssText+=';max-width:70px;max-height:70px;object-fit:contain;background:#fff'}else vis.textContent=r.emoji||'🖼️';
+      const lab=document.createElement('div');lab.textContent=r.label;card.append(vis,lab);card.onclick=()=>toggleSelected241(r);grid.appendChild(card);
+    });
+    return grid;
+  }
+
+  function subRows241(cat,sc,allRows){
+    const ids=new Set((typeof adminSubcatItemsDeep==='function'?adminSubcatItemsDeep(sc):(sc.itemIds||[])).map(String));
+    return allRows.filter(r=>r.sourceCat===cat.name&&ids.has(String(r.id)));
+  }
+
+  function renderSubtree241(cat,parentId,depth,allRows,q){
+    const frag=document.createDocumentFragment();
+    let subs=[];
+    try{subs=adminSubcats(cat.name,parentId)||[]}catch(e){
+      const a=readAdminBase();subs=(a.subcategories||[]).filter(sc=>!sc.deleted&&sc.category===cat.name&&String(sc.parentId||'')===String(parentId||''));
+    }
+    subs.forEach(sc=>{
+      const key=String(sc.id),wrap=document.createElement('div');wrap.style.cssText='border-top:1px solid #e7ebf1;background:#fbfcfe';
+      const head=document.createElement('button');head.type='button';head.style.cssText='width:100%;text-align:left;border:0;background:#fbfcfe;padding:10px 12px 10px '+(24+depth*22)+'px;font-weight:850;cursor:pointer';
+      const items=subRows241(cat,sc,allRows).filter(r=>!q||r.label.toLowerCase().includes(q)||r.cat.toLowerCase().includes(q));
+      const hasDesc=(readAdminBase().subcategories||[]).some(x=>!x.deleted&&String(x.parentId||'')===key);
+      const open=openSubs241.has(key)||!!q;
+      head.textContent=(open?'▾ ':'▸ ')+(sc.icon||'📁')+' '+(sc.name||'Sous-catégorie')+' ('+items.length+')';
+      head.onclick=()=>{if(openSubs241.has(key))openSubs241.delete(key);else openSubs241.add(key);renderBrowser()};wrap.appendChild(head);
+      if(open){
+        if(items.length)wrap.appendChild(picGrid241(items));
+        if(hasDesc)wrap.appendChild(renderSubtree241(cat,key,depth+1,allRows,q));
+      }
+      frag.appendChild(wrap);
+    });
+    return frag;
+  }
+
   function renderBrowser(){
-    const q=search.value.trim().toLowerCase(),rows=permanentRows().filter(r=>!q||r.label.toLowerCase().includes(q)||r.cat.toLowerCase().includes(q));
-    browser.innerHTML="";
-    const groups={};rows.forEach(r=>(groups[r.cat]||(groups[r.cat]=[])).push(r));
-    Object.entries(groups).forEach(([cat,items])=>{
-      const details=document.createElement("details");
-      details.open=quickOpenCategories.has(cat)||!!q;
-details.addEventListener("toggle",()=>{if(details.open)quickOpenCategories.add(cat);else quickOpenCategories.delete(cat)});
-      const sum=document.createElement("summary");sum.textContent="📁 "+cat+" ("+items.length+")";sum.style.cssText="cursor:pointer;font-weight:900;padding:11px;background:#f4f6fa;border-radius:10px;margin:6px 0";details.appendChild(sum);
-      const grid=document.createElement("div");grid.style.cssText="display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:8px;margin:8px 0 14px";
-      items.forEach(r=>{
-        const card=document.createElement("button");card.type="button";card.style.cssText="min-height:125px;border:2px solid "+(selected.includes(r.id)?"#2eaf58":"#e1e5ed")+";border-radius:14px;background:"+(selected.includes(r.id)?"#effaf2":"white")+";padding:8px;display:grid;place-items:center;gap:5px;font-weight:800";
-        const vis=document.createElement("div");vis.style.cssText="height:70px;display:grid;place-items:center;font-size:42px;background:#fff";
-        if(r.image){
-          vis.innerHTML=imageHtml(r.image,r.emoji||"🖼️");
-          const im=vis.querySelector("img");
-          if(im)im.style.cssText+=";max-width:70px;max-height:70px;object-fit:contain;background:#fff";
-        }else vis.textContent=r.emoji||"🖼️";
-        const lab=document.createElement("div");lab.textContent=r.label;card.append(vis,lab);
-        card.onclick=()=>{
-          if(selected.includes(r.id))selected=selected.filter(x=>x!==r.id);
-          else {if(selected.length>=4){alert("Maximum 4 pictogrammes dans une suite rapide. Pour davantage, utilise un dossier / sous-dossier.");return}selected.push(r.id)}
-          updateSelected();renderBrowser();
-        };
-        grid.appendChild(card);
-      });
-      details.appendChild(grid);browser.appendChild(details);
+    const q=search.value.trim().toLowerCase(),allRows=permanentRows();browser.innerHTML='';
+    const a=readAdminBase();
+    const cats=categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!(a.deletedCats||[]).includes(c.name));
+    cats.forEach(cat=>{
+      const catRows=allRows.filter(r=>r.sourceCat===cat.name);
+      const filteredCatRows=catRows.filter(r=>!q||r.label.toLowerCase().includes(q)||r.cat.toLowerCase().includes(q));
+      const hasMatchingSub=(a.subcategories||[]).some(sc=>!sc.deleted&&sc.category===cat.name&&(!q||String(sc.name||'').toLowerCase().includes(q)));
+      if(q&&!filteredCatRows.length&&!hasMatchingSub)return;
+
+      const key=cat.name,box=document.createElement('div');box.style.cssText='border:1px solid #dfe5ee;border-radius:13px;overflow:hidden;margin:7px 0;background:white';
+      const head=document.createElement('button');head.type='button';head.style.cssText='width:100%;border:0;background:#f2f6fb;padding:12px;text-align:left;font-size:17px;font-weight:900;cursor:pointer';
+      const open=openCats241.has(key)||!!q;head.textContent=(open?'▾ ':'▸ ')+(adminCatIcon(cat)||cat.icon||'📁')+' '+adminCatName(cat)+' ('+catRows.length+')';
+      head.onclick=()=>{if(openCats241.has(key))openCats241.delete(key);else openCats241.add(key);renderBrowser()};box.appendChild(head);
+
+      if(open){
+        // Sous-catégories first.
+        box.appendChild(renderSubtree241(cat,'',0,allRows,q));
+
+        // Then the explicit all-pictograms node.
+        const allKey='all:'+cat.name,allWrap=document.createElement('div');allWrap.style.cssText='border-top:1px solid #dfe5ee;background:#eef4ff';
+        const allHead=document.createElement('button');allHead.type='button';allHead.style.cssText='width:100%;border:0;background:#eef4ff;padding:11px 12px 11px 24px;text-align:left;font-weight:900;color:#274b7a;cursor:pointer';
+        const allOpen=openAll241.has(allKey)||!!q;allHead.textContent=(allOpen?'▾ ':'▸ ')+'↕️ Tous les pictogrammes de '+adminCatName(cat)+' ('+filteredCatRows.length+')';
+        allHead.onclick=()=>{if(openAll241.has(allKey))openAll241.delete(allKey);else openAll241.add(allKey);renderBrowser()};allWrap.appendChild(allHead);
+        if(allOpen)allWrap.appendChild(picGrid241(filteredCatRows));
+        box.appendChild(allWrap);
+      }
+      browser.appendChild(box);
     });
     setTimeout(hydrateAllCloudPictures,0);
   }
+
+  openAllBtn.onclick=()=>{
+    const a=readAdminBase();
+    categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents"&&!(a.deletedCats||[]).includes(c.name)).forEach(c=>{openCats241.add(c.name);openAll241.add('all:'+c.name)});
+    (a.subcategories||[]).filter(sc=>!sc.deleted).forEach(sc=>openSubs241.add(String(sc.id)));
+    renderBrowser();
+  };
+  closeAllBtn.onclick=()=>{openCats241.clear();openSubs241.clear();openAll241.clear();renderBrowser()};
   search.oninput=renderBrowser;updateSelected();renderBrowser();
 
   const row=document.createElement("div");row.className="editor-row";
@@ -714,7 +752,7 @@ details.addEventListener("toggle",()=>{if(details.open)quickOpenCategories.add(c
   save.onclick=()=>{try{const r=readAdminReturn();if(r){r.scrollY=window.scrollY||r.scrollY;sessionStorage.setItem(ADMIN_RETURN_KEY,JSON.stringify(r))}}catch(e){};
     if(selected.length<1){alert("Choisis au moins un pictogramme.");return}
     const rows=permanentRows(),a=readAdminBase();a.quickChoices=a.quickChoices||{};
-    a.quickChoices[parentId]=selected.map((id,order)=>{
+    a.quickChoices[parentId]=selected.slice(0,QUICK_MAX_241).map((id,order)=>{
       const r=rows.find(x=>x.id===id);return r?{id:"qref:"+id,sourceId:id,emoji:r.emoji,label:r.label,speech:r.speech,image:r.image||"",order}:null
     }).filter(Boolean);
     writeAdminBase(a);overlay.remove();showFeedback("Suite rapide enregistrée");
@@ -5170,7 +5208,7 @@ function adminPermanentPictogramForm(existing){
 
     mkLabel("Action au clic");
   const action=document.createElement("select");action.style.cssText="width:100%;padding:12px;border-radius:10px";
-  [["phrase","Ajouter à la phrase"],["quick","💬 Ouvrir une suite rapide (2 à 4 choix)"],["submenu","📂 Ouvrir un sous-menu / dossier"]].forEach(v=>{const o=document.createElement("option");o.value=v[0];o.textContent=v[1];action.appendChild(o)});
+  [["phrase","Ajouter à la phrase"],["quick","💬 Ouvrir une suite rapide (2 à 15 choix)"],["submenu","📂 Ouvrir un sous-menu / dossier"]].forEach(v=>{const o=document.createElement("option");o.value=v[0];o.textContent=v[1];action.appendChild(o)});
   action.value=existing?.action||"phrase";panel.appendChild(action);
 
   const manageWrap=document.createElement("div");manageWrap.style.cssText="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px";panel.appendChild(manageWrap);

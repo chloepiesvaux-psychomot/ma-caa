@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 230</title>
+<title>Ma CAA v2.0 bêta 231</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 230</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 231</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -8307,25 +8307,13 @@ body.parent-mode .manage-card{
   }
   function hiddenAt(p,location,id){return !!(p.hidden?.[location]?.[id])}
   function renderStarters209(){
-    const host=document.querySelector('.starters');if(!host)return;
-    const cat=catObj(),sub=currentSub(cat),x=read(),p=pref(x);
-    if(!cat||cat.name==='Mode parents'){host.style.display='none';return}
-    const location=locKey(cat.name,sub?.id||'');
-    const list=effective(cat,sub,x).filter(s=>!hiddenAt(p,location,s.id));
-    host.style.display='block';host.innerHTML='';
-    if(p.bandHidden){
-      host.className='starters starters209-compact';
-      const b=document.createElement('button');b.type='button';b.textContent='💬 Afficher les débuts de phrases';
-      b.onclick=()=>{p.bandHidden=false;save(x)};host.appendChild(b);return;
-    }
-    host.className='starters';
-    const hd=document.createElement('div');hd.className='starters209-head';
-    const strong=document.createElement('strong');strong.textContent='Débuts de phrase';
-    const hide=document.createElement('button');hide.className='starters209-toggle';hide.type='button';hide.textContent='Masquer';hide.onclick=()=>{p.bandHidden=true;save(x)};
-    hd.append(strong,hide);host.appendChild(hd);
-    const row=document.createElement('div');row.className='starterrow';host.appendChild(row);
-    if(!list.length){const e=document.createElement('span');e.style.cssText='color:#78699a;font-size:13px;padding:4px';e.textContent='Aucun début de phrase pour cette rubrique.';row.appendChild(e);return}
-    list.forEach(s=>{const b=document.createElement('button');b.className='starter';b.type='button';b.textContent=(s.emoji||'💬')+' '+s.label;b.onclick=()=>add([s.emoji||'💬',s.label,s.speech||s.label]);row.appendChild(b)});
+    // BETA231 : cette fonction est encore référencée par d'anciens timers/closures.
+    // Dès que le rendu 211 existe, on lui délègue pour conserver les phrases personnelles.
+    try{
+      if(typeof window.renderStarters211==='function'){
+        return window.renderStarters211();
+      }
+    }catch(e){}
   }
   window.renderStarters209=renderStarters209;
 
@@ -8532,7 +8520,15 @@ body.parent-mode .manage-card{
   function matches(s,cat,sub,x){const ts=targets(s);if(cat.name==='Favoris')return false;const ct='cat:'+cat.name;if(!sub)return ts.includes('*')||ts.includes(ct);const own='sub:'+sub.id;if(ts.includes(own))return true;if(x.inherit?.[sub.id]===false)return false;return ts.includes('*')||ts.includes(ct)}
   function hidden(p,location,id){return !!p.hidden?.[location]?.[id]}
   function permanentEffective(cat,sub,x){return (x.starters||[]).filter(s=>s&&!s.deleted&&!s.hidden&&matches(s,cat,sub,x))}
-  function personalEffective(cat,sub,x,p){return (p.personalStarters||[]).filter(s=>s&&!s.deleted&&!s.hidden&&matches(s,cat,sub,x))}
+  function personalEffective(cat,sub,x,p){
+    return (p.personalStarters||[]).filter(s=>{
+      if(!s||s.deleted||s.hidden)return false;
+      const ts=targets(s);
+      if(cat.name==='Favoris')return false;
+      if(sub)return ts.includes('sub:'+sub.id);
+      return ts.includes('*')||ts.includes('cat:'+cat.name);
+    });
+  }
   function favorite(p,id){return !!p.starterFavorites?.[id]}
   function allById(x,p){return [...(x.starters||[]),...(p.personalStarters||[])].filter(s=>s&&!s.deleted&&!s.hidden)}
   function effective(cat,sub,x,p){
@@ -9769,7 +9765,12 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
   function phraseListForLoc220(x,p,cat,sc){
     const loc=sc?'sub:'+sc.id:'cat:'+cat.name;
     const permanent=(x.starters||[]).filter(s=>!s.deleted&&!s.hidden&&((s.targets||[]).includes('*')||(s.targets||[]).includes('cat:'+cat.name)||(sc&&(s.targets||[]).includes('sub:'+sc.id))));
-    const personal=(p.personalStarters||[]).filter(s=>!s.deleted&&!s.hidden&&((s.targets||[]).includes('*')||(s.targets||[]).includes('cat:'+cat.name)||(sc&&(s.targets||[]).includes('sub:'+sc.id))));
+    const personal=(p.personalStarters||[]).filter(s=>{
+      if(!s||s.deleted||s.hidden)return false;
+      const ts=s.targets||[];
+      if(sc)return ts.includes('sub:'+sc.id);
+      return ts.includes('*')||ts.includes('cat:'+cat.name);
+    });
     return [...permanent,...personal].filter((s,i,a)=>a.findIndex(v=>v.id===s.id)===i).map(s=>({s,loc}))
   }
   function phrasesTree220(box,mode){
@@ -10487,6 +10488,35 @@ function writeSubOrder228(v){localStorage.setItem(profiledKey(SUB_ORDER_KEY_228)
       setTimeout(()=>{try{window.renderStarters211?.()}catch(e){}},700);
     }
   });
+})();
+</script>
+
+
+<!-- BETA231 — phrases personnelles exactes par emplacement -->
+<script id="beta231-personal-phrases-fix">
+(function(){
+  function finalStarterRender231(){
+    try{window.renderStarters211?.()}catch(e){}
+  }
+
+  // Les anciens wrappers de renderGrid existent encore dans l'historique de l'app.
+  // On ajoute un dernier rendu fiable après eux.
+  try{
+    const prev231=window.renderGrid||renderGrid;
+    const wrapped231=function(){
+      const r=prev231.apply(this,arguments);
+      setTimeout(finalStarterRender231,250);
+      return r;
+    };
+    window.renderGrid=wrapped231;
+    try{renderGrid=wrapped231}catch(e){}
+  }catch(e){}
+
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden)setTimeout(finalStarterRender231,900);
+  });
+
+  window.addEventListener('focus',()=>setTimeout(finalStarterRender231,350));
 })();
 </script>
 

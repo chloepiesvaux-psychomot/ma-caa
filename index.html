@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 262</title>
+<title>Ma CAA v2.0 bêta 263</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 262</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 263</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5402,11 +5402,24 @@ function adminPermanentPictogramForm(existing){
   const liveBuiltInCats=categories.filter(c=>
     c.name!=="Favoris"&&c.name!=="Mode parents"&&!(a.deletedCats||[]).includes(c.name)
   );
-  const liveAddedCats=(a.addedCats||[]).filter(c=>c&&!c.deleted);
-  const categoriesList=[
-    ...liveBuiltInCats.map(c=>({value:c.name,label:adminCatName(c)||c.name})),
-    ...liveAddedCats.map(c=>({value:c.name,label:c.name}))
+  const liveAddedCats=(a.addedCats||[]).filter(c=>c&&!c.deleted&&!(a.deletedCats||[]).includes(c.name));
+
+  // BETA263 — une catégorie renommée peut exister sous plusieurs anciennes clés
+  // internes. Dans le formulaire, on n'affiche qu'UNE entrée par nom visible.
+  // Si plusieurs clés ont le même nom affiché, on privilégie celle qui possède
+  // l'édition Admin actuelle (ex. SENSORIALITÉ -> Sensorialité).
+  const rawCategories263=[
+    ...liveBuiltInCats.map(c=>({value:c.name,label:adminCatName(c)||c.name,edited:!!(a.catEdits||{})[c.name]})),
+    ...liveAddedCats.map(c=>({value:c.name,label:c.name,edited:!!(a.catEdits||{})[c.name]}))
   ];
+  const normCategory263=v=>String(v||"").trim().toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const byVisible263=new Map();
+  rawCategories263.forEach(entry=>{
+    const k=normCategory263(entry.label);
+    const prev=byVisible263.get(k);
+    if(!prev || (entry.edited&&!prev.edited))byVisible263.set(k,entry);
+  });
+  const categoriesList=[...byVisible263.values()].map(({value,label})=>({value,label}));
   const liveCategoryValues=new Set(categoriesList.map(c=>c.value));
   const resolveLiveCategory261=name=>{
     if(liveCategoryValues.has(name))return name;
@@ -5717,11 +5730,24 @@ function adminPermanentPictogramForm(existing){
       // Elle reste prioritaire sur les anciennes copies admin_base.
       try{window.publishSavedPicto234?.(savedItemId)}catch(e){console.warn("Meta 234",e)}
 
-      // BETA182: l’image est synchronisée séparément de la base Admin générale.
-      // Le pictogramme garde un identifiant stable et son média possède sa propre entrée cloud.
+      // BETA263 — ne plus lancer la publication de l'image "dans le vide".
+      // On passe par l'enveloppe 184 (file d'attente + retry) et on attend la
+      // première tentative avant de considérer l'ajout comme terminé. Ainsi,
+      // un appareil lent / une connexion cloud momentanément indisponible ne
+      // laisse plus le pictogramme synchronisé sans son image.
       try{
-        publishPictoMediaV182(savedItemId,l,speechText,finalImage||null).catch(e=>console.warn("Media V182",e));
-      }catch(e){console.warn("Media V182",e)}
+        if(finalImage)save.textContent="⏳ Publication de l’image…";
+        const publishMedia263=window.publishPictoMediaV182||publishPictoMediaV182;
+        let mediaOk263=await publishMedia263(savedItemId,l,speechText,finalImage||null);
+        if(finalImage && mediaOk263===false){
+          await new Promise(r=>setTimeout(r,700));
+          mediaOk263=await publishMedia263(savedItemId,l,speechText,finalImage||null);
+        }
+        if(finalImage && mediaOk263===false)console.warn("BETA263 image mise en attente de retry",l);
+      }catch(e){
+        // L'enveloppe 184 conserve déjà la publication en attente.
+        console.warn("Media V263 en attente",e);
+      }
 
       // BETA154: sauvegarde locale immédiate, interface jamais bloquée par le cloud.
       // writeAdminBase() a déjà persisté la modification et marqué la base "dirty".

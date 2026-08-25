@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 259</title>
+<title>Ma CAA v2.0 bêta 260</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 259</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 260</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2673,21 +2673,21 @@ function imageHtml(p,emoji){
       '<img data-cloud-path="'+path.replace(/"/g,"&quot;")+'"'+
       (publicUrl?' src="'+publicUrl.replace(/"/g,"&quot;")+'" data-public-src-259="'+publicUrl.replace(/"/g,"&quot;")+'"':'')+
       ' alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
-      'onload="this.dataset.cloudLoadedPath=this.dataset.cloudPath||this.getAttribute(\\'data-cloud-path\\')||\\'\\';this.style.visibility=\\'visible\\'" '+
-      'onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'">'+
+      'onload="this.dataset.cloudLoadedPath=this.dataset.cloudPath||this.getAttribute(\'data-cloud-path\')||\'\';this.style.visibility=\'visible\'" '+
+      'onerror="this.dataset.retry259=\'1\';this.style.visibility=\'hidden\'">'+
       '<span class="img-fallback-259" aria-hidden="true" style="display:none;font-size:46px">'+safeEm+'</span></span>';
   }
 
   if(src&&typeof src==="object"&&src.__local_image&&src.key){
     return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
       '<img data-local-image-key="'+String(src.key).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
-      'onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'"></span>';
+      'onerror="this.dataset.retry259=\'1\';this.style.visibility=\'hidden\'"></span>';
   }
 
   if(typeof src==="string"&&src){
     return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
       '<img src="'+src.replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
-      'onload="this.style.visibility=\\'visible\\'" onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'"></span>';
+      'onload="this.style.visibility=\'visible\'" onerror="this.dataset.retry259=\'1\';this.style.visibility=\'hidden\'"></span>';
   }
 
   return '<span style="font-size:46px">'+safeEm+'</span>';

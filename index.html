@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 260</title>
+<title>Ma CAA v2.0 bêta 261</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 260</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 261</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -5396,20 +5396,38 @@ function adminPermanentPictogramForm(existing){
   panel.style.maxWidth="680px";
   panel.innerHTML="<h2>"+(existing?"✏️ Modifier le pictogramme permanent":"➕ Ajouter un pictogramme permanent")+"</h2>";
 
+  // BETA261 — toujours reconstruire la liste depuis l’arborescence Admin actuelle.
+  // Les catégories supprimées ne doivent plus être proposées et les renommages
+  // doivent être affichés immédiatement, tout en conservant la clé interne stable.
+  const liveBuiltInCats=categories.filter(c=>
+    c.name!=="Favoris"&&c.name!=="Mode parents"&&!(a.deletedCats||[]).includes(c.name)
+  );
+  const liveAddedCats=(a.addedCats||[]).filter(c=>c&&!c.deleted);
   const categoriesList=[
-    ...categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").map(c=>c.name),
-    ...(a.addedCats||[]).filter(c=>!c.deleted).map(c=>c.name)
+    ...liveBuiltInCats.map(c=>({value:c.name,label:adminCatName(c)||c.name})),
+    ...liveAddedCats.map(c=>({value:c.name,label:c.name}))
   ];
+  const liveCategoryValues=new Set(categoriesList.map(c=>c.value));
+  const resolveLiveCategory261=name=>{
+    if(liveCategoryValues.has(name))return name;
+    const hit=categoriesList.find(c=>c.label===name);
+    return hit?hit.value:"";
+  };
 
   const mkLabel=t=>{const l=document.createElement("label");l.textContent=t;panel.appendChild(l);return l};
 
   mkLabel("Catégorie");
   const cat=document.createElement("select");
   cat.style.width="100%";cat.style.padding="12px";cat.style.fontSize="16px";cat.style.borderRadius="10px";
-  [...new Set(categoriesList)].forEach(name=>{
-    const o=document.createElement("option");o.value=name;o.textContent=name;cat.appendChild(o);
+  const seenCatValues261=new Set();
+  categoriesList.forEach(entry=>{
+    if(seenCatValues261.has(entry.value))return;seenCatValues261.add(entry.value);
+    const o=document.createElement("option");o.value=entry.value;o.textContent=entry.label;cat.appendChild(o);
   });
-  if(existing&&existing.category)cat.value=existing.category;
+  if(existing&&existing.category){
+    const resolved=resolveLiveCategory261(existing.category);
+    if(resolved)cat.value=resolved;
+  }
   panel.appendChild(cat);
 
   mkLabel("Afficher aussi dans d’autres catégories");
@@ -5418,9 +5436,10 @@ function adminPermanentPictogramForm(existing){
   panel.appendChild(categoryPicker);
 
   let selectedCategoryNames=new Set(
-    Array.isArray(existing?.categories)&&existing.categories.length
+    (Array.isArray(existing?.categories)&&existing.categories.length
       ? existing.categories
-      : (existing?.category?[existing.category]:[cat.value])
+      : (existing?.category?[existing.category]:[cat.value]))
+      .map(resolveLiveCategory261).filter(Boolean)
   );
   selectedCategoryNames.add(cat.value);
   const getSelectedCategories=()=>[...new Set([cat.value,...Array.from(selectedCategoryNames||[])].filter(Boolean))];
@@ -5428,14 +5447,15 @@ function adminPermanentPictogramForm(existing){
   function refreshCategoryPicker(){
     selectedCategoryNames.add(cat.value);
     categoryPicker.innerHTML="";
-    [...new Set(categoriesList)].forEach(name=>{
+    categoriesList.forEach(entry=>{
+      const name=entry.value;
       const row=document.createElement("label");
       row.style.cssText="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid #eef1f5;cursor:pointer";
       const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedCategoryNames.has(name);
       cb.style.cssText="width:20px;height:20px;accent-color:#2563eb";
       if(name===cat.value){cb.checked=true;cb.disabled=true}
       cb.onchange=()=>{if(cb.checked)selectedCategoryNames.add(name);else selectedCategoryNames.delete(name);refreshFolderPicker()};
-      const txt=document.createElement("span");txt.textContent=(name===cat.value?"★ ":"")+name;
+      const txt=document.createElement("span");txt.textContent=(name===cat.value?"★ ":"")+entry.label;
       if(name===cat.value)txt.style.fontWeight="900";
       row.append(cb,txt);categoryPicker.appendChild(row);
     });
@@ -5466,7 +5486,8 @@ function adminPermanentPictogramForm(existing){
       const catFolders=folders.filter(sc=>sc.category===catName);
       if(!catFolders.length)return;
       const title=document.createElement("div");
-      title.textContent="📁 "+catName;title.style.cssText="font-weight:900;padding:10px 8px;background:#eef4ff;border-radius:9px;margin:5px 0";
+      const catObj261=categories.find(c=>c.name===catName);
+      title.textContent="📁 "+(catObj261?(adminCatName(catObj261)||catName):catName);title.style.cssText="font-weight:900;padding:10px 8px;background:#eef4ff;border-radius:9px;margin:5px 0";
       folderPicker.appendChild(title);
 
       const byParent={};

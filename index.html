@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 261</title>
+<title>Ma CAA v2.0 bêta 262</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 261</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 262</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -12429,6 +12429,145 @@ function writeSubOrderFor253(subId,ids){
     }
   },true);
   setTimeout(()=>settle259(document),100);
+})();
+</script>
+
+
+
+<!-- =========================================================
+     BETA 262 — STRUCTURE CANONIQUE + MÉDIAS MANQUANTS CIBLÉS
+     À publier d'abord depuis l'appareil de référence (Mac Safari).
+     ========================================================= -->
+<script id="beta262-sync-reconcile">
+(function(){
+  const STRUCT_KEY_262='admin_categories_v262_authoritative';
+  const BOOT_KEY_262='ma-caa-262-structure-bootstrapped';
+  const MEDIA_CHECK_KEY_262='ma-caa-262-media-checks';
+  let busyStruct262=false,busyMedia262=false;
+
+  function clone262(v){return JSON.parse(JSON.stringify(v))}
+  function structure262(base){
+    base=base||readAdminBase();
+    return {
+      schema:262,
+      addedCats:clone262(base.addedCats||[]),
+      subcategories:clone262(base.subcategories||[]),
+      catEdits:clone262(base.catEdits||{}),
+      hiddenCats:[...(base.hiddenCats||[])],
+      deletedCats:[...(base.deletedCats||[])],
+      updated_at:new Date().toISOString()
+    };
+  }
+  function applyStructure262(remote){
+    if(!remote||remote.schema!==262)return false;
+    const base=readAdminBase();
+    // BETA262: this snapshot is intentionally authoritative for category structure.
+    // Do not union stale deleted/renamed categories from another device.
+    base.addedCats=clone262(remote.addedCats||[]);
+    base.subcategories=clone262(remote.subcategories||[]);
+    base.catEdits=clone262(remote.catEdits||{});
+    base.hiddenCats=[...(remote.hiddenCats||[])];
+    base.deletedCats=[...(remote.deletedCats||[])];
+    writeAdminBaseLocalV182(base);
+    try{syncAdminCategories(true)}catch(e){}
+    try{render();renderProfileBar()}catch(e){}
+    return true;
+  }
+  async function publishStructure262(){
+    if(busyStruct262||!cloudClient)return false;
+    busyStruct262=true;
+    try{
+      const u=await cloudUser();if(!u)return false;
+      const data=structure262(readAdminBase());
+      const r=await cloudClient.from('app_config').upsert(
+        {key:STRUCT_KEY_262,data,updated_at:data.updated_at},{onConflict:'key'}
+      );
+      if(r.error)throw r.error;
+      localStorage.setItem(BOOT_KEY_262,'publisher');
+      return true;
+    }catch(e){console.warn('BETA262 publish structure',e);return false}
+    finally{busyStruct262=false}
+  }
+  async function pullStructure262(){
+    if(busyStruct262||!cloudClient)return false;
+    busyStruct262=true;
+    try{
+      const u=await cloudUser();if(!u)return false;
+      const r=await cloudClient.from('app_config').select('data,updated_at').eq('key',STRUCT_KEY_262).maybeSingle();
+      if(r.error)throw r.error;
+      if(!r.data?.data)return false;
+      const ok=applyStructure262(r.data.data);
+      if(ok)localStorage.setItem(BOOT_KEY_262,'follower');
+      return ok;
+    }catch(e){console.warn('BETA262 pull structure',e);return false}
+    finally{busyStruct262=false}
+  }
+
+  function readChecks262(){try{return JSON.parse(localStorage.getItem(MEDIA_CHECK_KEY_262)||'{}')}catch(e){return {}}}
+  function writeChecks262(v){try{localStorage.setItem(MEDIA_CHECK_KEY_262,JSON.stringify(v||{}))}catch(e){}}
+  function missingTargets262(){
+    const b=readAdminBase(),out=[],seen=new Set();
+    const add=(id,x)=>{
+      if(!id||!x||x.deleted||x.image||seen.has(String(id)))return;
+      seen.add(String(id));out.push({id:String(id),label:x.label||'',speech:x.speech||''});
+    };
+    // Added pictograms are the priority: this fixes the exact case where the
+    // structure arrived before/after its media and the old cursor skipped it.
+    (b.addedItems||[]).forEach(x=>add(x?.id,x));
+    // Also retry explicit Admin overrides for permanent pictograms.
+    Object.entries(b.items||{}).forEach(([id,x])=>add(id,x));
+    return out;
+  }
+  async function pullMissingMedia262(){
+    if(busyMedia262||!cloudClient)return false;
+    busyMedia262=true;
+    try{
+      const u=await cloudUser();if(!u)return false;
+      const now=Date.now(),checks=readChecks262();
+      // Retry at most once every 10 minutes per missing pictogram, max 12 at a time.
+      const todo=missingTargets262().filter(x=>!checks[x.id]||now-checks[x.id]>600000).slice(0,12);
+      if(!todo.length)return false;
+      const keys=todo.map(x=>mediaKeyV182(x.id));
+      const r=await cloudClient.from('app_config').select('key,data,updated_at').in('key',keys);
+      if(r.error)throw r.error;
+      const got=new Set();let applied=0;
+      for(const row of r.data||[]){
+        const rec=row.data||{};if(rec.picto_id)got.add(String(rec.picto_id));
+        try{if(await applyMediaRecordV182(rec,row.updated_at||''))applied++}catch(e){}
+      }
+      todo.forEach(x=>checks[x.id]=now);writeChecks262(checks);
+      if(applied){
+        try{syncAdminCategories(true);render();renderProfileBar()}catch(e){}
+        try{setTimeout(()=>hydrateAllCloudPictures(false),30)}catch(e){}
+      }
+      return applied>0;
+    }catch(e){console.warn('BETA262 targeted media',e);return false}
+    finally{busyMedia262=false}
+  }
+
+  // First 262 installation rule:
+  // - if the canonical 262 snapshot exists, this device follows it;
+  // - if it does not exist, the FIRST 262 device publishes its current structure.
+  // We will therefore install/open 262 on the known-good Mac Safari first.
+  async function boot262(){
+    if(!cloudClient)return;
+    try{
+      const u=await cloudUser();if(!u)return;
+      const r=await cloudClient.from('app_config').select('data').eq('key',STRUCT_KEY_262).maybeSingle();
+      if(r.error)throw r.error;
+      if(r.data?.data)await pullStructure262();
+      else await publishStructure262();
+      setTimeout(()=>pullMissingMedia262(),700);
+    }catch(e){console.warn('BETA262 boot',e)}
+  }
+
+  window.publishStructure262=publishStructure262;
+  window.pullStructure262=pullStructure262;
+  window.pullMissingMedia262=pullMissingMedia262;
+  window.addEventListener('focus',()=>{setTimeout(()=>pullStructure262(),350);setTimeout(()=>pullMissingMedia262(),900)});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(()=>pullStructure262(),350);setTimeout(()=>pullMissingMedia262(),900)}});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot262,1600),{once:true});
+  else setTimeout(boot262,1600);
 })();
 </script>
 

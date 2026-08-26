@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 266</title>
+<title>Ma CAA v2.0 bêta 267</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 266</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 267</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -2585,12 +2585,15 @@ function baseItems(cat){
       const id=adminItemId(source,x),e=a.items?.[id]||{};
       if(a.hiddenItems.includes(id)||a.deletedItems.includes(id))continue;
       if(!adminItemCategories(source.name,e).includes(cat.name))continue;
+      const lab=e.label||x[1],sp=e.speech||x[2];
+      if(pictoDeletedPlacement267(cat.name,id,lab,sp,a))continue;
       if(seen.has(id))continue;seen.add(id);
-      items.push([e.emoji||x[0],e.label||x[1],e.speech||x[2],x[3],e.image||x[4]||"",false,id]);
+      items.push([e.emoji||x[0],lab,sp,x[3],e.image||x[4]||"",false,id]);
     }
   }
 
   (a.addedItems||[]).filter(x=>!x.deleted&&!x.hidden&&addedItemCategories(x).includes(cat.name)).forEach(x=>{
+    if(pictoDeletedPlacement267(cat.name,x.id,x.label,x.speech||x.label,a))return;
     if(seen.has(x.id))return;seen.add(x.id);
     items.push([x.emoji||"🖼️",x.label,x.speech||x.label,x.id,x.image||"",true,x.id]);
   });
@@ -4675,8 +4678,15 @@ function adminManagedBaseItemsFor(cat){
 
 function adminPermanentEntries(cat){
   const a=readAdminBase(),out=[];
-  adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{const d=adminItemData(source,x);out.push({id,label:d[1],emoji:d[0],image:d[4]||"",kind:"base",source,x,hidden:a.hiddenItems.includes(id)})});
-  (a.addedItems||[]).filter(x=>addedItemCategories(x).includes(cat.name)&&!x.deleted).forEach(item=>out.push({id:item.id,label:item.label,emoji:item.emoji||"🖼️",image:item.image||"",kind:"added",item,hidden:!!item.hidden}));
+  adminManagedBaseItemsFor(cat).forEach(({source,x,id})=>{
+    const d=adminItemData(source,x);
+    if(pictoDeletedPlacement267(cat.name,id,d[1],d[2],a))return;
+    out.push({id,label:d[1],speech:d[2],emoji:d[0],image:d[4]||"",kind:"base",source,x,hidden:a.hiddenItems.includes(id)})
+  });
+  (a.addedItems||[]).filter(x=>addedItemCategories(x).includes(cat.name)&&!x.deleted).forEach(item=>{
+    if(pictoDeletedPlacement267(cat.name,item.id,item.label,item.speech||item.label,a))return;
+    out.push({id:item.id,label:item.label,speech:item.speech||item.label,emoji:item.emoji||"🖼️",image:item.image||"",kind:"added",item,hidden:!!item.hidden})
+  });
   const saved=(a.adminOrder||{})[cat.name]||[],map=new Map(out.map(x=>[x.id,x])),ordered=[];
   saved.forEach(id=>{if(map.has(id)){ordered.push(map.get(id));map.delete(id)}});map.forEach(v=>ordered.push(v));return ordered
 }
@@ -5114,81 +5124,94 @@ window.adminDeleteCat=adminDeleteCat;
 
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
 
-function deletePictoEverywhere266(entryId,entryLabel,entrySpeech,entryCategory){
-  const a=readAdminBase(),now=new Date().toISOString();
+function normalizeDeleteText267(v){
+  return String(v||"").trim().toLocaleLowerCase("fr-FR");
+}
+function readDeletedPlacements267(base){
+  return Array.isArray(base?.deletedPermanentV267)?base.deletedPermanentV267:[];
+}
+function pictoDeletedPlacement267(catName,id,label,speech,base){
+  const rows=readDeletedPlacements267(base||readAdminBase());
+  const C=String(catName||""),I=String(id||"");
+  const L=normalizeDeleteText267(label),S=normalizeDeleteText267(speech);
+  return rows.some(r=>{
+    if(!r)return false;
+    if(String(r.category||"")!==C)return false;
+    if(I && String(r.id||"")===I)return true;
+    return !!L &&
+      normalizeDeleteText267(r.label)===L &&
+      (!S || normalizeDeleteText267(r.speech)===S);
+  });
+}
+function rememberDeletedPlacement267(base,catName,id,label,speech){
+  base.deletedPermanentV267=readDeletedPlacements267(base);
+  const row={
+    id:String(id||""),
+    category:String(catName||""),
+    label:String(label||""),
+    speech:String(speech||""),
+    deleted_at:new Date().toISOString()
+  };
+  if(!pictoDeletedPlacement267(row.category,row.id,row.label,row.speech,base)){
+    base.deletedPermanentV267.push(row);
+  }
+  return row;
+}
+function deletePermanentEntry267(entry,cat){
+  const a=readAdminBase();
+  const catName=String(
+    entry?.source?.name ||
+    entry?.item?.category ||
+    cat?.name || ""
+  );
+  const id=String(
+    entry?.id ||
+    entry?.item?.id ||
+    entry?.x?.[6] ||
+    (entry?.source&&entry?.x?adminItemId(entry.source,entry.x):"")
+  );
+  const label=String(entry?.label||entry?.item?.label||(entry?.x?displayLabel(entry.x):"")||"");
+  const speech=String(
+    entry?.item?.speech ||
+    entry?.speech ||
+    (entry?.x?spokenText(entry.x):"") ||
+    label
+  );
+
+  rememberDeletedPlacement267(a,catName,id,label,speech);
+
+  // Conserver aussi les tombstones historiques quand ils sont disponibles.
   a.deletedItems=Array.isArray(a.deletedItems)?a.deletedItems:[];
-  a.hiddenItems=Array.isArray(a.hiddenItems)?a.hiddenItems:[];
-  const ids=new Set();
+  if(id&&!a.deletedItems.map(String).includes(id))a.deletedItems.push(id);
+  a.hiddenItems=(a.hiddenItems||[]).filter(v=>String(v)!==id);
 
-  const norm=s=>String(s||"").trim().toLocaleLowerCase("fr-FR");
-  const wantId=String(entryId||"");
-  const wantLabel=norm(entryLabel),wantSpeech=norm(entrySpeech),wantCat=String(entryCategory||"");
-
-  const addId=v=>{if(v!==undefined&&v!==null&&String(v)!=="")ids.add(String(v))};
-  addId(wantId);
-
-  // 1) addedItems : ID exact d'abord, puis ancienne représentation strictement équivalente.
+  // Pictogrammes ajoutés Admin.
   (a.addedItems||[]).forEach(it=>{
     if(!it)return;
-    const sameId=wantId&&String(it.id||"")===wantId;
-    const cats=addedItemCategories(it);
-    const sameCat=!wantCat||cats.includes(wantCat);
-    const sameLabel=wantLabel&&norm(it.label)===wantLabel;
-    const sameSpeech=!wantSpeech||norm(it.speech||it.label)===wantSpeech;
-    if(sameId || (sameCat&&sameLabel&&sameSpeech)){
-      addId(it.id);
+    const exactId=id&&String(it.id||"")===id;
+    const exactPlacement=addedItemCategories(it).includes(catName) &&
+      normalizeDeleteText267(it.label)===normalizeDeleteText267(label) &&
+      normalizeDeleteText267(it.speech||it.label)===normalizeDeleteText267(speech);
+    if(exactId||exactPlacement){
       it.deleted=true;
-      it.deleted_at=it.deleted_at||now;
-      it.updated_at=now;
+      it.deleted_at=it.deleted_at||new Date().toISOString();
+      it.updated_at=new Date().toISOString();
     }
   });
 
-  // 2) items overrides : uniquement l'override du pictogramme exact / même catégorie+libellé+voix.
-  Object.entries(a.items||{}).forEach(([id,v])=>{
-    if(!v)return;
-    const cats=adminItemCategories(v.category||wantCat,v);
-    const sameCat=!wantCat||cats.includes(wantCat)||String(v.category||"")===wantCat;
-    const sameLabel=wantLabel&&norm(v.label)===wantLabel;
-    const sameSpeech=!wantSpeech||norm(v.speech||v.label)===wantSpeech;
-    if(String(id)===wantId || (sameCat&&sameLabel&&sameSpeech))addId(id);
-  });
-
-  // 3) Built-ins/runtime exacts : retrouver les anciens/nouveaux IDs du même picto source.
-  try{
-    for(const c of categories){
-      if(c.name==="Favoris"||c.name==="Mode parents")continue;
-      for(const x of (c.items||[])){
-        const lab=norm(displayLabel(x)||x[1]);
-        const sp=norm(spokenText(x)||x[2]);
-        const sameCat=!wantCat||c.name===wantCat||adminItemCategories(c.name,adminOverrideFor(x)).includes(wantCat);
-        if(sameCat && wantLabel && lab===wantLabel && (!wantSpeech||sp===wantSpeech)){
-          try{addId(permanentItemId(x))}catch(e){}
-          try{addId(adminItemId(c,x))}catch(e){}
-          try{if(x?.[6])addId(x[6])}catch(e){}
-        }
-      }
-    }
-  }catch(e){}
-
-  // Tombstone de TOUS les IDs reconnus pour CE picto uniquement.
-  ids.forEach(id=>{
-    if(id&&!a.deletedItems.map(String).includes(String(id)))a.deletedItems.push(String(id));
-  });
-  a.hiddenItems=a.hiddenItems.filter(v=>!ids.has(String(v)));
-
-  // Nettoyage structures.
+  // Retirer de l'arborescence et des ordres.
   (a.subcategories||[]).forEach(sc=>{
-    if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>!ids.has(String(v)));
+    if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>String(v)!==id);
   });
   Object.keys(a.adminOrder||{}).forEach(k=>{
-    if(Array.isArray(a.adminOrder[k]))a.adminOrder[k]=a.adminOrder[k].filter(v=>!ids.has(String(v)));
+    if(Array.isArray(a.adminOrder[k]))a.adminOrder[k]=a.adminOrder[k].filter(v=>String(v)!==id);
   });
   Object.keys(a.adminSubOrderV252||{}).forEach(k=>{
-    if(Array.isArray(a.adminSubOrderV252[k]))a.adminSubOrderV252[k]=a.adminSubOrderV252[k].filter(v=>!ids.has(String(v)));
+    if(Array.isArray(a.adminSubOrderV252[k]))a.adminSubOrderV252[k]=a.adminSubOrderV252[k].filter(v=>String(v)!==id);
   });
 
   writeAdminBase(a);
-  return [...ids];
+  return true;
 }
 
 function adminDeleteItem(cat,x){
@@ -8037,6 +8060,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       submenus:b.submenus||{},
       quickChoices:b.quickChoices||{},
       adminOrder:b.adminOrder||{},
+      deletedPermanentV267:Array.isArray(b.deletedPermanentV267)?b.deletedPermanentV267:[],
       updated_at:new Date().toISOString()
     });
   }
@@ -8060,6 +8084,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     out.submenus={...(a.submenus||{}),...(b.submenus||{})};
     out.quickChoices={...(a.quickChoices||{}),...(b.quickChoices||{})};
     out.adminOrder={...(a.adminOrder||{}),...(b.adminOrder||{})};
+    out.deletedPermanentV267=[...new Map([...(a.deletedPermanentV267||[]),...(b.deletedPermanentV267||[])].map(x=>[
+      String(x?.category||"")+"|"+String(x?.id||"")+"|"+normalizeDeleteText267(x?.label)+"|"+normalizeDeleteText267(x?.speech),x
+    ])).values()];
     out.version=190;out.updated_at=new Date().toISOString();
     return stripImages190(out);
   }
@@ -8074,6 +8101,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     merged.submenus={...(b.submenus||{}),...(cat.submenus||{})};
     merged.quickChoices={...(b.quickChoices||{}),...(cat.quickChoices||{})};
     merged.adminOrder={...(b.adminOrder||{}),...(cat.adminOrder||{})};
+    merged.deletedPermanentV267=[...new Map([...(b.deletedPermanentV267||[]),...(cat.deletedPermanentV267||[])].map(x=>[
+      String(x?.category||"")+"|"+String(x?.id||"")+"|"+normalizeDeleteText267(x?.label)+"|"+normalizeDeleteText267(x?.speech),x
+    ])).values()];
     try{
       localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(merged));
       if(typeof ADMIN_LAST_BASE_V113!=='undefined')ADMIN_LAST_BASE_V113=clone190(merged);
@@ -8230,23 +8260,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     const edit=document.createElement("button");edit.textContent="✏️ Modifier";
     const del=document.createElement("button");del.textContent="🗑️ Supprimer";del.className="delete238";
     edit.onclick=()=>e.kind==="base"?adminEditItem(e.source,e.x):adminEditAddedItem(e.item);
-
     del.onclick=()=>{
       const name=e.label||"ce pictogramme";
-      const speech=e.kind==="base"&&e.x?spokenText(e.x):(e.item?.speech||e.speech||e.label||"");
-      const sourceCat=e.source?.name||e.item?.category||cat?.name||"";
-      const id=String(e.id||e.item?.id||e.x?.[6]||(e.source&&e.x?adminItemId(e.source,e.x):""));
-      if(!confirm("Supprimer définitivement « "+name+" » de la base commune ?"))return;
-
-      const removed=deletePictoEverywhere266(id,name,speech,sourceCat);
+      if(!confirm("Supprimer définitivement « "+name+" » de cette occurrence de la base commune ?"))return;
+      deletePermanentEntry267(e,cat);
       try{syncAdminCategories(true)}catch(err){}
       try{render()}catch(err){}
       try{scheduleAdminBasePush()}catch(err){}
-      try{if(typeof window.publishCatalog190==="function")setTimeout(()=>window.publishCatalog190(),160)}catch(err){}
+      try{if(typeof window.publishCatalog190==="function")setTimeout(()=>window.publishCatalog190(),170)}catch(err){}
       setTimeout(()=>render195("pictos"),35);
-      showFeedback(removed.length?"Pictogramme supprimé":"Suppression enregistrée");
+      showFeedback("Pictogramme supprimé");
     };
-
     c.append(vis,n,edit,del);host.appendChild(c);
   }
 
@@ -11998,7 +12022,7 @@ function writeSubOrderFor253(subId,ids){
      ========================================================= -->
 <style id="beta255-rescue-style">
 #image-rescue-255{
-  position:fixed;right:14px;bottom:18px;z-index:2147482000;
+  position:fixed;right:14px;bottom:62px;z-index:2147482000;
   border:0;border-radius:999px;padding:11px 15px;font-weight:900;
   background:#234b91;color:white;box-shadow:0 7px 20px #0003;cursor:pointer
 }
@@ -12824,91 +12848,6 @@ function writeSubOrderFor253(subId,ids){
     return result;
   };
   try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
-})();
-</script>
-
-
-<script id="beta266-submenu-live-folder">
-(function(){
-  const previousExpand266=window.expandSubmenuEntries||expandSubmenuEntries;
-
-  function liveItemsForSubcat266(sc){
-    if(!sc)return [];
-    const cats=normalCategories();
-    const cat=cats.find(c=>c.name===sc.category)||categories.find(c=>c.name===sc.category);
-    if(!cat)return [];
-
-    let items=orderedItems(cat);
-    items=items.filter(x=>itemAssignedToSubcatV214(x,sc));
-
-    // Respecter exactement la visibilité utilisateur.
-    items=items.filter(x=>!isHidden(x));
-
-    // Respecter l'ordre Admin de la sous-catégorie, avec éventuel ordre patient plus récent.
-    try{
-      const b=readAdminBase(),sid=String(sc.id);
-      const adminIds=(b.adminSubOrderV252||{})[sid]||[];
-      const adminAt=Number((b.adminSubOrderUpdatedV265||{})[sid]||(b.adminSubOrderUpdatedV253||{})[sid]||0);
-      const profileIds=(readSubOrder228?.()||{})[sid]||[];
-      const profileAt=Number((readSubOrderMeta253?.()||{})[sid]||0);
-      const ids=(profileIds.length&&profileAt>adminAt)?profileIds:adminIds;
-      if(ids.length){
-        const lookup=new Map();
-        items.forEach(x=>{
-          [String(permanentItemId(x)||""),String(itemId2(x)||"")].filter(Boolean).forEach(k=>lookup.set(k,x));
-        });
-        const out=[],used=new Set();
-        ids.map(String).forEach(id=>{const x=lookup.get(id);if(x&&!used.has(x)){out.push(x);used.add(x)}});
-        items.forEach(x=>{if(!used.has(x))out.push(x)});
-        items=out;
-      }
-    }catch(e){}
-
-    return items.map(x=>({
-      id:permanentItemId(x)||itemId2(x),
-      kind:"picto",
-      label:displayLabel(x),
-      speech:spokenText(x),
-      emoji:displayEmoji(x),
-      image:displayImage(x)||"",
-      hidden:false,
-      __liveItem:x
-    }));
-  }
-
-  window.expandSubmenuEntries=function(parent){
-    let raw=[];
-    try{raw=adminSubmenuEntries(permanentItemId(parent))||[]}catch(e){}
-
-    const out=[];
-    for(const e of raw){
-      if(!e||e.deleted)continue;
-
-      // Une entrée qui pointe vers une sous-catégorie doit refléter le contenu
-      // RÉEL du dossier au moment du clic, et non une ancienne copie de 3 choix.
-      const sid=String(e.subcategoryId||e.subcatId||e.folderId||e.sourceId||"");
-      let sc=null;
-      if(sid){
-        try{sc=(readAdminBase().subcategories||[]).find(x=>!x.deleted&&String(x.id)===sid)||null}catch(err){}
-      }
-      if(!sc && (e.kind==="subcategory"||e.kind==="folder") && e.label){
-        try{
-          sc=(readAdminBase().subcategories||[]).find(x=>!x.deleted&&String(x.name||"")===String(e.label||""))||null;
-        }catch(err){}
-      }
-
-      if(sc){
-        out.push(...liveItemsForSubcat266(sc));
-        continue;
-      }
-
-      out.push(e);
-    }
-
-    if(out.length)return out;
-    try{return previousExpand266.call(this,parent)}catch(e){return []}
-  };
-  try{expandSubmenuEntries=window.expandSubmenuEntries}catch(e){}
 })();
 </script>
 

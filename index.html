@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 267</title>
+<title>Ma CAA v2.0 bêta 268</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 267</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 268</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -12848,6 +12848,190 @@ function writeSubOrderFor253(subId,ids){
     return result;
   };
   try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
+})();
+</script>
+
+
+<!-- BETA268 — action au clic : résolution complète des IDs historiques des dossiers -->
+<script id="beta268-submenu-id-resolver">
+(function(){
+  const expandBefore268 = window.expandSubmenuEntries || expandSubmenuEntries;
+
+  function norm268(v){return String(v==null?"":v)}
+
+  function addAlias268(map,key,item){
+    key=norm268(key);
+    if(key && !map.has(key))map.set(key,item);
+  }
+
+  function buildSubmenuAliasMap268(cat){
+    const map=new Map();
+    const base=readAdminBase();
+    const migration=base.stablePictoIdsV265||{};
+
+    // 1. Les items réellement affichables de la catégorie.
+    let runtime=[];
+    try{runtime=orderedItems(cat)||[]}catch(e){runtime=[]}
+
+    runtime.forEach(x=>{
+      addAlias268(map,permanentItemId(x),x);
+      addAlias268(map,itemId2(x),x);
+      addAlias268(map,x?.[3],x);
+      addAlias268(map,x?.[6],x);
+      addAlias268(map,String(displayLabel(x)||"")+"|"+String(spokenText(x)||""),x);
+      if(isAdded(x)&&x?.[3])addAlias268(map,"added|"+x[3],x);
+    });
+
+    // 2. Les formes historiques des pictogrammes intégrés.
+    for(const source of categories){
+      if(source.name==="Favoris"||source.name==="Mode parents")continue;
+      for(const ox of (source.items||[])){
+        // Retrouver l'item runtime correspondant par son ID stable.
+        const stable=norm268(ox?.[6]);
+        let live=stable?map.get(stable):null;
+        if(!live){
+          live=runtime.find(x=>
+            norm268(x?.[6])===stable ||
+            (String(displayLabel(x)||"")===String(displayLabel(ox)||ox?.[1]||"") &&
+             String(spokenText(x)||"")===String(spokenText(ox)||ox?.[2]||""))
+          )||null;
+        }
+        if(!live)continue;
+
+        addAlias268(map,source.name+"||"+String(ox?.[1]||"")+"||"+String(ox?.[2]||""),live);
+        addAlias268(map,String(ox?.[1]||"")+"|"+String(ox?.[2]||""),live);
+        addAlias268(map,ox?.[3],live);
+        addAlias268(map,ox?.[6],live);
+      }
+    }
+
+    // 3. La table de migration 265 fournit directement ancien ID -> ID stable.
+    Object.entries(migration).forEach(([oldId,newId])=>{
+      const live=map.get(norm268(newId));
+      if(live)addAlias268(map,oldId,live);
+    });
+
+    // 4. Pictogrammes permanents créés dans l'Admin.
+    (base.addedItems||[]).filter(v=>v&&!v.deleted).forEach(ai=>{
+      const live=runtime.find(x=>
+        norm268(permanentItemId(x))===norm268(ai.id) ||
+        norm268(x?.[3])===norm268(ai.id)
+      );
+      if(!live)return;
+      addAlias268(map,ai.id,live);
+      addAlias268(map,"added|"+ai.id,live);
+      addAlias268(map,ai.stableId,live);
+      addAlias268(map,String(ai.label||"")+"|"+String(ai.speech||ai.label||""),live);
+    });
+
+    return map;
+  }
+
+  function resolveSubcategoryContents268(sc){
+    if(!sc||sc.deleted||sc.hidden)return [];
+
+    const cat=categories.find(c=>c.name===sc.category);
+    if(!cat)return [];
+
+    const alias=buildSubmenuAliasMap268(cat);
+    const migration=readAdminBase().stablePictoIdsV265||{};
+    const ids=adminSubcatItemsDeep(sc)||[];
+    const out=[],seen=new Set();
+
+    ids.forEach(rawId=>{
+      const rid=norm268(rawId);
+      const migrated=norm268(migration[rid]||rid);
+      const x=alias.get(rid)||alias.get(migrated);
+      if(!x)return;
+
+      const realId=norm268(permanentItemId(x)||itemId2(x));
+      if(!realId||seen.has(realId))return;
+      if(isHidden(x))return;
+
+      seen.add(realId);
+      out.push({
+        id:realId,
+        label:displayLabel(x),
+        speech:spokenText(x),
+        emoji:displayEmoji(x),
+        image:displayImage(x)||"",
+        hidden:false,
+        __sourceItem268:x
+      });
+    });
+
+    // Appliquer le même ordre que le dossier utilisateur.
+    try{
+      const b=readAdminBase(),sid=String(sc.id);
+      const adminIds=(b.adminSubOrderV252||{})[sid]||[];
+      const adminAt=Number((b.adminSubOrderUpdatedV265||{})[sid]||(b.adminSubOrderUpdatedV253||{})[sid]||0);
+      const profileIds=(typeof readSubOrder228==="function"?(readSubOrder228()||{})[sid]:[])||[];
+      const profileAt=Number(typeof readSubOrderMeta253==="function"?((readSubOrderMeta253()||{})[sid]||0):0);
+      const wanted=(profileIds.length&&profileAt>adminAt)?profileIds:adminIds;
+
+      if(wanted.length){
+        const by=new Map();
+        out.forEach(v=>{
+          by.set(String(v.id),v);
+          const x=v.__sourceItem268;
+          if(x){
+            [permanentItemId(x),itemId2(x),x?.[3],x?.[6]].forEach(k=>{if(k)by.set(String(k),v)});
+          }
+        });
+        const ordered=[],used=new Set();
+        wanted.map(String).forEach(id=>{
+          const v=by.get(id)||by.get(String(migration[id]||""));
+          if(v&&!used.has(v)){ordered.push(v);used.add(v)}
+        });
+        out.forEach(v=>{if(!used.has(v))ordered.push(v)});
+        return ordered;
+      }
+    }catch(e){}
+
+    return out;
+  }
+
+  window.expandSubmenuEntries=function(parent){
+    // Conserver exactement la logique 267 pour tout ce qui n'est pas
+    // une sous-catégorie dynamique.
+    let entries=[];
+    try{entries=submenuFor(parent)||[]}catch(e){
+      try{return expandBefore268.call(this,parent)}catch(err){return []}
+    }
+
+    const a=readAdminBase(),out=[];
+    for(const e of entries){
+      if(!e||e.deleted)continue;
+
+      if(e.kind==="subcategory"&&e.subcategoryId){
+        const sc=(a.subcategories||[]).find(x=>String(x.id)===String(e.subcategoryId)&&!x.deleted);
+        if(sc&&!sc.hidden){
+          const live=resolveSubcategoryContents268(sc);
+          live.forEach(v=>out.push({...v,id:"dyn268:"+e.id+":"+v.id}));
+        }
+        continue;
+      }
+
+      // Pour catégorie / pictogramme direct : reprendre uniquement CET élément
+      // selon la logique déjà stable de la 267.
+      if(e.kind==="category"&&e.categoryName){
+        const c=categories.find(x=>x.name===e.categoryName || adminCatName(x)===e.categoryName);
+        if(c){
+          const map=new Map(allPermanentPictograms().map(v=>[String(v.id),v]));
+          baseItems(c).forEach(item=>{
+            const id=String(permanentItemId(item)||"");
+            const v=id?map.get(id):null;
+            if(v)out.push({...v,id:"dyncat:"+e.id+":"+id});
+          });
+        }
+      }else{
+        out.push(e);
+      }
+    }
+    return out;
+  };
+
+  try{expandSubmenuEntries=window.expandSubmenuEntries}catch(e){}
 })();
 </script>
 

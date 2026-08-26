@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 260</title>
+<title>Ma CAA v2.0 bêta 264</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 260</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 264</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -1522,66 +1522,46 @@ function decodeCloudStoredImage(v){
 
 async function hydrateCloudPictures(){
   if(!cloudClient)return;
-  const all=[...document.querySelectorAll("img")];
-
-  for(const img of all){
-    if(img.hasAttribute("data-cloud-path"))continue;
-    const raw=img.getAttribute("src")||"";
-    const d=decodeCloudStoredImage(raw);
-    if(d&&typeof d==="object"&&d.__cloud_image===true&&d.path){
-      img.removeAttribute("src");
-      img.setAttribute("data-cloud-path",d.path);
-    }
-  }
-
   const imgs=[...document.querySelectorAll("img[data-cloud-path]")];
+
   for(const img of imgs){
     const path=img.getAttribute("data-cloud-path");
     if(!path)continue;
 
-    img.style.background="#fff";
-
-    // BETA259: assign public URL immediately — no Image() preflight and no
-    // waiting several seconds before the browser is even allowed to load it.
-    let publicUrl="";
-    try{
-      publicUrl=cloudClient.storage.from("pictograms").getPublicUrl(path)?.data?.publicUrl||"";
-    }catch(e){}
-
-    const current=img.getAttribute("src")||"";
-    if(publicUrl && (!current || img.dataset.retry259==="1")){
-      img.dataset.retry259="";
-      img.style.visibility="visible";
-      img.src=publicUrl;
-      // Give the normal browser/cache request a short opportunity.
-      await new Promise(r=>setTimeout(r,0));
-      if(img.complete && img.naturalWidth>0){
-        img.dataset.cloudLoadedPath=path;
-        continue;
-      }
-    }else if(current && img.complete && img.naturalWidth>0){
+    // 1) Mémoire immédiate : aucun réseau.
+    let local=CLOUD_IMAGE_MEM_264.get(path)||"";
+    if(local){
+      if(img.getAttribute("src")!==local)img.src=local;
+      img.style.display="block";
+      const f=img.parentElement?.querySelector?.(".img-fallback-264");if(f)f.style.display="none";
       img.dataset.cloudLoadedPath=path;
       continue;
     }
 
-    // Download fallback only if the direct public URL did not resolve.
-    // This path is uncommon and is intentionally non-destructive.
-    if(!img.complete || img.naturalWidth===0){
-      try{
-        const dl=await cloudClient.storage.from("pictograms").download(path);
-        if(dl.error)throw dl.error;
-        const old=img.dataset.objectUrl;
-        if(old)try{URL.revokeObjectURL(old)}catch(e){}
-        const url=URL.createObjectURL(dl.data);
-        img.src=url;
-        img.style.visibility="visible";
-        img.dataset.objectUrl=url;
-        img.dataset.cloudLoadedPath=path;
-        delete img.dataset.retry259;
-      }catch(e){
-        console.warn("Image cloud temporairement inaccessible",path);
-        // Keep the element/reference intact so a later grouped hydration can retry.
-      }
+    // 2) IndexedDB persistant : aucun réseau.
+    const cached=await cachedCloudBlob264(path);
+    if(cached){
+      local=rememberCloudBlobUrl264(path,cached);
+      img.src=local;img.style.display="block";
+      const f=img.parentElement?.querySelector?.(".img-fallback-264");if(f)f.style.display="none";
+      img.dataset.cloudLoadedPath=path;
+      continue;
+    }
+
+    // 3) Première rencontre seulement : téléchargement Supabase authentifié,
+    // puis stockage local durable. Plus de course publicURL + download.
+    try{
+      const dl=await cloudClient.storage.from("pictograms").download(path);
+      if(dl.error)throw dl.error;
+      await saveCloudBlob264(path,dl.data);
+      local=rememberCloudBlobUrl264(path,dl.data);
+      img.src=local;img.style.display="block";
+      const f=img.parentElement?.querySelector?.(".img-fallback-264");if(f)f.style.display="none";
+      img.dataset.cloudLoadedPath=path;
+      delete img.dataset.retry264;
+    }catch(e){
+      console.warn("Image cloud temporairement inaccessible",path,e);
+      // On garde la carte intacte et l'emoji temporaire : aucun effacement de référence.
     }
   }
 }
@@ -2603,24 +2583,24 @@ function baseItems(cat){
   return out;
 }
 function orderedItems(cat){
+  // baseItems() est déjà rangé selon l'ordre Administrateur.
   const items=baseItems(cat).concat(addedForCategory(cat.name));
   const b=readAdminBase();
-  const adminIds=(b.adminOrder||{})[cat.name]||[];
-  const adminAt=Number((b.adminOrderUpdatedV260||{})[cat.name]||0);
+  const adminAt=Number((b.adminOrderUpdatedV264||{})[cat.name]||0);
 
-  const profileMap=readOrder(),profileIds=profileMap[cat.name]||[];
+  const map=readOrder(),profileIds=map[cat.name]||[];
   let profileAt=0;
   try{
-    const m=JSON.parse(localStorage.getItem(profiledKey("ma-caa-order-meta-v260"))||"{}")||{};
-    profileAt=Number(m[cat.name]||0);
+    const meta=JSON.parse(localStorage.getItem(profiledKey("ma-caa-order-meta-v264"))||"{}")||{};
+    profileAt=Number(meta[cat.name]||0);
   }catch(e){}
 
-  // Un ancien ordre profil sans timestamp ne doit plus écraser un nouvel ordre Admin.
-  const ids=(profileIds.length&&profileAt>adminAt)?profileIds:(adminIds.length?adminIds:profileIds);
-  if(!ids.length)return items;
+  // Un ancien ordre patient ne doit plus écraser un nouvel ordre Admin.
+  // Si le Parent réordonne ensuite ce profil, son ordre personnel reprend la main.
+  if(!profileIds.length || adminAt>=profileAt)return items;
 
-  const byId=new Map(items.map(x=>[String(itemId2(x)),x])),out=[];
-  ids.forEach(id=>{id=String(id);if(byId.has(id)){out.push(byId.get(id));byId.delete(id)}});
+  const byId=new Map(items.map(x=>[itemId2(x),x])),out=[];
+  profileIds.forEach(id=>{if(byId.has(id)){out.push(byId.get(id));byId.delete(id)}});
   byId.forEach(x=>out.push(x));
   return out;
 }
@@ -2663,6 +2643,72 @@ function moveItem(cat,x,dir){
   const map=readOrder();map[cat.name]=items.map(itemId);writeOrder(map);
   renderGrid();
 }
+
+const CLOUD_IMAGE_DB_264="ma-caa-cloud-images-v264";
+const CLOUD_IMAGE_STORE_264="images";
+const CLOUD_IMAGE_MEM_264=window.__cloudImageMem264=window.__cloudImageMem264||new Map();
+let CLOUD_IMAGE_DB_PROMISE_264=null;
+
+function openCloudImageDb264(){
+  if(CLOUD_IMAGE_DB_PROMISE_264)return CLOUD_IMAGE_DB_PROMISE_264;
+  CLOUD_IMAGE_DB_PROMISE_264=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(CLOUD_IMAGE_DB_264,1);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(CLOUD_IMAGE_STORE_264)){
+        db.createObjectStore(CLOUD_IMAGE_STORE_264,{keyPath:"path"});
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return CLOUD_IMAGE_DB_PROMISE_264;
+}
+async function cachedCloudBlob264(path){
+  try{
+    const db=await openCloudImageDb264();
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction(CLOUD_IMAGE_STORE_264,"readonly");
+      const q=tx.objectStore(CLOUD_IMAGE_STORE_264).get(String(path));
+      q.onsuccess=()=>resolve(q.result?.blob||null);
+      q.onerror=()=>reject(q.error);
+    });
+  }catch(e){return null}
+}
+async function saveCloudBlob264(path,blob){
+  if(!path||!blob)return false;
+  try{
+    const db=await openCloudImageDb264();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(CLOUD_IMAGE_STORE_264,"readwrite");
+      tx.objectStore(CLOUD_IMAGE_STORE_264).put({path:String(path),blob,updatedAt:Date.now()});
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+    });
+    return true;
+  }catch(e){return false}
+}
+function rememberCloudBlobUrl264(path,blob){
+  if(!path||!blob)return "";
+  const old=CLOUD_IMAGE_MEM_264.get(String(path));
+  if(old)return old;
+  const url=URL.createObjectURL(blob);
+  CLOUD_IMAGE_MEM_264.set(String(path),url);
+  return url;
+}
+async function warmCloudImageCache264(){
+  try{
+    const db=await openCloudImageDb264();
+    const rows=await new Promise((resolve,reject)=>{
+      const tx=db.transaction(CLOUD_IMAGE_STORE_264,"readonly");
+      const q=tx.objectStore(CLOUD_IMAGE_STORE_264).getAll();
+      q.onsuccess=()=>resolve(q.result||[]);
+      q.onerror=()=>reject(q.error);
+    });
+    rows.forEach(r=>{if(r?.path&&r?.blob&&!CLOUD_IMAGE_MEM_264.has(String(r.path)))rememberCloudBlobUrl264(r.path,r.blob)});
+    try{renderGrid()}catch(e){}
+  }catch(e){}
+}
+
 function cloudPublicUrl259(path){
   try{
     if(!path||!cloudClient)return "";
@@ -2676,30 +2722,27 @@ function imageHtml(p,emoji){
   const safeEm=String(em).replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
   if(src&&typeof src==="object"&&src.__cloud_image&&src.path){
-    const path=String(src.path);
-    const publicUrl=(window.__lastGoodCloudImage260&&window.__lastGoodCloudImage260.get(path))||cloudPublicUrl259(path);
-    // BETA259: the browser receives a usable src immediately.
-    // Do NOT destroy the <img> on an intermittent load error: legacy hydration
-    // can retry/download it afterwards.
-    return '<span class="pic-media" data-media-path="'+path.replace(/"/g,"&quot;")+'" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
+    const path=String(src.path),local264=CLOUD_IMAGE_MEM_264.get(path)||"";
+    return '<span class="pic-media" data-media-path="'+path.replace(/"/g,"&quot;")+'" style="position:relative;display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
+      '<span class="img-fallback-264" aria-hidden="true" style="font-size:46px;display:'+(local264?'none':'inline')+'">'+safeEm+'</span>'+
       '<img data-cloud-path="'+path.replace(/"/g,"&quot;")+'"'+
-      (publicUrl?' src="'+publicUrl.replace(/"/g,"&quot;")+'" data-public-src-259="'+publicUrl.replace(/"/g,"&quot;")+'"':'')+
-      ' alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
-      'onload="this.dataset.cloudLoadedPath=this.dataset.cloudPath||this.getAttribute(\\'data-cloud-path\\')||\\'\\';this.style.visibility=\\'visible\\'" '+
-      'onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'">'+
-      '<span class="img-fallback-259" aria-hidden="true" style="display:none;font-size:46px">'+safeEm+'</span></span>';
+      (local264?' src="'+local264.replace(/"/g,"&quot;")+'"':'')+
+      ' alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px;'+(local264?'':'display:none;')+'" '+
+      'onload="this.dataset.cloudLoadedPath=this.dataset.cloudPath||\'\';this.style.display=\'block\';const f=this.parentElement&&this.parentElement.querySelector(\'.img-fallback-264\');if(f)f.style.display=\'none\'" '+
+      'onerror="this.dataset.retry264=\'1\'">'+
+      '</span>';
   }
 
   if(src&&typeof src==="object"&&src.__local_image&&src.key){
     return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
       '<img data-local-image-key="'+String(src.key).replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
-      'onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'"></span>';
+      'onerror="this.dataset.retry259=\'1\';this.style.visibility=\'hidden\'"></span>';
   }
 
   if(typeof src==="string"&&src){
     return '<span class="pic-media" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;border-radius:10px;padding:4px;min-width:86px;min-height:86px">'+
       '<img src="'+src.replace(/"/g,"&quot;")+'" alt="" style="max-width:86px;max-height:86px;object-fit:contain;background:#fff;border-radius:8px" '+
-      'onload="this.style.visibility=\\'visible\\'" onerror="this.dataset.retry259=\\'1\\';this.style.visibility=\\'hidden\\'"></span>';
+      'onload="this.style.visibility=\'visible\'" onerror="this.dataset.retry259=\'1\';this.style.visibility=\'hidden\'"></span>';
   }
 
   return '<span style="font-size:46px">'+safeEm+'</span>';
@@ -5115,10 +5158,17 @@ window.adminDeleteCat=adminDeleteCat;
 function adminToggleItem(cat,x){const a=readAdminBase(),id=adminItemId(cat,x),i=a.hiddenItems.indexOf(id);if(i>=0)a.hiddenItems.splice(i,1);else a.hiddenItems.push(id);writeAdminBase(a);adminRefresh()}
 function adminDeleteItem(cat,x){
   if(!confirm("Supprimer ce pictogramme de la base commune ?"))return;
-  const a=readAdminBase(),id=(x&&x[6])||adminItemId(cat,x);
-  if(!a.deletedItems.includes(id))a.deletedItems.push(id);
-  if(a.hiddenItems.includes(id))a.hiddenItems=a.hiddenItems.filter(v=>v!==id);
-  writeAdminBase(a);adminReturnToPictogramsStable(window.scrollY||0);
+  const a=readAdminBase(),id=String((x&&x[6])||adminItemId(cat,x));
+  a.deletedItems=Array.isArray(a.deletedItems)?a.deletedItems:[];
+  if(!a.deletedItems.map(String).includes(id))a.deletedItems.push(id);
+  a.hiddenItems=(a.hiddenItems||[]).filter(v=>String(v)!==id);
+  const ai=(a.addedItems||[]).find(v=>String(v?.id||"")===id);
+  if(ai){ai.deleted=true;ai.deleted_at=new Date().toISOString();ai.updated_at=ai.deleted_at}
+  (a.subcategories||[]).forEach(sc=>{if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>String(v)!==id)});
+  writeAdminBase(a);
+  try{render()}catch(e){}
+  try{if(typeof window.publishCatalog190==="function")setTimeout(()=>window.publishCatalog190(),180)}catch(e){}
+  adminReturnToPictogramsStable(window.scrollY||0);
 }
 
 async function compressPictogramImage(file,maxSide=360,quality=.66){
@@ -5408,20 +5458,51 @@ function adminPermanentPictogramForm(existing){
   panel.style.maxWidth="680px";
   panel.innerHTML="<h2>"+(existing?"✏️ Modifier le pictogramme permanent":"➕ Ajouter un pictogramme permanent")+"</h2>";
 
-  const categoriesList=[
-    ...categories.filter(c=>c.name!=="Favoris"&&c.name!=="Mode parents").map(c=>c.name),
-    ...(a.addedCats||[]).filter(c=>!c.deleted).map(c=>c.name)
+  // BETA261 — toujours reconstruire la liste depuis l’arborescence Admin actuelle.
+  // Les catégories supprimées ne doivent plus être proposées et les renommages
+  // doivent être affichés immédiatement, tout en conservant la clé interne stable.
+  const liveBuiltInCats=categories.filter(c=>
+    c.name!=="Favoris"&&c.name!=="Mode parents"&&!(a.deletedCats||[]).includes(c.name)
+  );
+  const liveAddedCats=(a.addedCats||[]).filter(c=>c&&!c.deleted&&!(a.deletedCats||[]).includes(c.name));
+
+  // BETA263 — une catégorie renommée peut exister sous plusieurs anciennes clés
+  // internes. Dans le formulaire, on n'affiche qu'UNE entrée par nom visible.
+  // Si plusieurs clés ont le même nom affiché, on privilégie celle qui possède
+  // l'édition Admin actuelle (ex. SENSORIALITÉ -> Sensorialité).
+  const rawCategories263=[
+    ...liveBuiltInCats.map(c=>({value:c.name,label:adminCatName(c)||c.name,edited:!!(a.catEdits||{})[c.name]})),
+    ...liveAddedCats.map(c=>({value:c.name,label:c.name,edited:!!(a.catEdits||{})[c.name]}))
   ];
+  const normCategory263=v=>String(v||"").trim().toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const byVisible263=new Map();
+  rawCategories263.forEach(entry=>{
+    const k=normCategory263(entry.label);
+    const prev=byVisible263.get(k);
+    if(!prev || (entry.edited&&!prev.edited))byVisible263.set(k,entry);
+  });
+  const categoriesList=[...byVisible263.values()].map(({value,label})=>({value,label}));
+  const liveCategoryValues=new Set(categoriesList.map(c=>c.value));
+  const resolveLiveCategory261=name=>{
+    if(liveCategoryValues.has(name))return name;
+    const hit=categoriesList.find(c=>c.label===name);
+    return hit?hit.value:"";
+  };
 
   const mkLabel=t=>{const l=document.createElement("label");l.textContent=t;panel.appendChild(l);return l};
 
   mkLabel("Catégorie");
   const cat=document.createElement("select");
   cat.style.width="100%";cat.style.padding="12px";cat.style.fontSize="16px";cat.style.borderRadius="10px";
-  [...new Set(categoriesList)].forEach(name=>{
-    const o=document.createElement("option");o.value=name;o.textContent=name;cat.appendChild(o);
+  const seenCatValues261=new Set();
+  categoriesList.forEach(entry=>{
+    if(seenCatValues261.has(entry.value))return;seenCatValues261.add(entry.value);
+    const o=document.createElement("option");o.value=entry.value;o.textContent=entry.label;cat.appendChild(o);
   });
-  if(existing&&existing.category)cat.value=existing.category;
+  if(existing&&existing.category){
+    const resolved=resolveLiveCategory261(existing.category);
+    if(resolved)cat.value=resolved;
+  }
   panel.appendChild(cat);
 
   mkLabel("Afficher aussi dans d’autres catégories");
@@ -5430,9 +5511,10 @@ function adminPermanentPictogramForm(existing){
   panel.appendChild(categoryPicker);
 
   let selectedCategoryNames=new Set(
-    Array.isArray(existing?.categories)&&existing.categories.length
+    (Array.isArray(existing?.categories)&&existing.categories.length
       ? existing.categories
-      : (existing?.category?[existing.category]:[cat.value])
+      : (existing?.category?[existing.category]:[cat.value]))
+      .map(resolveLiveCategory261).filter(Boolean)
   );
   selectedCategoryNames.add(cat.value);
   const getSelectedCategories=()=>[...new Set([cat.value,...Array.from(selectedCategoryNames||[])].filter(Boolean))];
@@ -5440,14 +5522,15 @@ function adminPermanentPictogramForm(existing){
   function refreshCategoryPicker(){
     selectedCategoryNames.add(cat.value);
     categoryPicker.innerHTML="";
-    [...new Set(categoriesList)].forEach(name=>{
+    categoriesList.forEach(entry=>{
+      const name=entry.value;
       const row=document.createElement("label");
       row.style.cssText="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid #eef1f5;cursor:pointer";
       const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedCategoryNames.has(name);
       cb.style.cssText="width:20px;height:20px;accent-color:#2563eb";
       if(name===cat.value){cb.checked=true;cb.disabled=true}
       cb.onchange=()=>{if(cb.checked)selectedCategoryNames.add(name);else selectedCategoryNames.delete(name);refreshFolderPicker()};
-      const txt=document.createElement("span");txt.textContent=(name===cat.value?"★ ":"")+name;
+      const txt=document.createElement("span");txt.textContent=(name===cat.value?"★ ":"")+entry.label;
       if(name===cat.value)txt.style.fontWeight="900";
       row.append(cb,txt);categoryPicker.appendChild(row);
     });
@@ -5478,7 +5561,8 @@ function adminPermanentPictogramForm(existing){
       const catFolders=folders.filter(sc=>sc.category===catName);
       if(!catFolders.length)return;
       const title=document.createElement("div");
-      title.textContent="📁 "+catName;title.style.cssText="font-weight:900;padding:10px 8px;background:#eef4ff;border-radius:9px;margin:5px 0";
+      const catObj261=categories.find(c=>c.name===catName);
+      title.textContent="📁 "+(catObj261?(adminCatName(catObj261)||catName):catName);title.style.cssText="font-weight:900;padding:10px 8px;background:#eef4ff;border-radius:9px;margin:5px 0";
       folderPicker.appendChild(title);
 
       const byParent={};
@@ -5708,11 +5792,24 @@ function adminPermanentPictogramForm(existing){
       // Elle reste prioritaire sur les anciennes copies admin_base.
       try{window.publishSavedPicto234?.(savedItemId)}catch(e){console.warn("Meta 234",e)}
 
-      // BETA182: l’image est synchronisée séparément de la base Admin générale.
-      // Le pictogramme garde un identifiant stable et son média possède sa propre entrée cloud.
+      // BETA263 — ne plus lancer la publication de l'image "dans le vide".
+      // On passe par l'enveloppe 184 (file d'attente + retry) et on attend la
+      // première tentative avant de considérer l'ajout comme terminé. Ainsi,
+      // un appareil lent / une connexion cloud momentanément indisponible ne
+      // laisse plus le pictogramme synchronisé sans son image.
       try{
-        publishPictoMediaV182(savedItemId,l,speechText,finalImage||null).catch(e=>console.warn("Media V182",e));
-      }catch(e){console.warn("Media V182",e)}
+        if(finalImage)save.textContent="⏳ Publication de l’image…";
+        const publishMedia263=window.publishPictoMediaV182||publishPictoMediaV182;
+        let mediaOk263=await publishMedia263(savedItemId,l,speechText,finalImage||null);
+        if(finalImage && mediaOk263===false){
+          await new Promise(r=>setTimeout(r,700));
+          mediaOk263=await publishMedia263(savedItemId,l,speechText,finalImage||null);
+        }
+        if(finalImage && mediaOk263===false)console.warn("BETA263 image mise en attente de retry",l);
+      }catch(e){
+        // L'enveloppe 184 conserve déjà la publication en attente.
+        console.warn("Media V263 en attente",e);
+      }
 
       // BETA154: sauvegarde locale immédiate, interface jamais bloquée par le cloud.
       // writeAdminBase() a déjà persisté la modification et marqué la base "dirty".
@@ -8109,27 +8206,32 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
     del.onclick=()=>{
       const name=e.label||"ce pictogramme";
-      const id=String(e.id||e.item?.id||e.x?.[6]||(e.source&&e.x?adminItemId(e.source,e.x):""));
-      if(!id)return alert("Impossible d’identifier ce pictogramme.");
-      if(!confirm("Supprimer définitivement « "+name+" » de la base commune ?\n\nIl disparaîtra aussi du mode utilisateur et ne devra pas réapparaître après synchronisation."))return;
+      const id=String(
+        e.id ||
+        e.item?.id ||
+        e.x?.[6] ||
+        (e.source&&e.x?adminItemId(e.source,e.x):"")
+      );
+      if(!id){alert("Impossible d’identifier ce pictogramme.");return}
+      if(!confirm("Supprimer définitivement « "+name+" » de la base commune ?\n\nIl disparaîtra de l’Administrateur et du mode utilisateur, et la suppression sera synchronisée."))return;
 
-      const a=readAdminBase();
-      const now=new Date().toISOString();
+      const a=readAdminBase(),now=new Date().toISOString();
 
-      // Tombstone global : utilisé aussi pour les pictogrammes historiques intégrés au HTML.
+      // Tombstone commun à TOUS les pictogrammes.
       a.deletedItems=Array.isArray(a.deletedItems)?a.deletedItems:[];
       if(!a.deletedItems.map(String).includes(id))a.deletedItems.push(id);
       a.hiddenItems=(a.hiddenItems||[]).filter(v=>String(v)!==id);
 
-      // Pictogramme créé dans l'Admin : conserver aussi un tombstone dans addedItems.
-      const ai=(a.addedItems||[]).find(x=>String(x?.id)===id);
-      if(ai){
-        ai.deleted=true;
-        ai.deleted_at=now;
-        ai.updated_at=now;
+      // Pour un pictogramme créé dans l'Admin, garder également son tombstone
+      // dans addedItems afin que le catalogue additif 190 propage la suppression.
+      const added=(a.addedItems||[]).find(x=>String(x?.id||"")===id);
+      if(added){
+        added.deleted=true;
+        added.deleted_at=now;
+        added.updated_at=now;
       }
 
-      // Retirer toutes les références structurelles.
+      // Nettoyer les références de structure sans effacer les autres contenus.
       (a.subcategories||[]).forEach(sc=>{
         if(Array.isArray(sc.itemIds))sc.itemIds=sc.itemIds.filter(v=>String(v)!==id);
       });
@@ -8139,18 +8241,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       for(const key of Object.keys(a.adminSubOrderV252||{})){
         if(Array.isArray(a.adminSubOrderV252[key]))a.adminSubOrderV252[key]=a.adminSubOrderV252[key].filter(v=>String(v)!==id);
       }
-      for(const key of Object.keys(a.submenus||{})){
-        if(Array.isArray(a.submenus[key]))a.submenus[key]=a.submenus[key].filter(v=>String(v?.sourceId||v?.id||v)!==id);
-      }
-      for(const key of Object.keys(a.quickChoices||{})){
-        if(Array.isArray(a.quickChoices[key]))a.quickChoices[key]=a.quickChoices[key].filter(v=>String(v?.sourceId||v?.id||v)!==id);
-      }
 
       writeAdminBase(a);
+
+      // Retrait immédiat des DEUX affichages.
       try{syncAdminCategories(true)}catch(err){}
       try{render()}catch(err){}
       try{scheduleAdminBasePush()}catch(err){}
-      setTimeout(()=>render195("pictos"),40);
+      try{if(typeof window.publishCatalog190==="function")setTimeout(()=>window.publishCatalog190(),180)}catch(err){}
+      try{if(typeof window.publishStructure262==="function")setTimeout(()=>window.publishStructure262(),260)}catch(err){}
+      setTimeout(()=>render195("pictos"),35);
       showFeedback("Pictogramme supprimé");
     };
 
@@ -8394,9 +8494,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           dragRows251(w,ids=>{
             const b=readAdminBase();
             b.adminOrder=b.adminOrder||{};
-            b.adminOrderUpdatedV260=b.adminOrderUpdatedV260||{};
+            b.adminOrderUpdatedV264=b.adminOrderUpdatedV264||{};
             b.adminOrder[cat.name]=ids;
-            b.adminOrderUpdatedV260[cat.name]=Date.now();
+            b.adminOrderUpdatedV264[cat.name]=Date.now();
             writeAdminBase(b);
             try{scheduleAdminBasePush()}catch(e){}
             renderGrid();
@@ -10657,10 +10757,10 @@ function writeSubOrderFor253(subId,ids){
   function savePicOrder220(cat,items){
     const map=readOrder();map[cat.name]=items.map(itemId2);writeOrder(map);
     try{
-      const k=profiledKey("ma-caa-order-meta-v260");
-      const m=JSON.parse(localStorage.getItem(k)||"{}")||{};
-      m[cat.name]=Date.now();
-      localStorage.setItem(k,JSON.stringify(m));
+      const key=profiledKey("ma-caa-order-meta-v264");
+      const meta=JSON.parse(localStorage.getItem(key)||"{}")||{};
+      meta[cat.name]=Date.now();
+      localStorage.setItem(key,JSON.stringify(meta));
       localStorage.setItem("ma-caa-last-save",String(Date.now()));
       scheduleProfileAutoPush();
     }catch(e){}
@@ -12464,90 +12564,148 @@ function writeSubOrderFor253(subId,ids){
 </script>
 
 
-<!-- BETA260 — dernière image cloud valide réutilisée immédiatement -->
-<script id="beta260-image-stability">
+
+<!-- =========================================================
+     BETA 262 — STRUCTURE CANONIQUE + MÉDIAS MANQUANTS CIBLÉS
+     À publier d'abord depuis l'appareil de référence (Mac Safari).
+     ========================================================= -->
+<script id="beta262-sync-reconcile">
 (function(){
-  const MEM=window.__lastGoodCloudImage260=window.__lastGoodCloudImage260||new Map();
-  const pending=new Set();
+  const STRUCT_KEY_262='admin_categories_v262_authoritative';
+  const BOOT_KEY_262='ma-caa-262-structure-bootstrapped';
+  const MEDIA_CHECK_KEY_262='ma-caa-262-media-checks';
+  let busyStruct262=false,busyMedia262=false;
 
-  async function remember260(img){
-    if(!(img instanceof HTMLImageElement))return;
-    const path=img.getAttribute("data-cloud-path")||"";
-    if(!path||pending.has(path))return;
-    const src=img.currentSrc||img.src||"";
-    if(!src)return;
-
-    // Si c'est déjà une URL blob locale fiable, la mémoriser directement.
-    if(src.startsWith("blob:")){
-      MEM.set(path,src);
-      return;
-    }
-
-    // Transformer une image cloud chargée avec succès en blob local stable
-    // pour toute la durée de la session Safari.
-    if(/^https?:\/\//i.test(src)){
-      pending.add(path);
-      try{
-        const r=await fetch(src,{cache:"force-cache"});
-        if(!r.ok)return;
-        const blob=await r.blob();
-        const old=MEM.get(path);
-        if(old&&old.startsWith("blob:"))try{URL.revokeObjectURL(old)}catch(e){}
-        const local=URL.createObjectURL(blob);
-        MEM.set(path,local);
-        if(document.contains(img)){
-          img.src=local;
-          img.style.visibility="visible";
-          delete img.dataset.retry259;
-        }
-      }catch(e){}finally{pending.delete(path)}
-    }
+  function clone262(v){return JSON.parse(JSON.stringify(v))}
+  function structure262(base){
+    base=base||readAdminBase();
+    return {
+      schema:262,
+      addedCats:clone262(base.addedCats||[]),
+      subcategories:clone262(base.subcategories||[]),
+      catEdits:clone262(base.catEdits||{}),
+      hiddenCats:[...(base.hiddenCats||[])],
+      deletedCats:[...(base.deletedCats||[])],
+      updated_at:new Date().toISOString()
+    };
+  }
+  function applyStructure262(remote){
+    if(!remote||remote.schema!==262)return false;
+    const base=readAdminBase();
+    // BETA262: this snapshot is intentionally authoritative for category structure.
+    // Do not union stale deleted/renamed categories from another device.
+    base.addedCats=clone262(remote.addedCats||[]);
+    base.subcategories=clone262(remote.subcategories||[]);
+    base.catEdits=clone262(remote.catEdits||{});
+    base.hiddenCats=[...(remote.hiddenCats||[])];
+    base.deletedCats=[...(remote.deletedCats||[])];
+    writeAdminBaseLocalV182(base);
+    try{syncAdminCategories(true)}catch(e){}
+    try{render();renderProfileBar()}catch(e){}
+    return true;
+  }
+  async function publishStructure262(){
+    if(busyStruct262||!cloudClient)return false;
+    busyStruct262=true;
+    try{
+      const u=await cloudUser();if(!u)return false;
+      const data=structure262(readAdminBase());
+      const r=await cloudClient.from('app_config').upsert(
+        {key:STRUCT_KEY_262,data,updated_at:data.updated_at},{onConflict:'key'}
+      );
+      if(r.error)throw r.error;
+      localStorage.setItem(BOOT_KEY_262,'publisher');
+      return true;
+    }catch(e){console.warn('BETA262 publish structure',e);return false}
+    finally{busyStruct262=false}
+  }
+  async function pullStructure262(){
+    if(busyStruct262||!cloudClient)return false;
+    busyStruct262=true;
+    try{
+      const u=await cloudUser();if(!u)return false;
+      const r=await cloudClient.from('app_config').select('data,updated_at').eq('key',STRUCT_KEY_262).maybeSingle();
+      if(r.error)throw r.error;
+      if(!r.data?.data)return false;
+      const ok=applyStructure262(r.data.data);
+      if(ok)localStorage.setItem(BOOT_KEY_262,'follower');
+      return ok;
+    }catch(e){console.warn('BETA262 pull structure',e);return false}
+    finally{busyStruct262=false}
   }
 
-  function restore260(root){
-    const imgs=root?.tagName==="IMG"?[root]:[...(root?.querySelectorAll?.("img[data-cloud-path]")||[])];
-    imgs.forEach(img=>{
-      const path=img.getAttribute("data-cloud-path")||"";
-      const local=MEM.get(path);
-      if(local){
-        if(img.src!==local)img.src=local;
-        img.style.visibility="visible";
-        delete img.dataset.retry259;
+  function readChecks262(){try{return JSON.parse(localStorage.getItem(MEDIA_CHECK_KEY_262)||'{}')}catch(e){return {}}}
+  function writeChecks262(v){try{localStorage.setItem(MEDIA_CHECK_KEY_262,JSON.stringify(v||{}))}catch(e){}}
+  function missingTargets262(){
+    const b=readAdminBase(),out=[],seen=new Set();
+    const add=(id,x)=>{
+      if(!id||!x||x.deleted||x.image||seen.has(String(id)))return;
+      seen.add(String(id));out.push({id:String(id),label:x.label||'',speech:x.speech||''});
+    };
+    // Added pictograms are the priority: this fixes the exact case where the
+    // structure arrived before/after its media and the old cursor skipped it.
+    (b.addedItems||[]).forEach(x=>add(x?.id,x));
+    // Also retry explicit Admin overrides for permanent pictograms.
+    Object.entries(b.items||{}).forEach(([id,x])=>add(id,x));
+    return out;
+  }
+  async function pullMissingMedia262(){
+    if(busyMedia262||!cloudClient)return false;
+    busyMedia262=true;
+    try{
+      const u=await cloudUser();if(!u)return false;
+      const now=Date.now(),checks=readChecks262();
+      // Retry at most once every 10 minutes per missing pictogram, max 12 at a time.
+      const todo=missingTargets262().filter(x=>!checks[x.id]||now-checks[x.id]>600000).slice(0,12);
+      if(!todo.length)return false;
+      const keys=todo.map(x=>mediaKeyV182(x.id));
+      const r=await cloudClient.from('app_config').select('key,data,updated_at').in('key',keys);
+      if(r.error)throw r.error;
+      const got=new Set();let applied=0;
+      for(const row of r.data||[]){
+        const rec=row.data||{};if(rec.picto_id)got.add(String(rec.picto_id));
+        try{if(await applyMediaRecordV182(rec,row.updated_at||''))applied++}catch(e){}
       }
-    });
+      todo.forEach(x=>checks[x.id]=now);writeChecks262(checks);
+      if(applied){
+        try{syncAdminCategories(true);render();renderProfileBar()}catch(e){}
+        try{setTimeout(()=>hydrateAllCloudPictures(false),30)}catch(e){}
+      }
+      return applied>0;
+    }catch(e){console.warn('BETA262 targeted media',e);return false}
+    finally{busyMedia262=false}
   }
 
-  document.addEventListener("load",e=>{
-    const img=e.target;
-    if(img instanceof HTMLImageElement&&img.hasAttribute("data-cloud-path")){
-      img.style.visibility="visible";
-      delete img.dataset.retry259;
-      remember260(img);
-    }
-  },true);
+  // First 262 installation rule:
+  // - if the canonical 262 snapshot exists, this device follows it;
+  // - if it does not exist, the FIRST 262 device publishes its current structure.
+  // We will therefore install/open 262 on the known-good Mac Safari first.
+  async function boot262(){
+    if(!cloudClient)return;
+    try{
+      const u=await cloudUser();if(!u)return;
+      const r=await cloudClient.from('app_config').select('data').eq('key',STRUCT_KEY_262).maybeSingle();
+      if(r.error)throw r.error;
+      if(r.data?.data)await pullStructure262();
+      else await publishStructure262();
+      setTimeout(()=>pullMissingMedia262(),700);
+    }catch(e){console.warn('BETA262 boot',e)}
+  }
 
-  document.addEventListener("error",e=>{
-    const img=e.target;
-    if(!(img instanceof HTMLImageElement)||!img.hasAttribute("data-cloud-path"))return;
-    const path=img.getAttribute("data-cloud-path")||"";
-    const local=MEM.get(path);
-    if(local&&img.src!==local){
-      img.src=local;
-      img.style.visibility="visible";
-      delete img.dataset.retry259;
-    }
-  },true);
+  window.publishStructure262=publishStructure262;
+  window.pullStructure262=pullStructure262;
+  window.pullMissingMedia262=pullMissingMedia262;
+  window.addEventListener('focus',()=>{setTimeout(()=>pullStructure262(),350);setTimeout(()=>pullMissingMedia262(),900)});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(()=>pullStructure262(),350);setTimeout(()=>pullMissingMedia262(),900)}});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot262,1600),{once:true});
+  else setTimeout(boot262,1600);
+})();
+</script>
 
-  const obs=new MutationObserver(ms=>{
-    ms.forEach(m=>m.addedNodes&&m.addedNodes.forEach(n=>{
-      if(n&&n.nodeType===1)restore260(n);
-    }));
-  });
 
-  const start=()=>{
-    try{obs.observe(document.body,{childList:true,subtree:true})}catch(e){}
-    restore260(document);
-  };
+<script id="beta264-image-cache-start">
+(function(){
+  const start=()=>setTimeout(()=>{try{warmCloudImageCache264()}catch(e){}},120);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
   else start();
 })();

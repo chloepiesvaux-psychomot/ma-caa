@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 269</title>
+<title>Ma CAA v2.0 bêta 270</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 269</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 270</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3965,6 +3965,12 @@ function writeAdminBase(next){
       quickChoices:{...(prev.quickChoices||{}),...(next.quickChoices||{})},
       adminOrder:{...(prev.adminOrder||{}),...(next.adminOrder||{})}
     };
+    // BETA270 : toute modification Admin devient la nouvelle base de référence.
+    // Une révision monotone est transportée avec admin_base entre appareils.
+    const prevRev=Number(prev.adminRevisionV270||0);
+    const nextRev=Number(next.adminRevisionV270||0);
+    merged.adminRevisionV270=Math.max(prevRev+1,nextRev,Date.now());
+    merged.adminRevisionAtV270=new Date().toISOString();
     merged.addedItems=Array.isArray(next.addedItems)?next.addedItems:(prev.addedItems||[]);
     merged.addedCats=Array.isArray(next.addedCats)?next.addedCats:(prev.addedCats||[]);
     merged.subcategories=Array.isArray(next.subcategories)?next.subcategories:(prev.subcategories||[]);
@@ -4582,6 +4588,19 @@ async function adminBasePull(showStatus=false){
     const remoteData=await materializeAdminBaseV129(remoteDataRaw);
     const remoteUpdated=r.data.updated_at||null;
     const localRaw=localStorage.getItem(ADMIN_BASE_KEY)||"";
+    const localDataNow=readAdminBase();
+    const localRev270=Number(localDataNow.adminRevisionV270||0);
+    const remoteRev270=Number(remoteData.adminRevisionV270||0);
+
+    // BETA270 : dès qu'une base possède une révision 270, une copie plus
+    // ancienne ne peut plus l'écraser. Si ce Mac est plus récent, on republie.
+    if(localRev270 && (!remoteRev270 || remoteRev270<localRev270)){
+      adminBaseLocalDirty=true;
+      if(showStatus)setStatus("✅ Vos dernières modifications Admin sont plus récentes — elles restent la référence.",true);
+      setTimeout(()=>{try{scheduleAdminBasePush()}catch(e){}},80);
+      return false;
+    }
+
     const remoteRaw=JSON.stringify(remoteData);
     const changed=(localRaw!==remoteRaw);
 
@@ -13066,6 +13085,181 @@ function writeSubOrderFor253(subId,ids){
   };
 
   try{expandSubmenuEntries=window.expandSubmenuEntries}catch(e){}
+})();
+</script>
+
+
+<!-- BETA270 — base Admin récente + réconciliation arborescence + annulation -->
+<style id="beta270-undo-style">
+#undo-last-270{
+  position:fixed;right:14px;bottom:112px;z-index:2147482500;
+  border:0;border-radius:999px;padding:10px 14px;font-weight:900;
+  background:#7042c1;color:white;box-shadow:0 7px 20px #0003;cursor:pointer;
+  display:none
+}
+#undo-last-270:disabled{opacity:.45;cursor:default}
+body.admin270-open #undo-last-270{bottom:18px}
+</style>
+<script id="beta270-core">
+(function(){
+  const ADMIN_UNDO_LABEL="Modification Admin annulée";
+  let lastAdminUndo270=null;
+  let lastParentUndo270=null;
+  let pendingAdmin270=null;
+  let pendingParent270=null;
+
+  function clone270(v){try{return JSON.parse(JSON.stringify(v))}catch(e){return v}}
+  function allProfileSnapshot270(){
+    const id=activeProfile(),suffix="::"+id,rows={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k&&k.endsWith(suffix))rows[k]=localStorage.getItem(k);
+    }
+    // Profile directory is included because avatar/name can be changed in Parent.
+    rows[PROFILES_KEY]=localStorage.getItem(PROFILES_KEY);
+    return {id,rows};
+  }
+  function restoreProfileSnapshot270(s){
+    if(!s||!s.rows)return false;
+    const suffix="::"+s.id;
+    const remove=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);if(k&&k.endsWith(suffix))remove.push(k);
+    }
+    remove.forEach(k=>localStorage.removeItem(k));
+    Object.entries(s.rows).forEach(([k,v])=>{
+      if(v===null||v===undefined)localStorage.removeItem(k);
+      else localStorage.setItem(k,v);
+    });
+    try{PROFILE_JSON_CACHE_256.clear()}catch(e){}
+    try{syncCustomCategories()}catch(e){}
+    try{render();renderProfileBar()}catch(e){}
+    try{scheduleProfileAutoPush()}catch(e){}
+    return true;
+  }
+  function adminSnapshot270(){
+    return localStorage.getItem(ADMIN_BASE_KEY)||"";
+  }
+  function restoreAdminSnapshot270(raw){
+    if(!raw)return false;
+    try{
+      const b=JSON.parse(raw);
+      // L'annulation elle-même devient la DERNIÈRE modification Admin.
+      b.adminRevisionV270=Math.max(Number(readAdminBase().adminRevisionV270||0)+1,Date.now());
+      b.adminRevisionAtV270=new Date().toISOString();
+      localStorage.setItem(ADMIN_BASE_KEY,JSON.stringify(b));
+      ADMIN_LAST_BASE_V113=clone270(b);
+      adminBaseLocalDirty=true;
+      localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
+      localStorage.setItem("ma-caa-last-save",String(Date.now()));
+      try{syncAdminCategories(true)}catch(e){}
+      try{render()}catch(e){}
+      try{adminRefresh()}catch(e){}
+      try{scheduleAdminBasePush()}catch(e){}
+      return true;
+    }catch(e){console.error("Undo Admin 270",e);return false}
+  }
+
+  function ensureUndoButton270(){
+    let b=document.getElementById("undo-last-270");
+    if(!b){
+      b=document.createElement("button");b.id="undo-last-270";b.type="button";
+      b.textContent="↶ Annuler la dernière action";
+      document.body.appendChild(b);
+      b.onclick=()=>{
+        const adminOpen=!!document.getElementById("admin195");
+        if(adminOpen){
+          if(!lastAdminUndo270)return;
+          const snap=lastAdminUndo270;lastAdminUndo270=null;
+          if(restoreAdminSnapshot270(snap)){showFeedback(ADMIN_UNDO_LABEL)}
+        }else{
+          if(!lastParentUndo270)return;
+          const snap=lastParentUndo270;lastParentUndo270=null;
+          if(restoreProfileSnapshot270(snap)){showFeedback("Modification Parent annulée")}
+        }
+        updateUndoButton270();
+      };
+    }
+    return b;
+  }
+  function updateUndoButton270(){
+    const b=ensureUndoButton270();
+    const adminOpen=!!document.getElementById("admin195");
+    document.body.classList.toggle("admin270-open",adminOpen);
+    if(adminOpen){
+      b.style.display="block";b.disabled=!lastAdminUndo270;
+    }else if(adultUnlocked){
+      b.style.display="block";b.disabled=!lastParentUndo270;
+    }else b.style.display="none";
+  }
+
+  // Capture before a likely modifying gesture; keep snapshot only if storage changed.
+  function beginCapture270(e){
+    const t=e.target?.closest?.("button,input,select,label,.adm251-handle,[draggable='true']");
+    if(!t)return;
+    const adminOpen=!!document.getElementById("admin195");
+    if(adminOpen){
+      const before=adminSnapshot270();
+      pendingAdmin270=before;
+      setTimeout(()=>{
+        if(pendingAdmin270===before){
+          pendingAdmin270=null;
+          if(adminSnapshot270()!==before){lastAdminUndo270=before;updateUndoButton270()}
+        }
+      },700);
+      return;
+    }
+    if(adultUnlocked){
+      const before=allProfileSnapshot270(),sig=JSON.stringify(before.rows);
+      pendingParent270=before;
+      setTimeout(()=>{
+        if(pendingParent270===before){
+          pendingParent270=null;
+          const now=allProfileSnapshot270();
+          if(JSON.stringify(now.rows)!==sig){lastParentUndo270=before;updateUndoButton270()}
+        }
+      },700);
+    }
+  }
+  document.addEventListener("pointerdown",beginCapture270,true);
+  document.addEventListener("change",beginCapture270,true);
+
+  // Keep button state in sync with opening/closing Parent/Admin.
+  const obs=new MutationObserver(()=>updateUndoButton270());
+  obs.observe(document.body,{childList:true,subtree:false});
+  setInterval(updateUndoButton270,1200);
+
+  function reconcileAssignments270(){
+    const base=readAdminBase();
+    const migration=base.stablePictoIdsV265||{};
+    let changed=false;
+
+    // reverse aliases too: if a subfolder knows an old ID, keep it and add stable;
+    // if it already knows stable, never remove anything.
+    (base.subcategories||[]).forEach(sc=>{
+      if(!Array.isArray(sc.itemIds))return;
+      const out=[...sc.itemIds.map(String)];
+      const seen=new Set(out);
+      for(const id of [...out]){
+        const stable=String(migration[id]||"");
+        if(stable&&!seen.has(stable)){out.push(stable);seen.add(stable);changed=true}
+      }
+      if(changed || out.length!==sc.itemIds.length)sc.itemIds=out;
+    });
+
+    if(changed){
+      // This is a repair of the CURRENT Admin state, not a cloud rollback.
+      base.assignmentReconciledV270=new Date().toISOString();
+      writeAdminBase(base);
+      try{syncAdminCategories(true)}catch(e){}
+      try{render()}catch(e){}
+    }
+    return changed;
+  }
+  window.reconcileAssignments270=reconcileAssignments270;
+
+  // Run once after all v265 ID mappings are installed.
+  setTimeout(()=>{try{reconcileAssignments270()}catch(e){};updateUndoButton270()},350);
 })();
 </script>
 

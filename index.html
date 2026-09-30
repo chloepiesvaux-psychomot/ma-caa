@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 272</title>
+<title>Ma CAA v2.0 bêta 273</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 272</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 273</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -12672,9 +12672,17 @@ function writeSubOrderFor253(subId,ids){
   }
   function applyStructure262(remote){
     if(!remote||remote.schema!==262)return false;
+
+    // BETA273 : une ancienne structure 262 ne doit PLUS écraser une base Admin
+    // déjà présente sur l'appareil. C'était la cause des modifications Admin
+    // qui apparaissaient puis disparaissaient au retour dans l'app / au focus.
+    const existingRaw=localStorage.getItem(ADMIN_BASE_KEY);
+    if(existingRaw){
+      return false;
+    }
+
+    // Cas exceptionnel : appareil réellement vide uniquement.
     const base=readAdminBase();
-    // BETA262: this snapshot is intentionally authoritative for category structure.
-    // Do not union stale deleted/renamed categories from another device.
     base.addedCats=clone262(remote.addedCats||[]);
     base.subcategories=clone262(remote.subcategories||[]);
     base.catEdits=clone262(remote.catEdits||{});
@@ -12776,10 +12784,18 @@ function writeSubOrderFor253(subId,ids){
   window.publishStructure262=publishStructure262;
   window.pullStructure262=pullStructure262;
   window.pullMissingMedia262=pullMissingMedia262;
-  window.addEventListener('focus',()=>{setTimeout(()=>pullStructure262(),350);setTimeout(()=>pullMissingMedia262(),900)});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){setTimeout(()=>pullStructure262(),350);setTimeout(()=>pullMissingMedia262(),900)}});
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot262,1600),{once:true});
-  else setTimeout(boot262,1600);
+
+  // BETA273 : on ne recharge plus automatiquement l'ancien snapshot structure 262.
+  // On garde uniquement la récupération ciblée des médias manquants.
+  window.addEventListener('focus',()=>{setTimeout(()=>pullMissingMedia262(),900)});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(()=>pullMissingMedia262(),900)});
+
+  // Le bootstrap 262 n'est autorisé que sur un appareil réellement vide.
+  const hasAdminBase273=!!localStorage.getItem(ADMIN_BASE_KEY);
+  if(!hasAdminBase273){
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(boot262,1600),{once:true});
+    else setTimeout(boot262,1600);
+  }
 })();
 </script>
 
@@ -13267,8 +13283,9 @@ body.admin270-open #undo-last-270{bottom:18px}
   }
   window.reconcileAssignments270=reconcileAssignments270;
 
-  // Run once after all v265 ID mappings are installed.
-  setTimeout(()=>{try{reconcileAssignments270()}catch(e){};updateUndoButton270()},350);
+  // BETA273 : aucune réécriture Admin automatique au chargement.
+  // La réparation 270 reste disponible manuellement si elle est nécessaire.
+  setTimeout(()=>{updateUndoButton270()},350);
 })();
 </script>
 
@@ -13297,6 +13314,39 @@ body.admin270-open #undo-last-270{bottom:18px}
   };
 
   try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
+})();
+</script>
+
+
+<!-- BETA273 — persistance Admin renforcée -->
+<script id="beta273-admin-persistence">
+(function(){
+  try{
+    const previousWrite273=writeAdminBase;
+    let structureTimer273=null;
+
+    writeAdminBase=function(next){
+      const result=previousWrite273.apply(this,arguments);
+
+      // La modification locale est la référence immédiatement.
+      try{
+        adminBaseLocalDirty=true;
+        localStorage.setItem(ADMIN_LOCAL_EDIT_TS_V149,new Date().toISOString());
+      }catch(e){}
+
+      // Mettre également à jour l'ancien snapshot 262, mais seulement APRÈS
+      // une vraie modification Admin. Jamais de pull 262 automatique.
+      clearTimeout(structureTimer273);
+      structureTimer273=setTimeout(()=>{
+        try{
+          if(typeof window.publishStructure262==="function")window.publishStructure262();
+        }catch(e){}
+      },700);
+
+      return result;
+    };
+    window.writeAdminBase=writeAdminBase;
+  }catch(e){console.warn("BETA273 admin persistence",e)}
 })();
 </script>
 

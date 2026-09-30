@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b2a4a">
-<title>Ma CAA v2.0 bêta 271</title>
+<title>Ma CAA v2.0 bêta 272</title>
 <style>
 :root{--navy:#0b2a4a;--purple:#7042c1;--green:#2eaf58;--red:#ee4e45;--yellow:#ffd85a;--bg:#f5f7fb;--line:#dfe4ec}
 *{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:#111827}button,input{font:inherit}
@@ -215,7 +215,7 @@ function adminReturnToPictogramsStable(scrollY){
 <section class="content">
 <div class="head"><div><h1 id="title">Besoins du quotidien</h1></div><input id="search" class="search" placeholder="🔎 Rechercher…"></div>
 <div class="starters"><strong>Débuts de phrase</strong><div id="starterrow" class="starterrow"></div></div>
-<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 271</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
+<div id="grid" class="grid"></div><div style="text-align:center;font-size:11px;color:#8b93a1;margin-top:10px">Version 2.0 bêta 272</div><div class="credit">Pictogrammes ARASAAC : Sergio Palao · Gouvernement d’Aragon · CC BY-NC-SA 4.0 · Autres pictogrammes : créations originales Ma CAA</div>
 </section></main></div>
 <div class="bottom"><button id="cats">☰ Catégories</button><button class="speak" id="speak2">🔊 Parler</button><button class="clear" id="clear2">🗑 Effacer</button></div>
 <div id="feedback" class="feedback"></div><div id="drawer" class="drawer"><div class="sheet"><button class="x" id="close">✕</button><h2>Catégories</h2><nav id="nav2" class="nav"></nav></div></div>
@@ -3570,9 +3570,7 @@ function subcatVisible(sc){return !sc.hidden&&!readHiddenSubcats().includes(sc.i
 function itemInSubcat(x,sc){return adminSubcatItemsDeep(sc).includes(permanentItemId(x)||itemId2(x))}
 function renderSubcategoryFilters(box,cat,items){
  const all=(readAdminBase().subcategories||[]).filter(sc=>sc.category===cat.name&&!sc.deleted&&subcatVisible(sc));
- // BETA271 : à la racine d'une catégorie, n'afficher que les favoris
- // de CETTE catégorie pour le profil actif.
- if(!all.length)return items.filter(x=>isFav(x));
+ if(!all.length)return items;
 
  let selectedId=activeSubcategoryByCategory[cat.name]||"all";
  let selected=selectedId==="all"?null:all.find(x=>x.id===selectedId);
@@ -3622,11 +3620,9 @@ function renderSubcategoryFilters(box,cat,items){
  }
  box.appendChild(area);
 
- // BETA271 :
- // - racine de catégorie = seulement les pictogrammes favoris de cette catégorie ;
- // - sous-dossier = tous les pictogrammes du dossier (et descendants),
- //   les masquages Admin/Parents ayant déjà été appliqués par visibleItems().
- if(!selected)return items.filter(x=>isFav(x));
+ // Dans une catégorie : tous les pictogrammes.
+ // Dans un dossier : pictogrammes de ce dossier + de tous ses descendants.
+ if(!selected)return items;
  let filtered=items.filter(x=>itemInSubcat(x,selected));
  try{
    const profileMap=readSubOrder228(), profileIds=profileMap[String(selected.id)]||[];
@@ -3840,13 +3836,11 @@ function renderGrid(){closeSubmenuBubble();closeQuickChoicesBubble();ensureAdult
     box.appendChild(msg);return;
   }
 
-  // BETA271 : les sous-dossiers restent accessibles même sans favori
-  // à la racine de la catégorie.
   if(c.name!=="Favoris" && !q && items.length===0 &&
      (!activeSubcategoryByCategory[c.name] || activeSubcategoryByCategory[c.name]==="all")){
     const msg=document.createElement("div");
-    msg.style.cssText="grid-column:1/-1;text-align:center;padding:22px 12px;color:#667085;font-weight:700";
-    msg.innerHTML="⭐ Aucun pictogramme favori dans cette catégorie.<br><span style='font-weight:500'>Les sous-dossiers restent accessibles ci-dessus.</span>";
+    msg.style.cssText="grid-column:1/-1;text-align:center;padding:18px 12px;color:#667085;font-weight:700";
+    msg.innerHTML="Aucun favori dans cette catégorie.<br><span style='font-weight:500'>Les favoris se choisissent dans le Mode Parents.</span>";
     box.appendChild(msg);
   }
 
@@ -13275,6 +13269,34 @@ body.admin270-open #undo-last-270{bottom:18px}
 
   // Run once after all v265 ID mappings are installed.
   setTimeout(()=>{try{reconcileAssignments270()}catch(e){};updateUndoButton270()},350);
+})();
+</script>
+
+
+<!-- BETA272 — racine catégorie = favoris uniquement -->
+<script id="beta272-category-root-favorites">
+(function(){
+  const prev272 = window.renderSubcategoryFilters || renderSubcategoryFilters;
+
+  window.renderSubcategoryFilters = function(box,cat,items){
+    const selectedId = (activeSubcategoryByCategory && activeSubcategoryByCategory[cat.name])
+      ? String(activeSubcategoryByCategory[cat.name])
+      : "all";
+
+    // Laisser la fonction existante construire toute la navigation des dossiers
+    // et appliquer les règles de visibilité/ordre déjà validées.
+    const result = prev272.call(this,box,cat,items);
+
+    // BETA272 :
+    // - racine de catégorie = uniquement les pictogrammes favoris du profil actif ;
+    // - sous-dossier = contenu complet déjà renvoyé par la logique existante.
+    if(selectedId==="all"){
+      return (result||[]).filter(x=>isFav(x));
+    }
+    return result||[];
+  };
+
+  try{renderSubcategoryFilters=window.renderSubcategoryFilters}catch(e){}
 })();
 </script>
 
